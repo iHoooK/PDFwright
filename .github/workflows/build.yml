@@ -1,0 +1,51 @@
+name: Build PDFwright
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build renderer, preload and main
+        run: npm run build
+
+      - name: Package unpacked app (smoke)
+        run: npx electron-builder --dir --publish never
+
+      - name: Verify unpacked executable exists
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'release/win-unpacked/PDFwright.exe'
+          if (-not (Test-Path $exe)) { throw "Unpacked executable not found: $exe" }
+          Get-Item $exe | Select-Object Name, Length

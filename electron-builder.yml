@@ -1,0 +1,43 @@
+# Конфигурация упаковки. Полная настройка установщика (языки, задачи,
+# ассоциация .pdf, иконки) — фаза 7; здесь минимум для CI и `--dir`.
+appId: ru.promptix.pdfwright
+productName: PDFwright
+copyright: Copyright © 2026 Promptix
+executableName: PDFwright
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  artifactName: ${productName}-Setup-x64.${ext}
+  shortcutName: PDFwright
+
+portable:
+  artifactName: ${productName}-Portable-x64.${ext}
+
+publish: null

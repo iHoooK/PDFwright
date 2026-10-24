@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# electron-builder cache and local artefacts
+.electron-builder-cache/
+
+# test and coverage
+coverage/
+test-results/
+playwright-report/
+
+# editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# local env
+.env
+.env.*
+!.env.example
