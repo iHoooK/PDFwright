@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDFwright — прототип A «Кабинет»</title>
+<style>
+/* ============ Направление A «Кабинет» ============
+   Светлая тёплая бумага, спокойная читальня. Документ — единственный
+   насыщенный объект; панели живут как мягкие карточки на тёплом сером фоне.
+   Акцент — глубокий чернильный синий, только для действия и выбора. */
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --bg: #efece6;          /* тёплый холст */
+  --panel: #f8f6f2;       /* карточки панелей */
+  --panel-2: #fdfcfa;     /* поля ввода, активные элементы */
+  --paper: #ffffff;       /* страница */
+  --ink: #23221f;
+  --ink-2: #5d5a53;
+  --ink-3: #8f8b82;
+  --line: #ddd8ce;
+  --line-2: #cbc5b9;
+  --accent: #1f4b7a;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4ecf5;
+  --mark: #ffd86b;        /* маркер на странице */
+  --shadow: 0 1px 2px rgba(35,34,31,.06), 0 8px 24px rgba(35,34,31,.08);
+  --page-shadow: 0 1px 3px rgba(35,34,31,.12), 0 12px 32px rgba(35,34,31,.12);
+  --r: 10px;
+  --r-s: 6px;
+  --scale: 1;
+}
+:root[data-theme="dark"] {
+  --bg: #1d1c1a;
+  --panel: #262523;
+  --panel-2: #2e2d2a;
+  --paper: #f4f1ea;
+  --ink: #ece8df;
+  --ink-2: #b4afa3;
+  --ink-3: #7d796f;
+  --line: #36342f;
+  --line-2: #45423c;
+  --accent: #8fb4dc;
+  --accent-ink: #10213a;
+  --accent-soft: #263548;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --page-shadow: 0 2px 6px rgba(0,0,0,.5), 0 16px 40px rgba(0,0,0,.5);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; font: 14px/1.45 var(--font); color: var(--ink); background: var(--bg);
+  -webkit-font-smoothing: antialiased; overflow: hidden;
+}
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; border-radius: var(--r-s); }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.hidden { display: none !important; }
+
+/* ---- Каркас окна ---- */
+.app { height: 100vh; display: grid; grid-template-rows: 44px 1fr 28px; }
+.titlebar {
+  display: flex; align-items: center; gap: 8px; padding: 0 12px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 600; letter-spacing: .01em; margin-right: 10px; }
+.brand .logo { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.tabs { display: flex; gap: 4px; flex: 1; min-width: 0; align-items: center; }
+.tab {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 12px; border-radius: 999px;
+  color: var(--ink-2); max-width: 240px; border: 1px solid transparent;
+}
+.tab:hover { background: var(--panel); }
+.tab[aria-selected="true"] { background: var(--panel-2); color: var(--ink); border-color: var(--line); box-shadow: var(--shadow); }
+.tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab .x { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-3); }
+.tab .x:hover { background: var(--line); color: var(--ink); }
+.tab.add { padding: 6px; color: var(--ink-3); }
+.tb-actions { display: flex; gap: 2px; }
+.icon-btn {
+  width: 32px; height: 32px; display: grid; place-items: center; color: var(--ink-2); border-radius: var(--r-s);
+}
+.icon-btn:hover { background: var(--panel); color: var(--ink); }
+.icon-btn[aria-pressed="true"], .icon-btn.active { background: var(--accent-soft); color: var(--accent); }
+
+.statusbar {
+  display: flex; align-items: center; gap: 16px; padding: 0 14px; font-size: 12px; color: var(--ink-3);
+  border-top: 1px solid var(--line);
+}
+.statusbar .grow { flex: 1; }
+
+/* ---- Экраны ---- */
+.screen { display: none; min-height: 0; }
+.screen.active { display: grid; }
+
+/* ---- Стартовый экран ---- */
+#screen-start { grid-template-columns: 1fr; overflow: auto; }
+.start { max-width: 920px; width: 100%; margin: 0 auto; padding: 56px 32px 48px; display: grid; gap: 32px; }
+.start h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.start p.lead { margin: 6px 0 0; color: var(--ink-2); }
+.drop {
+  border: 1.5px dashed var(--line-2); border-radius: 14px; padding: 36px; text-align: center; background: var(--panel);
+  display: grid; justify-items: center; gap: 10px; transition: border-color .15s, background .15s;
+}
+.drop:hover { border-color: var(--accent); background: var(--panel-2); }
+.drop svg.i { width: 36px; height: 36px; color: var(--accent); }
+.drop .hint { color: var(--ink-3); font-size: 13px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-weight: 500;
+  background: var(--panel-2); border: 1px solid var(--line-2); color: var(--ink);
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; }
+.section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 600; margin: 0 0 10px; }
+.recent { display: grid; gap: 4px; }
+.recent-item {
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--r);
+  text-align: left; width: 100%;
+}
+.recent-item:hover { background: var(--panel); }
+.recent-item .thumb { width: 36px; height: 46px; background: var(--paper); border: 1px solid var(--line); border-radius: 3px; position: relative; overflow: hidden; }
+.recent-item .thumb::before { content: ""; position: absolute; inset: 6px 6px auto; height: 3px; background: var(--line-2); border-radius: 2px; box-shadow: 0 7px 0 var(--line), 0 14px 0 var(--line), 0 21px 0 var(--line); }
+.recent-item .name { font-weight: 500; }
+.recent-item .meta { color: var(--ink-3); font-size: 12px; }
+.tools { display: grid; gap: 8px; }
+.tool-card {
+  display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: center; padding: 12px 14px; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); width: 100%;
+}
+.tool-card:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.tool-card .ic { width: 38px; height: 38px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.tool-card b { display: block; font-weight: 600; }
+.tool-card small { color: var(--ink-2); }
+
+/* ---- Просмотр ---- */
+#screen-viewer { grid-template-columns: 56px 232px 1fr 260px; grid-template-rows: 48px 1fr; }
+#screen-viewer.no-right { grid-template-columns: 56px 232px 1fr 0; }
+#screen-viewer.no-left { grid-template-columns: 56px 0 1fr 260px; }
+#screen-viewer.no-left.no-right { grid-template-columns: 56px 0 1fr 0; }
+.toolbar {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.toolbar .group { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
+.toolbar .group + .group { border-left: 1px solid var(--line); }
+.tool { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: var(--r-s); color: var(--ink-2); font-size: 13px; }
+.tool:hover { background: var(--panel-2); color: var(--ink); }
+.tool[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.toolbar .spacer { flex: 1; }
+.zoom { display: inline-flex; align-items: center; gap: 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.zoom button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-2); }
+.zoom button:hover { background: var(--panel); color: var(--ink); }
+.zoom output { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; }
+.search { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); min-width: 220px; color: var(--ink-3); }
+.search input { border: 0; background: none; outline: none; width: 100%; color: var(--ink); }
+.search input::placeholder { color: var(--ink-3); }
+
+.rail { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0; border-right: 1px solid var(--line); }
+.rail .icon-btn { width: 40px; height: 40px; border-radius: var(--r); }
+.rail .sep { flex: 1; }
+
+.sidebar { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.sidebar header { padding: 12px 14px 8px; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+.sidebar .thumbs { overflow: auto; padding: 4px 14px 16px; display: grid; gap: 14px; }
+.thumb-page { display: grid; justify-items: center; gap: 6px; }
+.thumb-page .pg { width: 100%; aspect-ratio: 1 / 1.3; background: var(--paper); border-radius: 3px; border: 2px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,.12); position: relative; overflow: hidden; }
+.thumb-page .pg::before { content: ""; position: absolute; left: 14%; right: 14%; top: 14%; height: 4px; background: #d7d2c8; border-radius: 2px; box-shadow: 0 10px 0 #e6e2da, 0 18px 0 #e6e2da, 0 26px 0 #e6e2da, 0 34px 0 #e6e2da, 0 42px 0 #e6e2da; }
+.thumb-page[aria-current="true"] .pg { border-color: var(--accent); }
+.thumb-page small { color: var(--ink-3); font-size: 12px; }
+.outline { padding: 4px 8px; display: grid; gap: 2px; overflow: auto; }
+.outline button { text-align: left; padding: 7px 10px; border-radius: var(--r-s); color: var(--ink-2); display: flex; gap: 8px; }
+.outline button:hover { background: var(--panel-2); color: var(--ink); }
+.outline .lvl2 { padding-left: 28px; }
+
+.canvas { overflow: auto; background: var(--bg); padding: 28px 0 60px; display: grid; justify-items: center; gap: 24px; align-content: start; min-height: 0; }
+.page {
+  width: calc(612px * var(--scale)); height: calc(792px * var(--scale)); background: var(--paper); box-shadow: var(--page-shadow); border-radius: 2px; position: relative; color: #2a2a2a;
+  padding: calc(72px * var(--scale)) calc(64px * var(--scale)); overflow: hidden;
+}
+.page .h { height: calc(22px * var(--scale)); width: 58%; background: #2a2a2a; border-radius: 2px; margin-bottom: calc(26px * var(--scale)); opacity: .85; }
+.page .l { height: calc(9px * var(--scale)); background: #cfcbc2; border-radius: 2px; margin-bottom: calc(11px * var(--scale)); }
+.page .l.s { width: 72%; }
+.page .l.m { width: 90%; }
+.page .l.gap { margin-bottom: calc(26px * var(--scale)); }
+.page .img { height: calc(180px * var(--scale)); background: linear-gradient(135deg, #e9e4d9, #d6d0c3); border-radius: 4px; margin: calc(8px * var(--scale)) 0 calc(26px * var(--scale)); }
+.page .mark { position: absolute; left: calc(64px * var(--scale)); top: calc(216px * var(--scale)); width: 58%; height: calc(13px * var(--scale)); background: var(--mark); opacity: .55; mix-blend-mode: multiply; border-radius: 2px; }
+.page .num { position: absolute; bottom: calc(28px * var(--scale)); right: calc(64px * var(--scale)); font-size: calc(11px * var(--scale)); color: #8f8b82; }
+
+.props { border-left: 1px solid var(--line); background: var(--panel); padding: 14px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.props h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.props .field { display: grid; gap: 6px; }
+.props label { font-size: 12px; color: var(--ink-3); }
+.swatches { display: flex; gap: 6px; }
+.swatches button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; }
+.swatches button[aria-pressed="true"] { border-color: var(--accent); }
+.range { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--line-2); accent-color: var(--accent); }
+.seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-s); padding: 2px; }
+.seg button { padding: 5px 10px; border-radius: 4px; font-size: 12px; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.note { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+
+/* ---- Режим «Страницы» ---- */
+.pages-grid { grid-column: 2 / -1; overflow: auto; padding: 24px 28px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; align-content: start; }
+.pcard { display: grid; gap: 8px; justify-items: center; }
+.pcard .pg { width: 100%; aspect-ratio: 1/1.3; background: var(--paper); border-radius: 4px; border: 2px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,.14); position: relative; }
+.pcard .pg::before { content: ""; position: absolute; left: 14%; right: 14%; top: 14%; height: 5px; background: #d7d2c8; border-radius: 2px; box-shadow: 0 12px 0 #e6e2da, 0 22px 0 #e6e2da, 0 32px 0 #e6e2da, 0 42px 0 #e6e2da, 0 52px 0 #e6e2da, 0 62px 0 #e6e2da; }
+.pcard[aria-selected="true"] .pg { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.pcard .pg .chk { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--line-2); background: var(--paper); display: grid; place-items: center; color: var(--accent-ink); }
+.pcard[aria-selected="true"] .chk { background: var(--accent); border-color: var(--accent); }
+.pcard small { color: var(--ink-3); font-size: 12px; }
+.pages-actions { grid-column: 2 / -1; grid-row: 2; display: flex; gap: 6px; align-items: center; padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+#screen-viewer.pages-mode { grid-template-rows: 48px auto 1fr; }
+#screen-viewer.pages-mode .pages-grid { grid-row: 3; }
+#screen-viewer.pages-mode .rail { grid-row: 2 / -1; }
+
+/* ---- Настройки ---- */
+#screen-settings { grid-template-columns: 240px 1fr; }
+.snav { border-right: 1px solid var(--line); background: var(--panel); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+.snav h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin: 0 10px 10px; font-weight: 600; }
+.snav button { text-align: left; padding: 9px 12px; border-radius: var(--r); color: var(--ink-2); display: flex; gap: 10px; align-items: center; }
+.snav button:hover { background: var(--panel-2); color: var(--ink); }
+.snav button[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.snav .back { margin-top: auto; }
+.sbody { overflow: auto; padding: 36px 48px; }
+.sbody section { max-width: 640px; display: none; }
+.sbody section.active { display: block; }
+.sbody h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: -.01em; }
+.sbody .desc { color: var(--ink-2); margin: 0 0 28px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.row .t b { display: block; font-weight: 500; }
+.row .t small { color: var(--ink-3); }
+.toggle { width: 42px; height: 24px; border-radius: 12px; background: var(--line-2); position: relative; transition: background .15s; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.toggle[aria-checked="true"] { background: var(--accent); }
+.toggle[aria-checked="true"]::after { transform: translateX(18px); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; display: grid; gap: 12px; }
+.links { display: grid; gap: 6px; }
+.links a { color: var(--accent); text-decoration: none; padding: 8px 10px; border-radius: var(--r-s); display: flex; align-items: center; gap: 10px; }
+.links a:hover { background: var(--accent-soft); }
+.progress { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 45%; background: var(--accent); }
+kbd { font: 12px/1 var(--font); background: var(--panel-2); border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; color: var(--ink-2); }
+.toast { position: fixed; bottom: 44px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 13px; box-shadow: var(--shadow); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M7 4v6a4 4 0 0 0 4 4h2a4 4 0 0 1 4 4v2M7 4 4 7m3-3 3 3m7 13 3-3m-3 3-3-3"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M5 8l-2 4 2 4M19 8l2 4-2 4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></symbol>
+  <symbol id="i-pages" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1"/><rect x="14" y="4" width="7" height="9" rx="1"/><rect x="3" y="15" width="7" height="5" rx="1"/><rect x="14" y="15" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h6l2 2h6v14H5zM11 4v16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M6 4l12 7-5 1.5L11 18z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5m0-6a1.5 1.5 0 0 1 3 0v6m0-4a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3 14a1.6 1.6 0 0 1 2.7-1.7L8 14"/></symbol>
+  <symbol id="i-marker" viewBox="0 0 24 24"><path d="m4 20 4-1 10-10-3-3L5 16zM13 7l3 3M3 22h18"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20c3-8 8-12 15-15-2 7-7 12-15 15zM4 20l4-4"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><rect x="3" y="12" width="9" height="9" rx="1"/><circle cx="16" cy="8" r="5"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M3 17c3-6 5-8 6-6s-1 7 1 7 3-6 5-6 1 5 3 5 2-2 3-3"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8 11h6m-3-3v6"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8 11h6"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8 7H4V3M4 7a9 9 0 1 1-1 7"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V4h10v4M5 8h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-panel-r" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m6 7-7-7 7-7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.5"/></symbol>
+  <symbol id="i-update" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.6-5.7M20 12a8 8 0 0 1-13.6 5.7M17 3v4h-4M7 21v-4h4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+</svg>
+
+<div class="app">
+  <!-- Заголовок окна с вкладками документов -->
+  <header class="titlebar">
+    <div class="brand"><span class="logo">P</span><span>PDFwright</span></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="false" data-go="start"><svg class="i"><use href="#i-home"/></svg><span>Начало</span></button>
+      <button class="tab" role="tab" aria-selected="true" data-go="viewer"><svg class="i"><use href="#i-doc"/></svg><span>Договор_аренды_2026.pdf</span><span class="x"><svg class="i" style="width:12px;height:12px"><use href="#i-x"/></svg></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-go="viewer"><svg class="i"><use href="#i-doc"/></svg><span>Презентация.pdf</span><span class="x"><svg class="i" style="width:12px;height:12px"><use href="#i-x"/></svg></span></button>
+      <button class="tab add" title="Открыть файл"><svg class="i"><use href="#i-plus"/></svg></button>
+    </div>
+    <div class="tb-actions">
+      <button class="icon-btn" id="theme-toggle" title="Переключить тему"><svg class="i"><use href="#i-sun"/></svg></button>
+      <button class="icon-btn" data-go="settings" title="Настройки"><svg class="i"><use href="#i-settings"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ===== Стартовый экран ===== -->
+  <main class="screen" id="screen-start">
+    <div class="start">
+      <div>
+        <h1>Откройте документ или выберите инструмент</h1>
+        <p class="lead">Файлы остаются на&nbsp;компьютере. Ничего не&nbsp;загружается в&nbsp;сеть.</p>
+      </div>
+      <button class="drop" data-go="viewer">
+        <svg class="i"><use href="#i-folder"/></svg>
+        <b>Перетащите PDF сюда или нажмите, чтобы выбрать</b>
+        <span class="hint">Также работает двойной клик по&nbsp;файлу в&nbsp;Проводнике</span>
+      </button>
+      <div class="cols">
+        <div>
+          <p class="section-title">Недавние</p>
+          <div class="recent">
+            <button class="recent-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Договор_аренды_2026.pdf</span><br><span class="meta">14 страниц · сегодня, 11:02 · D:\Документы</span></span></button>
+            <button class="recent-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Презентация.pdf</span><br><span class="meta">32 страницы · вчера · Загрузки</span></span></button>
+            <button class="recent-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Сканы_паспорт.pdf</span><br><span class="meta">2 страницы · 20 окт. · Рабочий стол</span></span></button>
+            <button class="recent-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Инструкция_котёл.pdf</span><br><span class="meta">118 страниц · 18 окт. · Загрузки</span></span></button>
+          </div>
+        </div>
+        <div>
+          <p class="section-title">Инструменты</p>
+          <div class="tools">
+            <button class="tool-card" data-toast="Объединение: выберите файлы"><span class="ic"><svg class="i"><use href="#i-merge"/></svg></span><span><b>Объединить PDF</b><small>Несколько файлов в&nbsp;один</small></span></button>
+            <button class="tool-card" data-toast="Разделение: выберите файл"><span class="ic"><svg class="i"><use href="#i-split"/></svg></span><span><b>Разделить PDF</b><small>По&nbsp;диапазонам или на&nbsp;страницы</small></span></button>
+            <button class="tool-card" data-toast="Изображения → PDF: выберите изображения"><span class="ic"><svg class="i"><use href="#i-image"/></svg></span><span><b>Изображения в&nbsp;PDF</b><small>JPG, PNG, WebP в&nbsp;один документ</small></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Просмотр ===== -->
+  <main class="screen active" id="screen-viewer">
+    <div class="toolbar">
+      <div class="group">
+        <button class="tool" data-toast="Сохранено"><svg class="i"><use href="#i-save"/></svg></button>
+        <button class="tool" data-toast="Печать: системный диалог"><svg class="i"><use href="#i-print"/></svg></button>
+        <button class="tool" data-toast="Отменить"><svg class="i"><use href="#i-undo"/></svg></button>
+      </div>
+      <div class="group" id="tools">
+        <button class="tool" aria-pressed="true" data-tool><svg class="i"><use href="#i-cursor"/></svg>Выделение</button>
+        <button class="tool" aria-pressed="false" data-tool><svg class="i"><use href="#i-hand"/></svg>Рука</button>
+        <button class="tool" aria-pressed="false" data-tool><svg class="i"><use href="#i-marker"/></svg>Маркер</button>
+        <button class="tool" aria-pressed="false" data-tool><svg class="i"><use href="#i-pen"/></svg>Перо</button>
+        <button class="tool" aria-pressed="false" data-tool><svg class="i"><use href="#i-shapes"/></svg>Фигуры</button>
+        <button class="tool" aria-pressed="false" data-tool><svg class="i"><use href="#i-text"/></svg>Текст</button>
+        <button class="tool" aria-pressed="false" data-tool><svg class="i"><use href="#i-sign"/></svg>Подпись</button>
+      </div>
+      <div class="group">
+        <button class="tool" id="mode-pages" aria-pressed="false"><svg class="i"><use href="#i-pages"/></svg>Страницы</button>
+      </div>
+      <span class="spacer"></span>
+      <div class="zoom">
+        <button data-zoom="-1" title="Уменьшить"><svg class="i"><use href="#i-zoom-out"/></svg></button>
+        <output id="zoom-out">100%</output>
+        <button data-zoom="1" title="Увеличить"><svg class="i"><use href="#i-zoom-in"/></svg></button>
+      </div>
+      <label class="search"><svg class="i"><use href="#i-search"/></svg><input placeholder="Поиск по документу"></label>
+    </div>
+
+    <nav class="rail" aria-label="Панели">
+      <button class="icon-btn active" data-panel="thumbs" title="Страницы"><svg class="i"><use href="#i-pages"/></svg></button>
+      <button class="icon-btn" data-panel="outline" title="Закладки"><svg class="i"><use href="#i-book"/></svg></button>
+      <button class="icon-btn" data-panel="search" title="Поиск"><svg class="i"><use href="#i-search"/></svg></button>
+      <span class="sep"></span>
+      <button class="icon-btn" id="toggle-right" title="Панель свойств" aria-pressed="true"><svg class="i"><use href="#i-panel-r"/></svg></button>
+    </nav>
+
+    <aside class="sidebar" id="sidebar">
+      <header><span id="sidebar-title">Страницы</span><span class="note">14</span></header>
+      <div class="thumbs" id="panel-thumbs">
+        <button class="thumb-page" aria-current="true"><span class="pg"></span><small>1</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>2</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>3</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>4</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>5</small></button>
+      </div>
+      <div class="outline hidden" id="panel-outline">
+        <button>1. Предмет договора</button>
+        <button>2. Срок аренды</button>
+        <button class="lvl2">2.1. Продление</button>
+        <button>3. Арендная плата</button>
+        <button class="lvl2">3.1. Порядок расчётов</button>
+        <button class="lvl2">3.2. Коммунальные платежи</button>
+        <button>4. Ответственность сторон</button>
+        <button>5. Реквизиты</button>
+      </div>
+      <div class="outline hidden" id="panel-search">
+        <p class="note" style="padding:4px 10px">3 совпадения для «арендная плата»</p>
+        <button>стр. 2 — …ежемесячная <b>арендная плата</b> составляет…</button>
+        <button>стр. 3 — …<b>арендная плата</b> вносится не&nbsp;позднее…</button>
+        <button>стр. 7 — …изменение размера <b>арендной платы</b>…</button>
+      </div>
+    </aside>
+
+    <section class="canvas" id="canvas" aria-label="Документ">
+      <article class="page">
+        <div class="h"></div>
+        <div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="l"></div><div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="img"></div>
+        <div class="l"></div><div class="l m"></div><div class="l s"></div>
+        <span class="mark" title="Выделение маркером"></span>
+        <span class="num">1 / 14</span>
+      </article>
+      <article class="page">
+        <div class="l"></div><div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="l"></div><div class="l"></div><div class="l m gap"></div>
+        <div class="l"></div><div class="l s"></div><div class="l m"></div><div class="l"></div>
+        <span class="num">2 / 14</span>
+      </article>
+    </section>
+
+    <aside class="props" id="props">
+      <h3>Маркер</h3>
+      <div class="field"><label>Цвет</label>
+        <div class="swatches">
+          <button style="background:#ffd86b" aria-pressed="true"></button><button style="background:#9be39b"></button><button style="background:#9fd3ff"></button><button style="background:#ffb0c8"></button><button style="background:#d7bfff"></button>
+        </div>
+      </div>
+      <div class="field"><label>Непрозрачность</label><input class="range" type="range" min="10" max="100" value="55"></div>
+      <div class="field"><label>Сохранять как</label>
+        <div class="seg"><button aria-pressed="true">Аннотация</button><button>В&nbsp;содержимое</button></div>
+      </div>
+      <p class="note">Аннотации видны в&nbsp;других программах и&nbsp;их можно удалить. Впечатанные в&nbsp;содержимое — нельзя.</p>
+      <h3 style="margin-top:8px">Документ</h3>
+      <p class="note">Договор_аренды_2026.pdf<br>14 страниц · 1,2 МБ · A4<br>Изменён: сегодня, 11:02</p>
+    </aside>
+
+    <!-- Режим «Страницы» (скрыт по умолчанию) -->
+    <div class="pages-actions hidden" id="pages-actions">
+      <span class="note" id="sel-count">Выбрано: 2</span>
+      <span class="spacer"></span>
+      <button class="tool" data-toast="Повернуть выбранные"><svg class="i"><use href="#i-rotate"/></svg>Повернуть</button>
+      <button class="tool" data-toast="Извлечь выбранные в новый файл"><svg class="i"><use href="#i-split"/></svg>Извлечь</button>
+      <button class="tool" data-toast="Вставить страницы из файла"><svg class="i"><use href="#i-plus"/></svg>Вставить</button>
+      <button class="tool" data-toast="Удалить выбранные"><svg class="i"><use href="#i-trash"/></svg>Удалить</button>
+    </div>
+    <div class="pages-grid hidden" id="pages-grid"></div>
+  </main>
+
+  <!-- ===== Настройки ===== -->
+  <main class="screen" id="screen-settings">
+    <nav class="snav">
+      <h2>Настройки</h2>
+      <button aria-current="true" data-sec="general"><svg class="i"><use href="#i-settings"/></svg>Общие</button>
+      <button data-sec="view"><svg class="i"><use href="#i-eye"/></svg>Просмотр</button>
+      <button data-sec="updates"><svg class="i"><use href="#i-update"/></svg>Обновления</button>
+      <button data-sec="about"><svg class="i"><use href="#i-info"/></svg>О&nbsp;программе</button>
+      <button data-sec="author"><svg class="i"><use href="#i-user"/></svg>О&nbsp;разработчике</button>
+      <button class="back" data-go="viewer"><svg class="i"><use href="#i-back"/></svg>Вернуться к&nbsp;документу</button>
+    </nav>
+    <div class="sbody">
+      <section class="active" data-sec="general">
+        <h1>Общие</h1><p class="desc">Тема, язык и&nbsp;поведение при сохранении.</p>
+        <div class="row"><div class="t"><b>Тема</b><small>Как в&nbsp;системе, светлая или тёмная</small></div><div class="seg" id="theme-seg"><button data-theme="system">Система</button><button data-theme="light" aria-pressed="true">Светлая</button><button data-theme="dark">Тёмная</button></div></div>
+        <div class="row"><div class="t"><b>Язык интерфейса</b><small>English появится в&nbsp;0.2.0</small></div><div class="seg"><button aria-pressed="true">Русский</button><button disabled style="opacity:.5">English</button></div></div>
+        <div class="row"><div class="t"><b>Резервная копия при сохранении</b><small>Рядом с&nbsp;файлом создаётся копия .bak</small></div><button class="toggle" role="switch" aria-checked="false"></button></div>
+        <div class="row"><div class="t"><b>Открывать последний документ при запуске</b></div><button class="toggle" role="switch" aria-checked="true"></button></div>
+      </section>
+      <section data-sec="view">
+        <h1>Просмотр</h1><p class="desc">Как открываются документы.</p>
+        <div class="row"><div class="t"><b>Масштаб по умолчанию</b></div><div class="seg"><button aria-pressed="true">По&nbsp;ширине</button><button>Страница</button><button>100%</button></div></div>
+        <div class="row"><div class="t"><b>Режим прокрутки</b></div><div class="seg"><button aria-pressed="true">Непрерывно</button><button>По&nbsp;одной</button><button>Разворот</button></div></div>
+        <div class="row"><div class="t"><b>Запоминать позицию в&nbsp;документе</b></div><button class="toggle" role="switch" aria-checked="true"></button></div>
+      </section>
+      <section data-sec="updates">
+        <h1>Обновления</h1><p class="desc">Проверка выполняется только по&nbsp;кнопке. Программа обращается к&nbsp;GitHub; документы и&nbsp;настройки не&nbsp;передаются.</p>
+        <div class="card">
+          <div><b>Установлена версия 0.1.0</b><br><span class="note">Нажмите «Проверить обновления», чтобы узнать о&nbsp;новой версии.</span></div>
+          <div class="progress hidden"><i></i></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-toast="Проверяем последнюю версию на GitHub…">Проверить обновления</button><button class="btn" data-toast="Открываем страницу релизов">Открыть страницу релизов ↗</button></div>
+        </div>
+      </section>
+      <section data-sec="about">
+        <h1>О&nbsp;программе</h1><p class="desc">PDFwright 0.1.0 · Windows x64 · установленная версия</p>
+        <div class="card">
+          <div class="note">Локальная программа для просмотра и&nbsp;редактирования PDF. Код открыт под лицензией MIT.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-toast="Диагностика скопирована">Скопировать диагностику</button><button class="btn" data-toast="Открываем лицензии">Лицензии компонентов</button></div>
+        </div>
+      </section>
+      <section data-sec="author">
+        <h1>О&nbsp;разработчике</h1><p class="desc">Текст будет согласован отдельно; здесь показан макет раздела.</p>
+        <div class="card">
+          <div class="note">Я Андрей, автор Promptix. Делаю небольшие локальные инструменты для Windows и&nbsp;показываю на&nbsp;YouTube, как они создаются.</div>
+          <div class="links">
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Сайт Promptix</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>YouTube · Promptix</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Telegram · Promptix</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Telegram · Кодовая Артель</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>DonationAlerts</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Boosty</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <span id="status-page">Страница 1 из&nbsp;14</span>
+    <span>A4 · 210 × 297 мм</span>
+    <span class="grow"></span>
+    <span><kbd>Ctrl</kbd> + <kbd>F</kbd> поиск</span>
+    <span>Сохранено</span>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 1600); };
+
+  // Навигация между экранами
+  const go = (name) => {
+    $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+    $$('.tab[role=tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.go === name && name !== 'settings')));
+  };
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-go]'); if (g) { go(g.dataset.go); return; }
+    const t = e.target.closest('[data-toast]'); if (t) toast(t.dataset.toast);
+  });
+
+  // Тема
+  const html = document.documentElement;
+  const setTheme = (th) => {
+    html.dataset.theme = th === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : th;
+    $$('#theme-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === th)));
+  };
+  $('#theme-toggle').onclick = () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');
+  $$('#theme-seg button').forEach(b => b.onclick = () => setTheme(b.dataset.theme));
+
+  // Инструменты
+  $$('[data-tool]').forEach(b => b.onclick = () => {
+    $$('[data-tool]').forEach(x => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    $('#props h3').textContent = b.textContent.trim();
+  });
+
+  // Масштаб
+  const steps = [50, 67, 80, 90, 100, 110, 125, 150, 175, 200];
+  let zi = 4;
+  const applyZoom = () => { html.style.setProperty('--scale', steps[zi] / 100); $('#zoom-out').value = steps[zi] + '%'; };
+  $$('[data-zoom]').forEach(b => b.onclick = () => { zi = Math.max(0, Math.min(steps.length - 1, zi + Number(b.dataset.zoom))); applyZoom(); });
+
+  // Боковые панели
+  const titles = { thumbs: 'Страницы', outline: 'Закладки', search: 'Поиск' };
+  $$('[data-panel]').forEach(b => b.onclick = () => {
+    const viewer = $('#screen-viewer');
+    if (b.classList.contains('active')) { viewer.classList.toggle('no-left'); return; }
+    viewer.classList.remove('no-left');
+    $$('[data-panel]').forEach(x => x.classList.remove('active')); b.classList.add('active');
+    ['thumbs', 'outline', 'search'].forEach(p => $('#panel-' + p).classList.toggle('hidden', p !== b.dataset.panel));
+    $('#sidebar-title').textContent = titles[b.dataset.panel];
+  });
+  $('#toggle-right').onclick = (e) => { const v = $('#screen-viewer').classList.toggle('no-right'); e.currentTarget.setAttribute('aria-pressed', String(!v)); };
+  $$('.thumb-page').forEach((t, i) => t.onclick = () => { $$('.thumb-page').forEach(x => x.removeAttribute('aria-current')); t.setAttribute('aria-current', 'true'); $('#status-page').innerHTML = `Страница ${i + 1} из&nbsp;14`; });
+
+  // Режим «Страницы»
+  const grid = $('#pages-grid');
+  const selected = new Set([2, 3]);
+  const renderGrid = () => {
+    grid.innerHTML = Array.from({ length: 14 }, (_, i) => `<button class="pcard" aria-selected="${selected.has(i)}" data-i="${i}"><span class="pg"><span class="chk">${selected.has(i) ? '<svg class="i" style="width:12px;height:12px;stroke-width:2.5"><use href="#i-check"/></svg>' : ''}</span></span><small>${i + 1}</small></button>`).join('');
+    $('#sel-count').textContent = selected.size ? `Выбрано: ${selected.size}` : 'Выберите страницы';
+  };
+  grid.addEventListener('click', (e) => { const c = e.target.closest('.pcard'); if (!c) return; const i = Number(c.dataset.i); selected.has(i) ? selected.delete(i) : selected.add(i); renderGrid(); });
+  $('#mode-pages').onclick = (e) => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    $('#screen-viewer').classList.toggle('pages-mode', on);
+    ['#canvas', '#props', '#sidebar'].forEach(s => $(s).classList.toggle('hidden', on));
+    ['#pages-actions', '#pages-grid'].forEach(s => $(s).classList.toggle('hidden', !on));
+    if (on) renderGrid();
+  };
+
+  // Настройки
+  $$('.snav [data-sec]').forEach(b => b.onclick = () => {
+    $$('.snav [data-sec]').forEach(x => x.removeAttribute('aria-current')); b.setAttribute('aria-current', 'true');
+    $$('.sbody section').forEach(s => s.classList.toggle('active', s.dataset.sec === b.dataset.sec));
+  });
+  $$('.toggle').forEach(t => t.onclick = () => t.setAttribute('aria-checked', String(t.getAttribute('aria-checked') !== 'true')));
+  $$('.seg').forEach(seg => { if (seg.id === 'theme-seg') return; seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; $$('button', seg).forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); }); });
+  $$('.swatches').forEach(s => s.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('button', s).forEach(x => x.removeAttribute('aria-pressed')); b.setAttribute('aria-pressed', 'true'); $('.page .mark').style.background = b.style.background; }));
+
+  // Стартовый экран по умолчанию, если открыто с ?start
+  if (location.search.includes('start')) go('start');
+  if (location.search.includes('settings')) go('settings');
+  if (location.search.includes('dark')) setTheme('dark');
+})();
+</script>
+</body>
+</html>

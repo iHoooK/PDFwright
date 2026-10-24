@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDFwright — прототип B «Студия»</title>
+<style>
+/* ============ Направление B «Студия» ============
+   Тёмная профессиональная мастерская в духе графических редакторов.
+   Плотный интерфейс, плавающая палитра инструментов внизу, инспектор
+   справа. Акцент — янтарный, только для выбора и текущего инструмента. */
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --bg: #141416;
+  --canvas: #1c1c1f;
+  --panel: #202023;
+  --panel-2: #28282c;
+  --panel-3: #313136;
+  --paper: #ffffff;
+  --ink: #ececef;
+  --ink-2: #a5a5ad;
+  --ink-3: #6f6f78;
+  --line: #2c2c31;
+  --line-2: #3a3a41;
+  --accent: #f0a93a;
+  --accent-ink: #1a1203;
+  --accent-soft: rgba(240,169,58,.14);
+  --mark: #ffd86b;
+  --shadow: 0 2px 6px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.5);
+  --page-shadow: 0 2px 8px rgba(0,0,0,.6), 0 20px 48px rgba(0,0,0,.55);
+  --r: 8px; --r-s: 5px;
+  --scale: 1;
+}
+:root[data-theme="light"] {
+  --bg: #e9e9ec;
+  --canvas: #dcdce0;
+  --panel: #f3f3f5;
+  --panel-2: #ffffff;
+  --panel-3: #e4e4e8;
+  --ink: #1b1b1f;
+  --ink-2: #5a5a63;
+  --ink-3: #8c8c95;
+  --line: #d6d6dc;
+  --line-2: #c4c4cb;
+  --accent: #c7791a;
+  --accent-ink: #fff;
+  --accent-soft: rgba(199,121,26,.14);
+  --shadow: 0 1px 2px rgba(0,0,0,.08), 0 10px 28px rgba(0,0,0,.12);
+  --page-shadow: 0 1px 3px rgba(0,0,0,.14), 0 14px 36px rgba(0,0,0,.16);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font: 13px/1.45 var(--font); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; border-radius: var(--r-s); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.hidden { display: none !important; }
+
+.app { height: 100vh; display: grid; grid-template-rows: 40px 1fr 24px; }
+.titlebar { display: flex; align-items: stretch; gap: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 600; font-size: 13px; }
+.brand .logo { width: 20px; height: 20px; border-radius: 5px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.tabs { display: flex; align-items: stretch; flex: 1; min-width: 0; }
+.tab { display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--ink-3); border-right: 1px solid var(--line); max-width: 220px; position: relative; font-size: 12.5px; border-radius: 0; }
+.tab:hover { color: var(--ink-2); background: var(--panel); }
+.tab[aria-selected="true"] { color: var(--ink); background: var(--canvas); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
+.tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab .x { opacity: .5; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 3px; }
+.tab .x:hover { opacity: 1; background: var(--panel-3); }
+.tab.add { padding: 0 10px; border-right: 0; }
+.tb-actions { display: flex; align-items: center; gap: 2px; padding: 0 8px; }
+.icon-btn { width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink-2); border-radius: var(--r-s); }
+.icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+.icon-btn[aria-pressed="true"], .icon-btn.active { color: var(--accent); background: var(--accent-soft); }
+.statusbar { display: flex; align-items: center; gap: 14px; padding: 0 12px; font-size: 11.5px; color: var(--ink-3); background: var(--bg); border-top: 1px solid var(--line); }
+.statusbar .grow { flex: 1; }
+.statusbar .ok { color: #6fcf8a; }
+
+.screen { display: none; min-height: 0; }
+.screen.active { display: grid; }
+
+/* ---- Стартовый экран ---- */
+#screen-start { grid-template-columns: 1fr; overflow: auto; background: var(--canvas); }
+.start { max-width: 1000px; width: 100%; margin: 0 auto; padding: 48px 32px; display: grid; gap: 28px; }
+.start h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.start .lead { margin: 4px 0 0; color: var(--ink-2); }
+.hero { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+.action { display: grid; gap: 10px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); text-align: left; min-height: 120px; align-content: start; }
+.action:hover { border-color: var(--line-2); background: var(--panel-2); }
+.action.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.action.primary:hover { filter: brightness(1.06); }
+.action svg.i { width: 22px; height: 22px; }
+.action b { font-weight: 600; font-size: 14px; }
+.action small { opacity: .75; }
+.section-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); font-weight: 600; margin: 0 0 8px; }
+.recent-table { display: grid; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.recent-row { display: grid; grid-template-columns: 26px 1fr 110px 90px 160px; gap: 12px; align-items: center; padding: 9px 14px; text-align: left; border-top: 1px solid var(--line); color: var(--ink-2); }
+.recent-row:first-child { border-top: 0; background: var(--panel); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); cursor: default; }
+.recent-row:not(:first-child):hover { background: var(--panel); color: var(--ink); }
+.recent-row .name { color: var(--ink); font-weight: 500; }
+.recent-row .thumb { width: 20px; height: 26px; background: var(--paper); border-radius: 2px; opacity: .85; }
+
+/* ---- Просмотр ---- */
+#screen-viewer { grid-template-columns: 184px 1fr 264px; grid-template-rows: 40px 1fr; position: relative; }
+#screen-viewer.no-right { grid-template-columns: 184px 1fr 0; }
+#screen-viewer.no-left { grid-template-columns: 0 1fr 264px; }
+#screen-viewer.no-left.no-right { grid-template-columns: 0 1fr 0; }
+.toolbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.toolbar .group { display: flex; align-items: center; gap: 2px; padding: 0 4px; }
+.toolbar .group + .group { border-left: 1px solid var(--line-2); margin-left: 4px; padding-left: 8px; }
+.toolbar .spacer { flex: 1; }
+.tbtn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; color: var(--ink-2); font-size: 12.5px; }
+.tbtn:hover { background: var(--panel-3); color: var(--ink); }
+.tbtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.zoom { display: inline-flex; align-items: center; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: var(--r-s); }
+.zoom button { width: 26px; height: 26px; display: grid; place-items: center; color: var(--ink-2); border-radius: 0; }
+.zoom button:hover { background: var(--panel-3); color: var(--ink); }
+.zoom output { min-width: 50px; text-align: center; font-variant-numeric: tabular-nums; font-size: 12px; border-left: 1px solid var(--line-2); border-right: 1px solid var(--line-2); line-height: 26px; }
+.search { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--r-s); background: var(--bg); border: 1px solid var(--line-2); min-width: 220px; color: var(--ink-3); }
+.search input { border: 0; background: none; outline: none; width: 100%; color: var(--ink); font-size: 12.5px; }
+.search input::placeholder { color: var(--ink-3); }
+.search kbd { margin-left: auto; }
+
+.sidebar { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.sidebar .stabs { display: flex; border-bottom: 1px solid var(--line); }
+.sidebar .stabs button { flex: 1; height: 34px; display: grid; place-items: center; color: var(--ink-3); border-radius: 0; position: relative; }
+.sidebar .stabs button:hover { color: var(--ink-2); }
+.sidebar .stabs button[aria-selected="true"] { color: var(--accent); }
+.sidebar .stabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--accent); }
+.thumbs { overflow: auto; padding: 12px; display: grid; gap: 12px; }
+.thumb-page { display: grid; gap: 4px; justify-items: center; }
+.thumb-page .pg { width: 100%; aspect-ratio: 1/1.3; background: var(--paper); border-radius: 2px; border: 2px solid transparent; position: relative; overflow: hidden; opacity: .92; }
+.thumb-page .pg::before { content: ""; position: absolute; left: 14%; right: 14%; top: 14%; height: 4px; background: #cfcbc2; border-radius: 2px; box-shadow: 0 9px 0 #e3e0da, 0 16px 0 #e3e0da, 0 23px 0 #e3e0da, 0 30px 0 #e3e0da, 0 37px 0 #e3e0da; }
+.thumb-page[aria-current="true"] .pg { border-color: var(--accent); opacity: 1; }
+.thumb-page small { color: var(--ink-3); font-size: 11px; }
+.outline { padding: 6px; display: grid; gap: 1px; overflow: auto; }
+.outline button { text-align: left; padding: 6px 10px; border-radius: var(--r-s); color: var(--ink-2); font-size: 12.5px; }
+.outline button:hover { background: var(--panel-2); color: var(--ink); }
+.outline .lvl2 { padding-left: 24px; }
+.note { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+
+.canvas { overflow: auto; background: var(--canvas); padding: 32px 0 96px; display: grid; justify-items: center; gap: 28px; align-content: start; min-height: 0; background-image: radial-gradient(rgba(255,255,255,.04) 1px, transparent 1px); background-size: 18px 18px; }
+:root[data-theme="light"] .canvas { background-image: radial-gradient(rgba(0,0,0,.05) 1px, transparent 1px); }
+.page { width: calc(612px * var(--scale)); height: calc(792px * var(--scale)); background: var(--paper); box-shadow: var(--page-shadow); border-radius: 2px; position: relative; padding: calc(72px * var(--scale)) calc(64px * var(--scale)); overflow: hidden; }
+.page .h { height: calc(22px * var(--scale)); width: 58%; background: #2a2a2a; border-radius: 2px; margin-bottom: calc(26px * var(--scale)); opacity: .85; }
+.page .l { height: calc(9px * var(--scale)); background: #d2cfc8; border-radius: 2px; margin-bottom: calc(11px * var(--scale)); }
+.page .l.s { width: 72%; } .page .l.m { width: 90%; } .page .l.gap { margin-bottom: calc(26px * var(--scale)); }
+.page .img { height: calc(180px * var(--scale)); background: linear-gradient(135deg, #e6e3dc, #cfcac0); border-radius: 4px; margin: calc(8px * var(--scale)) 0 calc(26px * var(--scale)); }
+.page .mark { position: absolute; left: calc(64px * var(--scale)); top: calc(216px * var(--scale)); width: 58%; height: calc(13px * var(--scale)); background: var(--mark); opacity: .55; mix-blend-mode: multiply; border-radius: 2px; }
+.page .sel { position: absolute; left: calc(60px * var(--scale)); top: calc(212px * var(--scale)); width: calc(58% + 8px); height: calc(21px * var(--scale)); border: 1px solid var(--accent); border-radius: 2px; }
+.page .sel::before, .page .sel::after { content: ""; position: absolute; width: 7px; height: 7px; background: var(--accent); border: 1px solid #fff; }
+.page .sel::before { left: -4px; top: -4px; } .page .sel::after { right: -4px; bottom: -4px; }
+.page .num { position: absolute; bottom: calc(28px * var(--scale)); right: calc(64px * var(--scale)); font-size: calc(11px * var(--scale)); color: #8f8b82; }
+
+/* Плавающая палитра инструментов */
+.palette { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); z-index: 2; }
+.palette .sep { width: 1px; height: 22px; background: var(--line-2); margin: 0 4px; }
+.pbtn { width: 38px; height: 38px; display: grid; place-items: center; color: var(--ink-2); border-radius: 9px; position: relative; }
+.pbtn:hover { background: var(--panel-3); color: var(--ink); }
+.pbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.pbtn[data-key]::after { content: attr(data-key); position: absolute; right: 4px; bottom: 2px; font-size: 9px; color: var(--ink-3); }
+.pbtn[aria-pressed="true"]::after { color: var(--accent-ink); opacity: .7; }
+#screen-viewer.no-right .palette { left: calc(50% + 92px); }
+
+.props { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.props .ptabs { display: flex; border-bottom: 1px solid var(--line); }
+.props .ptabs button { flex: 1; height: 34px; font-size: 12px; color: var(--ink-3); border-radius: 0; position: relative; }
+.props .ptabs button[aria-selected="true"] { color: var(--ink); }
+.props .ptabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--accent); }
+.props .body { padding: 14px; display: grid; gap: 14px; }
+.props h3 { margin: 0; font-size: 12px; font-weight: 600; }
+.field { display: grid; gap: 6px; }
+.field label { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inp { height: 28px; border: 1px solid var(--line-2); background: var(--bg); border-radius: var(--r-s); padding: 0 8px; display: flex; align-items: center; justify-content: space-between; font-variant-numeric: tabular-nums; }
+.inp small { color: var(--ink-3); }
+.swatches { display: flex; gap: 6px; }
+.swatches button { width: 22px; height: 22px; border-radius: 4px; border: 2px solid transparent; }
+.swatches button[aria-pressed="true"] { border-color: var(--ink); }
+.range { -webkit-appearance: none; width: 100%; height: 3px; border-radius: 2px; background: var(--line-2); accent-color: var(--accent); }
+.seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-s); padding: 2px; }
+.seg button { padding: 4px 10px; border-radius: 3px; font-size: 12px; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--panel-3); color: var(--ink); }
+.layers { display: grid; gap: 1px; }
+.layer { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--r-s); color: var(--ink-2); font-size: 12px; }
+.layer:hover { background: var(--panel-2); }
+.layer[aria-selected="true"] { background: var(--accent-soft); color: var(--ink); }
+.layer .dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* Режим «Страницы» */
+.pages-actions { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 4px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+#screen-viewer.pages-mode { grid-template-rows: 40px auto 1fr; }
+.pages-grid { grid-column: 1 / -1; grid-row: 3; overflow: auto; padding: 22px 26px; display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 18px; align-content: start; background: var(--canvas); }
+.pcard { display: grid; gap: 6px; justify-items: center; }
+.pcard .pg { width: 100%; aspect-ratio: 1/1.3; background: var(--paper); border-radius: 3px; border: 2px solid transparent; position: relative; opacity: .92; }
+.pcard .pg::before { content: ""; position: absolute; left: 14%; right: 14%; top: 14%; height: 5px; background: #cfcbc2; border-radius: 2px; box-shadow: 0 11px 0 #e3e0da, 0 20px 0 #e3e0da, 0 29px 0 #e3e0da, 0 38px 0 #e3e0da, 0 47px 0 #e3e0da, 0 56px 0 #e3e0da; }
+.pcard[aria-selected="true"] .pg { border-color: var(--accent); opacity: 1; box-shadow: 0 0 0 3px var(--accent-soft); }
+.pcard .chk { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; border-radius: 3px; border: 1.5px solid #bbb; background: #fff; display: grid; place-items: center; color: var(--accent-ink); }
+.pcard[aria-selected="true"] .chk { background: var(--accent); border-color: var(--accent); }
+.pcard small { color: var(--ink-3); font-size: 11px; }
+
+/* ---- Настройки ---- */
+#screen-settings { grid-template-columns: 220px 1fr; background: var(--canvas); }
+.snav { background: var(--panel); border-right: 1px solid var(--line); padding: 14px 8px; display: flex; flex-direction: column; gap: 1px; }
+.snav h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin: 0 10px 10px; font-weight: 600; }
+.snav button { text-align: left; padding: 8px 10px; border-radius: var(--r-s); color: var(--ink-2); display: flex; gap: 10px; align-items: center; font-size: 12.5px; }
+.snav button:hover { background: var(--panel-2); color: var(--ink); }
+.snav button[aria-current="true"] { background: var(--panel-3); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+.snav .back { margin-top: auto; }
+.sbody { overflow: auto; padding: 32px 40px; }
+.sbody section { max-width: 620px; display: none; }
+.sbody section.active { display: block; }
+.sbody h1 { font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+.sbody .desc { color: var(--ink-2); margin: 0 0 22px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.row .t b { display: block; font-weight: 500; }
+.row .t small { color: var(--ink-3); }
+.toggle { width: 38px; height: 22px; border-radius: 11px; background: var(--line-2); position: relative; transition: background .15s; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.toggle[aria-checked="true"] { background: var(--accent); }
+.toggle[aria-checked="true"]::after { transform: translateX(16px); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 12px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 14px; border-radius: var(--r-s); font-weight: 500; background: var(--panel-3); border: 1px solid var(--line-2); color: var(--ink); font-size: 12.5px; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.links { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.links a { color: var(--ink); text-decoration: none; padding: 9px 10px; border-radius: var(--r-s); display: flex; align-items: center; gap: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12.5px; }
+.links a:hover { border-color: var(--accent); }
+.links a svg { color: var(--accent); }
+kbd { font: 11px/1 var(--font); background: var(--panel-3); border: 1px solid var(--line-2); border-radius: 3px; padding: 2px 5px; color: var(--ink-2); }
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 12.5px; box-shadow: var(--shadow); opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M7 4v6a4 4 0 0 0 4 4h2a4 4 0 0 1 4 4v2M7 4 4 7m3-3 3 3m7 13 3-3m-3 3-3-3"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M5 8l-2 4 2 4M19 8l2 4-2 4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></symbol>
+  <symbol id="i-pages" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1"/><rect x="14" y="4" width="7" height="9" rx="1"/><rect x="3" y="15" width="7" height="5" rx="1"/><rect x="14" y="15" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h6l2 2h6v14H5zM11 4v16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M6 4l12 7-5 1.5L11 18z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5m0-6a1.5 1.5 0 0 1 3 0v6m0-4a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3 14a1.6 1.6 0 0 1 2.7-1.7L8 14"/></symbol>
+  <symbol id="i-marker" viewBox="0 0 24 24"><path d="m4 20 4-1 10-10-3-3L5 16zM13 7l3 3M3 22h18"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20c3-8 8-12 15-15-2 7-7 12-15 15zM4 20l4-4"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><rect x="3" y="12" width="9" height="9" rx="1"/><circle cx="16" cy="8" r="5"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M3 17c3-6 5-8 6-6s-1 7 1 7 3-6 5-6 1 5 3 5 2-2 3-3"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8 11h6m-3-3v6"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8 11h6"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8 7H4V3M4 7a9 9 0 1 1-1 7"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M16 7h4V3M20 7a9 9 0 1 0 1 7"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V4h10v4M5 8h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-panel-r" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m6 7-7-7 7-7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.5"/></symbol>
+  <symbol id="i-update" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.6-5.7M20 12a8 8 0 0 1-13.6 5.7M17 3v4h-4M7 21v-4h4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="titlebar">
+    <div class="brand"><span class="logo">P</span>PDFwright</div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="false" data-go="start"><svg class="i"><use href="#i-home"/></svg><span>Начало</span></button>
+      <button class="tab" role="tab" aria-selected="true" data-go="viewer"><svg class="i"><use href="#i-doc"/></svg><span>Договор_аренды_2026.pdf</span><span class="x"><svg class="i" style="width:11px;height:11px"><use href="#i-x"/></svg></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-go="viewer"><svg class="i"><use href="#i-doc"/></svg><span>Презентация.pdf</span><span class="x"><svg class="i" style="width:11px;height:11px"><use href="#i-x"/></svg></span></button>
+      <button class="tab add" title="Открыть файл"><svg class="i"><use href="#i-plus"/></svg></button>
+    </div>
+    <div class="tb-actions">
+      <button class="icon-btn" id="theme-toggle" title="Переключить тему"><svg class="i"><use href="#i-sun"/></svg></button>
+      <button class="icon-btn" data-go="settings" title="Настройки"><svg class="i"><use href="#i-settings"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ===== Стартовый экран ===== -->
+  <main class="screen" id="screen-start">
+    <div class="start">
+      <div><h1>Рабочий стол</h1><p class="lead">Откройте документ или запустите инструмент. Всё выполняется локально.</p></div>
+      <div class="hero">
+        <button class="action primary" data-go="viewer"><svg class="i"><use href="#i-folder"/></svg><b>Открыть PDF</b><small>Или перетащите файл в&nbsp;окно</small></button>
+        <button class="action" data-toast="Объединение: выберите файлы"><svg class="i"><use href="#i-merge"/></svg><b>Объединить</b><small>Несколько файлов в&nbsp;один</small></button>
+        <button class="action" data-toast="Разделение: выберите файл"><svg class="i"><use href="#i-split"/></svg><b>Разделить</b><small>Диапазоны, по&nbsp;N страниц, по&nbsp;закладкам</small></button>
+        <button class="action" data-toast="Изображения → PDF"><svg class="i"><use href="#i-image"/></svg><b>Изображения в&nbsp;PDF</b><small>JPG, PNG, WebP</small></button>
+      </div>
+      <div>
+        <p class="section-title">Недавние документы</p>
+        <div class="recent-table">
+          <div class="recent-row"><span></span><span>Имя</span><span>Страниц</span><span>Изменён</span><span>Папка</span></div>
+          <button class="recent-row" data-go="viewer"><span class="thumb"></span><span class="name">Договор_аренды_2026.pdf</span><span>14</span><span>11:02</span><span>D:\Документы</span></button>
+          <button class="recent-row" data-go="viewer"><span class="thumb"></span><span class="name">Презентация.pdf</span><span>32</span><span>вчера</span><span>Загрузки</span></button>
+          <button class="recent-row" data-go="viewer"><span class="thumb"></span><span class="name">Сканы_паспорт.pdf</span><span>2</span><span>20 окт.</span><span>Рабочий стол</span></button>
+          <button class="recent-row" data-go="viewer"><span class="thumb"></span><span class="name">Инструкция_котёл.pdf</span><span>118</span><span>18 окт.</span><span>Загрузки</span></button>
+          <button class="recent-row" data-go="viewer"><span class="thumb"></span><span class="name">Счёт_0917.pdf</span><span>1</span><span>12 окт.</span><span>D:\Бухгалтерия</span></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Просмотр ===== -->
+  <main class="screen active" id="screen-viewer">
+    <div class="toolbar">
+      <div class="group">
+        <button class="tbtn" data-toast="Сохранено"><svg class="i"><use href="#i-save"/></svg></button>
+        <button class="tbtn" data-toast="Печать"><svg class="i"><use href="#i-print"/></svg></button>
+      </div>
+      <div class="group">
+        <button class="tbtn" data-toast="Отменить"><svg class="i"><use href="#i-undo"/></svg></button>
+        <button class="tbtn" data-toast="Повторить"><svg class="i"><use href="#i-redo"/></svg></button>
+      </div>
+      <div class="group">
+        <button class="tbtn" id="mode-pages" aria-pressed="false"><svg class="i"><use href="#i-pages"/></svg>Страницы</button>
+        <button class="tbtn" data-toast="Повернуть страницу"><svg class="i"><use href="#i-rotate"/></svg></button>
+      </div>
+      <span class="spacer"></span>
+      <div class="zoom">
+        <button data-zoom="-1" title="Уменьшить"><svg class="i"><use href="#i-zoom-out"/></svg></button>
+        <output id="zoom-out">100%</output>
+        <button data-zoom="1" title="Увеличить"><svg class="i"><use href="#i-zoom-in"/></svg></button>
+      </div>
+      <label class="search" style="margin-left:8px"><svg class="i"><use href="#i-search"/></svg><input placeholder="Поиск"><kbd>Ctrl F</kbd></label>
+      <div class="group">
+        <button class="icon-btn" id="toggle-left" aria-pressed="true" title="Левая панель"><svg class="i"><use href="#i-panel"/></svg></button>
+        <button class="icon-btn" id="toggle-right" aria-pressed="true" title="Инспектор"><svg class="i"><use href="#i-panel-r"/></svg></button>
+      </div>
+    </div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="stabs" role="tablist">
+        <button role="tab" aria-selected="true" data-panel="thumbs" title="Страницы"><svg class="i"><use href="#i-pages"/></svg></button>
+        <button role="tab" aria-selected="false" data-panel="outline" title="Закладки"><svg class="i"><use href="#i-book"/></svg></button>
+        <button role="tab" aria-selected="false" data-panel="search" title="Поиск"><svg class="i"><use href="#i-search"/></svg></button>
+      </div>
+      <div class="thumbs" id="panel-thumbs">
+        <button class="thumb-page" aria-current="true"><span class="pg"></span><small>1</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>2</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>3</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>4</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>5</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>6</small></button>
+      </div>
+      <div class="outline hidden" id="panel-outline">
+        <button>1. Предмет договора</button>
+        <button>2. Срок аренды</button>
+        <button class="lvl2">2.1. Продление</button>
+        <button>3. Арендная плата</button>
+        <button class="lvl2">3.1. Порядок расчётов</button>
+        <button class="lvl2">3.2. Коммунальные платежи</button>
+        <button>4. Ответственность сторон</button>
+        <button>5. Реквизиты</button>
+      </div>
+      <div class="outline hidden" id="panel-search">
+        <p class="note" style="padding:4px 10px">3 совпадения для «арендная плата»</p>
+        <button>стр. 2 — …ежемесячная <b>арендная плата</b>…</button>
+        <button>стр. 3 — …<b>арендная плата</b> вносится…</button>
+        <button>стр. 7 — …размера <b>арендной платы</b>…</button>
+      </div>
+    </aside>
+
+    <section class="canvas" id="canvas" aria-label="Документ">
+      <article class="page">
+        <div class="h"></div>
+        <div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="l"></div><div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="img"></div>
+        <div class="l"></div><div class="l m"></div><div class="l s"></div>
+        <span class="mark"></span><span class="sel" title="Выбранная аннотация"></span>
+        <span class="num">1 / 14</span>
+      </article>
+      <article class="page">
+        <div class="l"></div><div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="l"></div><div class="l"></div><div class="l m gap"></div>
+        <div class="l"></div><div class="l s"></div><div class="l m"></div><div class="l"></div>
+        <span class="num">2 / 14</span>
+      </article>
+    </section>
+
+    <aside class="props" id="props">
+      <div class="ptabs" role="tablist">
+        <button role="tab" aria-selected="true" data-ptab="props">Свойства</button>
+        <button role="tab" aria-selected="false" data-ptab="layers">Аннотации</button>
+        <button role="tab" aria-selected="false" data-ptab="doc">Документ</button>
+      </div>
+      <div class="body" id="ptab-props">
+        <h3 id="props-title">Маркер</h3>
+        <div class="field"><label>Цвет</label><div class="swatches">
+          <button style="background:#ffd86b" aria-pressed="true"></button><button style="background:#9be39b"></button><button style="background:#9fd3ff"></button><button style="background:#ffb0c8"></button><button style="background:#d7bfff"></button><button style="background:#f0a93a"></button>
+        </div></div>
+        <div class="field"><label>Непрозрачность</label><input class="range" type="range" min="10" max="100" value="55"></div>
+        <div class="frow">
+          <div class="field"><label>X</label><div class="inp">64,0 <small>pt</small></div></div>
+          <div class="field"><label>Y</label><div class="inp">216,0 <small>pt</small></div></div>
+          <div class="field"><label>Ширина</label><div class="inp">355,0 <small>pt</small></div></div>
+          <div class="field"><label>Высота</label><div class="inp">13,0 <small>pt</small></div></div>
+        </div>
+        <div class="field"><label>Сохранять как</label><div class="seg"><button aria-pressed="true">Аннотация</button><button>В&nbsp;содержимое</button></div></div>
+        <p class="note">Аннотацию можно удалить в&nbsp;любой программе. Впечатанное в&nbsp;содержимое становится частью страницы.</p>
+      </div>
+      <div class="body hidden" id="ptab-layers">
+        <h3>Аннотации на&nbsp;странице 1</h3>
+        <div class="layers">
+          <div class="layer" aria-selected="true"><span class="dot" style="background:#ffd86b"></span>Маркер · строка 4</div>
+          <div class="layer"><span class="dot" style="background:#9fd3ff"></span>Прямоугольник</div>
+          <div class="layer"><span class="dot" style="background:#ffb0c8"></span>Заметка «Проверить сумму»</div>
+        </div>
+      </div>
+      <div class="body hidden" id="ptab-doc">
+        <h3>Договор_аренды_2026.pdf</h3>
+        <p class="note">14 страниц · 1,2 МБ · A4<br>PDF 1.7 · без пароля<br>Изменён: сегодня, 11:02<br>D:\Документы\Договор_аренды_2026.pdf</p>
+      </div>
+    </aside>
+
+    <div class="palette" id="palette" role="toolbar" aria-label="Инструменты">
+      <button class="pbtn" aria-pressed="true" data-tool="Выделение" data-key="V" title="Выделение (V)"><svg class="i"><use href="#i-cursor"/></svg></button>
+      <button class="pbtn" aria-pressed="false" data-tool="Рука" data-key="H" title="Рука (H)"><svg class="i"><use href="#i-hand"/></svg></button>
+      <span class="sep"></span>
+      <button class="pbtn" aria-pressed="false" data-tool="Маркер" data-key="M" title="Маркер (M)"><svg class="i"><use href="#i-marker"/></svg></button>
+      <button class="pbtn" aria-pressed="false" data-tool="Перо" data-key="P" title="Перо (P)"><svg class="i"><use href="#i-pen"/></svg></button>
+      <button class="pbtn" aria-pressed="false" data-tool="Фигуры" data-key="U" title="Фигуры (U)"><svg class="i"><use href="#i-shapes"/></svg></button>
+      <button class="pbtn" aria-pressed="false" data-tool="Текст" data-key="T" title="Текст (T)"><svg class="i"><use href="#i-text"/></svg></button>
+      <button class="pbtn" aria-pressed="false" data-tool="Подпись" data-key="S" title="Подпись (S)"><svg class="i"><use href="#i-sign"/></svg></button>
+    </div>
+
+    <div class="pages-actions hidden" id="pages-actions">
+      <span class="note" id="sel-count">Выбрано: 2</span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="tbtn" data-toast="Повернуть выбранные"><svg class="i"><use href="#i-rotate"/></svg>Повернуть</button>
+      <button class="tbtn" data-toast="Извлечь выбранные"><svg class="i"><use href="#i-split"/></svg>Извлечь</button>
+      <button class="tbtn" data-toast="Вставить страницы"><svg class="i"><use href="#i-plus"/></svg>Вставить</button>
+      <button class="tbtn" data-toast="Удалить выбранные"><svg class="i"><use href="#i-trash"/></svg>Удалить</button>
+    </div>
+    <div class="pages-grid hidden" id="pages-grid"></div>
+  </main>
+
+  <!-- ===== Настройки ===== -->
+  <main class="screen" id="screen-settings">
+    <nav class="snav">
+      <h2>Настройки</h2>
+      <button aria-current="true" data-sec="general"><svg class="i"><use href="#i-settings"/></svg>Общие</button>
+      <button data-sec="view"><svg class="i"><use href="#i-eye"/></svg>Просмотр</button>
+      <button data-sec="updates"><svg class="i"><use href="#i-update"/></svg>Обновления</button>
+      <button data-sec="about"><svg class="i"><use href="#i-info"/></svg>О&nbsp;программе</button>
+      <button data-sec="author"><svg class="i"><use href="#i-user"/></svg>О&nbsp;разработчике</button>
+      <button class="back" data-go="viewer"><svg class="i"><use href="#i-back"/></svg>К&nbsp;документу</button>
+    </nav>
+    <div class="sbody">
+      <section class="active" data-sec="general">
+        <h1>Общие</h1><p class="desc">Тема, язык и&nbsp;поведение при сохранении.</p>
+        <div class="row"><div class="t"><b>Тема</b><small>Как в&nbsp;системе, светлая или тёмная</small></div><div class="seg" id="theme-seg"><button data-theme="system">Система</button><button data-theme="light">Светлая</button><button data-theme="dark" aria-pressed="true">Тёмная</button></div></div>
+        <div class="row"><div class="t"><b>Язык интерфейса</b><small>English появится в&nbsp;0.2.0</small></div><div class="seg"><button aria-pressed="true">Русский</button><button disabled style="opacity:.5">English</button></div></div>
+        <div class="row"><div class="t"><b>Резервная копия при сохранении</b><small>Рядом с&nbsp;файлом создаётся копия .bak</small></div><button class="toggle" role="switch" aria-checked="false"></button></div>
+        <div class="row"><div class="t"><b>Открывать последний документ при запуске</b></div><button class="toggle" role="switch" aria-checked="true"></button></div>
+      </section>
+      <section data-sec="view">
+        <h1>Просмотр</h1><p class="desc">Как открываются документы.</p>
+        <div class="row"><div class="t"><b>Масштаб по умолчанию</b></div><div class="seg"><button aria-pressed="true">По&nbsp;ширине</button><button>Страница</button><button>100%</button></div></div>
+        <div class="row"><div class="t"><b>Режим прокрутки</b></div><div class="seg"><button aria-pressed="true">Непрерывно</button><button>По&nbsp;одной</button><button>Разворот</button></div></div>
+        <div class="row"><div class="t"><b>Сетка на&nbsp;холсте</b><small>Точечный фон вокруг страниц</small></div><button class="toggle" role="switch" aria-checked="true"></button></div>
+      </section>
+      <section data-sec="updates">
+        <h1>Обновления</h1><p class="desc">Проверка выполняется только по&nbsp;кнопке. Программа обращается к&nbsp;GitHub; документы и&nbsp;настройки не&nbsp;передаются.</p>
+        <div class="card">
+          <div><b>Установлена версия 0.1.0</b><br><span class="note">Нажмите «Проверить обновления», чтобы узнать о&nbsp;новой версии.</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-toast="Проверяем последнюю версию на GitHub…">Проверить обновления</button><button class="btn" data-toast="Открываем страницу релизов">Страница релизов ↗</button></div>
+        </div>
+      </section>
+      <section data-sec="about">
+        <h1>О&nbsp;программе</h1><p class="desc">PDFwright 0.1.0 · Windows x64 · установленная версия</p>
+        <div class="card">
+          <div class="note">Локальная программа для просмотра и&nbsp;редактирования PDF. Код открыт под лицензией MIT.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-toast="Диагностика скопирована">Скопировать диагностику</button><button class="btn" data-toast="Открываем лицензии">Лицензии компонентов</button></div>
+        </div>
+      </section>
+      <section data-sec="author">
+        <h1>О&nbsp;разработчике</h1><p class="desc">Текст будет согласован отдельно; здесь показан макет раздела.</p>
+        <div class="card">
+          <div class="note">Я Андрей, автор Promptix. Делаю небольшие локальные инструменты для Windows и&nbsp;показываю на&nbsp;YouTube, как они создаются.</div>
+          <div class="links">
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Сайт Promptix</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>YouTube · Promptix</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Telegram · Promptix</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Telegram · Кодовая Артель</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>DonationAlerts</a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Boosty</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <span id="status-page">Стр. 1 / 14</span>
+    <span>A4 · 210 × 297 мм</span>
+    <span>Выделение</span>
+    <span class="grow"></span>
+    <span>1,2 МБ</span>
+    <span class="ok">● Сохранено</span>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 1600); };
+  const go = (name) => {
+    $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+    $$('.tab[role=tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.go === name && name !== 'settings')));
+  };
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-go]'); if (g) { go(g.dataset.go); return; }
+    const t = e.target.closest('[data-toast]'); if (t) toast(t.dataset.toast);
+  });
+  const html = document.documentElement;
+  const setTheme = (th) => {
+    html.dataset.theme = th === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : th;
+    $$('#theme-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === th)));
+  };
+  $('#theme-toggle').onclick = () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');
+  $$('#theme-seg button').forEach(b => b.onclick = () => setTheme(b.dataset.theme));
+
+  // Палитра инструментов + горячие клавиши
+  const pick = (b) => { $$('[data-tool]').forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); $('#props-title').textContent = b.dataset.tool; $('.statusbar span:nth-child(3)').textContent = b.dataset.tool; };
+  $$('[data-tool]').forEach(b => b.onclick = () => pick(b));
+  document.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT') return; const b = $$('[data-tool]').find(x => x.dataset.key.toLowerCase() === e.key.toLowerCase()); if (b) pick(b); });
+
+  const steps = [50, 67, 80, 90, 100, 110, 125, 150, 175, 200]; let zi = 4;
+  const applyZoom = () => { html.style.setProperty('--scale', steps[zi] / 100); $('#zoom-out').value = steps[zi] + '%'; };
+  $$('[data-zoom]').forEach(b => b.onclick = () => { zi = Math.max(0, Math.min(steps.length - 1, zi + Number(b.dataset.zoom))); applyZoom(); });
+
+  $$('[data-panel]').forEach(b => b.onclick = () => {
+    $$('[data-panel]').forEach(x => x.setAttribute('aria-selected', 'false')); b.setAttribute('aria-selected', 'true');
+    ['thumbs', 'outline', 'search'].forEach(p => $('#panel-' + p).classList.toggle('hidden', p !== b.dataset.panel));
+  });
+  $$('[data-ptab]').forEach(b => b.onclick = () => {
+    $$('[data-ptab]').forEach(x => x.setAttribute('aria-selected', 'false')); b.setAttribute('aria-selected', 'true');
+    ['props', 'layers', 'doc'].forEach(p => $('#ptab-' + p).classList.toggle('hidden', p !== b.dataset.ptab));
+  });
+  $('#toggle-left').onclick = (e) => { const v = $('#screen-viewer').classList.toggle('no-left'); e.currentTarget.setAttribute('aria-pressed', String(!v)); };
+  $('#toggle-right').onclick = (e) => { const v = $('#screen-viewer').classList.toggle('no-right'); e.currentTarget.setAttribute('aria-pressed', String(!v)); };
+  $$('.thumb-page').forEach((t, i) => t.onclick = () => { $$('.thumb-page').forEach(x => x.removeAttribute('aria-current')); t.setAttribute('aria-current', 'true'); $('#status-page').textContent = `Стр. ${i + 1} / 14`; });
+
+  const grid = $('#pages-grid'); const selected = new Set([2, 3]);
+  const renderGrid = () => {
+    grid.innerHTML = Array.from({ length: 14 }, (_, i) => `<button class="pcard" aria-selected="${selected.has(i)}" data-i="${i}"><span class="pg"><span class="chk">${selected.has(i) ? '<svg class="i" style="width:11px;height:11px;stroke-width:3"><use href="#i-check"/></svg>' : ''}</span></span><small>${i + 1}</small></button>`).join('');
+    $('#sel-count').textContent = selected.size ? `Выбрано: ${selected.size}` : 'Выберите страницы';
+  };
+  grid.addEventListener('click', (e) => { const c = e.target.closest('.pcard'); if (!c) return; const i = Number(c.dataset.i); selected.has(i) ? selected.delete(i) : selected.add(i); renderGrid(); });
+  $('#mode-pages').onclick = (e) => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    $('#screen-viewer').classList.toggle('pages-mode', on);
+    ['#canvas', '#props', '#sidebar', '#palette'].forEach(s => $(s).classList.toggle('hidden', on));
+    ['#pages-actions', '#pages-grid'].forEach(s => $(s).classList.toggle('hidden', !on));
+    if (on) renderGrid();
+  };
+
+  $$('.snav [data-sec]').forEach(b => b.onclick = () => {
+    $$('.snav [data-sec]').forEach(x => x.removeAttribute('aria-current')); b.setAttribute('aria-current', 'true');
+    $$('.sbody section').forEach(s => s.classList.toggle('active', s.dataset.sec === b.dataset.sec));
+  });
+  $$('.toggle').forEach(t => t.onclick = () => t.setAttribute('aria-checked', String(t.getAttribute('aria-checked') !== 'true')));
+  $$('.seg').forEach(seg => { if (seg.id === 'theme-seg') return; seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; $$('button', seg).forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); }); });
+  $$('.swatches').forEach(s => s.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('button', s).forEach(x => x.removeAttribute('aria-pressed')); b.setAttribute('aria-pressed', 'true'); $('.page .mark').style.background = b.style.background; }));
+
+  if (location.search.includes('start')) go('start');
+  if (location.search.includes('settings')) go('settings');
+  if (location.search.includes('light')) setTheme('light');
+})();
+</script>
+</body>
+</html>

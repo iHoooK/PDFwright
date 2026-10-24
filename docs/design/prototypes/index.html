@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDFwright — выбор дизайна</title>
+<style>
+:root { --bg: #f4f4f6; --card: #fff; --ink: #1b1b1f; --ink-2: #5a5a63; --line: #dddde3; --accent: #1f4b7a; font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1b1b1f; --card: #26262c; --ink: #ececef; --ink-2: #a5a5ad; --line: #3a3a44; --accent: #8fb4dc; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 40px 24px 64px; }
+h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.01em; }
+.lead { color: var(--ink-2); margin: 0 0 28px; max-width: 70ch; }
+.grid { display: grid; gap: 24px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; grid-template-columns: 1fr 360px; }
+.frame { position: relative; aspect-ratio: 1366 / 820; background: #000; border-right: 1px solid var(--line); overflow: hidden; }
+.frame iframe { width: 1366px; height: 820px; border: 0; transform-origin: 0 0; transform: scale(calc(var(--w) / 1366)); position: absolute; inset: 0; }
+.info { padding: 22px 24px; display: grid; gap: 12px; align-content: start; }
+.info h2 { margin: 0; font-size: 20px; }
+.info .tag { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.info p { margin: 0; color: var(--ink-2); }
+.info ul { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.info li { margin: 2px 0; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.links a { color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.links a:hover { border-color: var(--accent); }
+.hint { margin-top: 28px; color: var(--ink-2); font-size: 14px; }
+@media (max-width: 1000px) { .card { grid-template-columns: 1fr; } .frame { border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Три направления для PDFwright</h1>
+  <p class="lead">Каждый прототип кликабельный: вкладки, инструменты, масштаб, режим «Страницы», боковые панели, настройки и тема. Содержимое страниц условное. Откройте любой в отдельной вкладке, чтобы посмотреть в полный размер.</p>
+
+  <div class="grid">
+    <section class="card">
+      <div class="frame"><iframe src="a-kabinet.html" title="Прототип A «Кабинет»"></iframe></div>
+      <div class="info">
+        <span class="tag">Вариант A</span>
+        <h2>«Кабинет»</h2>
+        <p>Светлая тёплая бумага и спокойная читальня. Панели — мягкие карточки на тёплом сером фоне, вкладки‑«пилюли», узкая рейка с панелями слева, свойства справа. Акцент — чернильный синий только для действия и выбора.</p>
+        <ul>
+          <li>Самый спокойный вариант для долгого чтения.</li>
+          <li>Подписи у инструментов, крупные зоны клика.</li>
+          <li>Тёмная тема — тёплая, без холодного синего.</li>
+        </ul>
+        <div class="links"><a href="a-kabinet.html" target="_blank">Просмотр</a><a href="a-kabinet.html?start" target="_blank">Стартовый экран</a><a href="a-kabinet.html?settings" target="_blank">Настройки</a><a href="a-kabinet.html?dark" target="_blank">Тёмная тема</a></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="frame"><iframe src="b-studio.html" title="Прототип B «Студия»"></iframe></div>
+      <div class="info">
+        <span class="tag">Вариант B</span>
+        <h2>«Студия»</h2>
+        <p>Тёмная профессиональная мастерская в духе графических редакторов. Плавающая палитра инструментов внизу с горячими клавишами, инспектор с вкладками справа, точечная сетка холста, плотная компоновка. Акцент — янтарный.</p>
+        <ul>
+          <li>Максимум места документу, минимум отвлекающего.</li>
+          <li>Инспектор: свойства, список аннотаций, документ.</li>
+          <li>Светлая тема — холодная серая, как у Figma.</li>
+        </ul>
+        <div class="links"><a href="b-studio.html" target="_blank">Просмотр</a><a href="b-studio.html?start" target="_blank">Стартовый экран</a><a href="b-studio.html?settings" target="_blank">Настройки</a><a href="b-studio.html?light" target="_blank">Светлая тема</a></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="frame"><iframe src="c-lenta.html" title="Прототип C «Лента»"></iframe></div>
+      <div class="info">
+        <span class="tag">Вариант C</span>
+        <h2>«Лента»</h2>
+        <p>Родной Windows 11 Fluent: слоистый фон, командная панель с подписями под иконками как в Проводнике, вкладки‑«карточки», боковая панель с текстовыми вкладками, настройки в стиле «Параметров» Windows. Акцент — системный синий.</p>
+        <ul>
+          <li>Мгновенно знакомо пользователям Windows.</li>
+          <li>Каждая команда подписана, не нужно запоминать иконки.</li>
+          <li>Тёмная тема повторяет тёмный режим Windows 11.</li>
+        </ul>
+        <div class="links"><a href="c-lenta.html" target="_blank">Просмотр</a><a href="c-lenta.html?start" target="_blank">Стартовый экран</a><a href="c-lenta.html?settings" target="_blank">Настройки</a><a href="c-lenta.html?dark" target="_blank">Тёмная тема</a></div>
+      </div>
+    </section>
+  </div>
+
+  <p class="hint">После выбора направление фиксируется в <code>docs/DESIGN.md</code>: токены цвета и типографики, сетка, состояния компонентов. Отдельные решения из других вариантов можно перенести (например, палитру с горячими клавишами из B в A).</p>
+</div>
+<script>
+  // Масштабируем встроенные прототипы под ширину карточки.
+  const fit = () => document.querySelectorAll('.frame').forEach(f => f.style.setProperty('--w', f.clientWidth + 'px'));
+  addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

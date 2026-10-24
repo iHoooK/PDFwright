@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDFwright — прототип C «Лента»</title>
+<style>
+/* ============ Направление C «Лента» ============
+   Родное для Windows 11: слоистый Mica-фон, командная панель с подписями
+   под иконками, как в Проводнике и «Фотографиях», скругления 8px,
+   системный синий акцент. Знакомо любому пользователю Windows. */
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mica: linear-gradient(180deg, #f1f3f8 0%, #edf0f5 100%);
+  --bg: #f3f3f3;
+  --layer: rgba(255,255,255,.7);
+  --layer-solid: #fbfbfb;
+  --card: #ffffff;
+  --paper: #ffffff;
+  --ink: #1b1b1b;
+  --ink-2: #5d5d5d;
+  --ink-3: #8a8a8a;
+  --line: rgba(0,0,0,.08);
+  --line-2: rgba(0,0,0,.16);
+  --accent: #0067c0;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(0,103,192,.10);
+  --mark: #ffd86b;
+  --shadow: 0 2px 4px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.10);
+  --page-shadow: 0 1px 3px rgba(0,0,0,.14), 0 10px 28px rgba(0,0,0,.14);
+  --r: 8px; --r-s: 4px;
+  --scale: 1;
+}
+:root[data-theme="dark"] {
+  --mica: linear-gradient(180deg, #202020 0%, #1c1c1c 100%);
+  --bg: #202020;
+  --layer: rgba(255,255,255,.055);
+  --layer-solid: #2b2b2b;
+  --card: #2b2b2b;
+  --paper: #ffffff;
+  --ink: #ffffff;
+  --ink-2: #c5c5c5;
+  --ink-3: #8f8f8f;
+  --line: rgba(255,255,255,.08);
+  --line-2: rgba(255,255,255,.16);
+  --accent: #4cc2ff;
+  --accent-ink: #003a5c;
+  --accent-soft: rgba(76,194,255,.14);
+  --shadow: 0 2px 4px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.4);
+  --page-shadow: 0 2px 6px rgba(0,0,0,.5), 0 14px 36px rgba(0,0,0,.5);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font: 14px/1.4 var(--font); color: var(--ink); background: var(--mica); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; border-radius: var(--r-s); }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.hidden { display: none !important; }
+
+.app { height: 100vh; display: grid; grid-template-rows: 46px 1fr 26px; }
+.titlebar { display: flex; align-items: center; gap: 6px; padding: 6px 8px 0 12px; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-right: 10px; padding-bottom: 6px; }
+.brand .logo { width: 20px; height: 20px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.tabs { display: flex; gap: 2px; flex: 1; min-width: 0; align-items: flex-end; height: 100%; }
+.tab { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r) var(--r) 0 0; color: var(--ink-2); max-width: 240px; }
+.tab:hover { background: var(--layer); }
+.tab[aria-selected="true"] { background: var(--layer-solid); color: var(--ink); box-shadow: 0 -1px 0 var(--line), -1px 0 0 var(--line), 1px 0 0 var(--line); }
+.tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab .x { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 4px; color: var(--ink-3); }
+.tab .x:hover { background: var(--line-2); color: var(--ink); }
+.tab.add { padding: 8px; border-radius: var(--r); margin-bottom: 4px; color: var(--ink-3); }
+.tb-actions { display: flex; gap: 2px; padding-bottom: 6px; }
+.icon-btn { width: 32px; height: 32px; display: grid; place-items: center; color: var(--ink-2); border-radius: var(--r-s); }
+.icon-btn:hover { background: var(--layer); color: var(--ink); }
+.icon-btn[aria-pressed="true"], .icon-btn.active { background: var(--accent-soft); color: var(--accent); }
+
+.statusbar { display: flex; align-items: center; gap: 16px; padding: 0 14px; font-size: 12px; color: var(--ink-3); background: var(--layer-solid); border-top: 1px solid var(--line); }
+.statusbar .grow { flex: 1; }
+
+.screen { display: none; min-height: 0; background: var(--layer-solid); border-top: 1px solid var(--line); }
+.screen.active { display: grid; }
+
+/* ---- Командная панель (Fluent command bar) ---- */
+.cmdbar { grid-column: 1 / -1; display: flex; align-items: stretch; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); background: var(--layer-solid); }
+.cmd { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 56px; padding: 4px 8px; border-radius: var(--r-s); color: var(--ink-2); font-size: 11.5px; line-height: 1; }
+.cmd svg.i { width: 20px; height: 20px; }
+.cmd:hover { background: var(--layer); color: var(--ink); }
+.cmd[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.cmd[aria-pressed="true"] svg { stroke-width: 1.8; }
+.cmdbar .sep { width: 1px; background: var(--line-2); margin: 8px 6px; }
+.cmdbar .spacer { flex: 1; }
+.cmdbar .inline { display: flex; align-items: center; gap: 6px; }
+.zoom { display: inline-flex; align-items: center; gap: 2px; }
+.zoom button { width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--r-s); color: var(--ink-2); }
+.zoom button:hover { background: var(--layer); color: var(--ink); }
+.zoom output { min-width: 54px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: var(--r-s); font-size: 13px; font-variant-numeric: tabular-nums; background: var(--card); }
+.search { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: var(--r-s); background: var(--card); border: 1px solid var(--line-2); border-bottom-color: var(--ink-3); min-width: 220px; color: var(--ink-3); }
+.search:focus-within { border-bottom: 2px solid var(--accent); }
+.search input { border: 0; background: none; outline: none; width: 100%; color: var(--ink); }
+.search input::placeholder { color: var(--ink-3); }
+
+/* ---- Просмотр ---- */
+#screen-viewer { grid-template-columns: 236px 1fr 252px; grid-template-rows: 60px 1fr; }
+#screen-viewer.no-left { grid-template-columns: 0 1fr 252px; }
+#screen-viewer.no-right { grid-template-columns: 236px 1fr 0; }
+#screen-viewer.no-left.no-right { grid-template-columns: 0 1fr 0; }
+.sidebar { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--layer-solid); }
+.sidebar .stabs { display: flex; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); }
+.sidebar .stabs button { padding: 8px 10px 10px; color: var(--ink-2); font-size: 13px; position: relative; border-radius: var(--r-s) var(--r-s) 0 0; }
+.sidebar .stabs button:hover { color: var(--ink); background: var(--layer); }
+.sidebar .stabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.sidebar .stabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; border-radius: 2px; background: var(--accent); }
+.thumbs { overflow: auto; padding: 14px; display: grid; gap: 12px; }
+.thumb-page { display: grid; gap: 6px; justify-items: center; padding: 6px; border-radius: var(--r); }
+.thumb-page:hover { background: var(--layer); }
+.thumb-page .pg { width: 100%; aspect-ratio: 1/1.3; background: var(--paper); border-radius: 3px; border: 2px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,.16); position: relative; overflow: hidden; }
+.thumb-page .pg::before { content: ""; position: absolute; left: 14%; right: 14%; top: 14%; height: 4px; background: #cfcbc2; border-radius: 2px; box-shadow: 0 9px 0 #e3e0da, 0 16px 0 #e3e0da, 0 23px 0 #e3e0da, 0 30px 0 #e3e0da, 0 37px 0 #e3e0da; }
+.thumb-page[aria-current="true"] .pg { border-color: var(--accent); }
+.thumb-page[aria-current="true"] { background: var(--accent-soft); }
+.thumb-page small { color: var(--ink-3); font-size: 12px; }
+.outline { padding: 8px; display: grid; gap: 2px; overflow: auto; }
+.outline button { text-align: left; padding: 8px 10px; border-radius: var(--r-s); color: var(--ink-2); position: relative; }
+.outline button:hover { background: var(--layer); color: var(--ink); }
+.outline .lvl2 { padding-left: 28px; }
+.note { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+
+.canvas { overflow: auto; background: var(--bg); padding: 24px 0 64px; display: grid; justify-items: center; gap: 20px; align-content: start; min-height: 0; }
+.page { width: calc(612px * var(--scale)); height: calc(792px * var(--scale)); background: var(--paper); box-shadow: var(--page-shadow); border-radius: 2px; position: relative; padding: calc(72px * var(--scale)) calc(64px * var(--scale)); overflow: hidden; }
+.page .h { height: calc(22px * var(--scale)); width: 58%; background: #2a2a2a; border-radius: 2px; margin-bottom: calc(26px * var(--scale)); opacity: .85; }
+.page .l { height: calc(9px * var(--scale)); background: #d2cfc8; border-radius: 2px; margin-bottom: calc(11px * var(--scale)); }
+.page .l.s { width: 72%; } .page .l.m { width: 90%; } .page .l.gap { margin-bottom: calc(26px * var(--scale)); }
+.page .img { height: calc(180px * var(--scale)); background: linear-gradient(135deg, #e6e3dc, #cfcac0); border-radius: 4px; margin: calc(8px * var(--scale)) 0 calc(26px * var(--scale)); }
+.page .mark { position: absolute; left: calc(64px * var(--scale)); top: calc(216px * var(--scale)); width: 58%; height: calc(13px * var(--scale)); background: var(--mark); opacity: .55; mix-blend-mode: multiply; border-radius: 2px; }
+.page .num { position: absolute; bottom: calc(28px * var(--scale)); right: calc(64px * var(--scale)); font-size: calc(11px * var(--scale)); color: #8f8b82; }
+
+.props { border-left: 1px solid var(--line); background: var(--layer-solid); padding: 14px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+.props h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.pcardx { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 10px; }
+.field { display: grid; gap: 6px; }
+.field label { font-size: 12px; color: var(--ink-2); }
+.swatches { display: flex; gap: 6px; }
+.swatches button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; }
+.swatches button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--card) inset; }
+.range { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--line-2); accent-color: var(--accent); }
+.radio { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--ink-2); font-size: 13px; }
+.radio i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--ink-3); display: grid; place-items: center; }
+.radio[aria-checked="true"] { color: var(--ink); }
+.radio[aria-checked="true"] i { border: 5px solid var(--accent); }
+
+/* Режим «Страницы» */
+.pages-actions { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); background: var(--layer-solid); }
+#screen-viewer.pages-mode { grid-template-rows: 60px auto 1fr; }
+.pages-grid { grid-column: 1 / -1; grid-row: 3; overflow: auto; padding: 22px 26px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; align-content: start; background: var(--bg); }
+.pcard { display: grid; gap: 6px; justify-items: center; padding: 8px; border-radius: var(--r); }
+.pcard:hover { background: var(--layer); }
+.pcard .pg { width: 100%; aspect-ratio: 1/1.3; background: var(--paper); border-radius: 3px; border: 2px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,.16); position: relative; }
+.pcard .pg::before { content: ""; position: absolute; left: 14%; right: 14%; top: 14%; height: 5px; background: #cfcbc2; border-radius: 2px; box-shadow: 0 11px 0 #e3e0da, 0 20px 0 #e3e0da, 0 29px 0 #e3e0da, 0 38px 0 #e3e0da, 0 47px 0 #e3e0da, 0 56px 0 #e3e0da; }
+.pcard[aria-selected="true"] { background: var(--accent-soft); }
+.pcard[aria-selected="true"] .pg { border-color: var(--accent); }
+.pcard .chk { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--ink-3); background: #fff; display: grid; place-items: center; color: #fff; }
+.pcard[aria-selected="true"] .chk { background: var(--accent); border-color: var(--accent); }
+.pcard small { color: var(--ink-3); font-size: 12px; }
+
+/* ---- Стартовый экран ---- */
+#screen-start { grid-template-columns: 1fr; overflow: auto; }
+.start { max-width: 980px; width: 100%; margin: 0 auto; padding: 40px 32px 48px; display: grid; gap: 28px; }
+.start h1 { margin: 0; font-size: 24px; font-weight: 600; }
+.start .lead { margin: 4px 0 0; color: var(--ink-2); }
+.hero { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; }
+.tile { display: grid; gap: 10px; align-content: start; padding: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); text-align: left; min-height: 128px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.tile:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.tile.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tile.primary:hover { filter: brightness(1.06); }
+.tile svg.i { width: 24px; height: 24px; }
+.tile b { font-size: 15px; font-weight: 600; }
+.tile small { opacity: .8; }
+.section-title { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.list { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.list-item { display: grid; grid-template-columns: 28px 1fr auto 20px; gap: 12px; align-items: center; padding: 11px 14px; text-align: left; width: 100%; border-top: 1px solid var(--line); color: var(--ink-2); }
+.list-item:first-child { border-top: 0; }
+.list-item:hover { background: var(--layer); }
+.list-item .name { color: var(--ink); font-weight: 500; }
+.list-item .thumb { width: 22px; height: 28px; background: var(--paper); border: 1px solid var(--line-2); border-radius: 2px; }
+.list-item svg { color: var(--ink-3); }
+
+/* ---- Настройки (как Параметры Windows) ---- */
+#screen-settings { grid-template-columns: 260px 1fr; }
+.snav { padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line); }
+.snav h2 { font-size: 20px; font-weight: 600; margin: 0 12px 14px; }
+.snav button { text-align: left; padding: 9px 12px; border-radius: var(--r-s); color: var(--ink-2); display: flex; gap: 12px; align-items: center; position: relative; }
+.snav button:hover { background: var(--layer); color: var(--ink); }
+.snav button[aria-current="true"] { background: var(--layer); color: var(--ink); }
+.snav button[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
+.snav .back { margin-top: auto; }
+.sbody { overflow: auto; padding: 28px 40px; }
+.sbody section { max-width: 760px; display: none; }
+.sbody section.active { display: grid; gap: 4px; }
+.sbody h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+.sbody .desc { color: var(--ink-2); margin: 0 0 18px; }
+.scard { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-s); }
+.scard .t { display: flex; align-items: center; gap: 14px; }
+.scard .t svg { color: var(--ink-2); }
+.scard .t b { display: block; font-weight: 500; }
+.scard .t small { color: var(--ink-3); }
+.scard.column { flex-direction: column; align-items: stretch; gap: 12px; }
+.toggle { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.toggle i { width: 40px; height: 20px; border-radius: 10px; border: 1px solid var(--ink-3); position: relative; transition: background .15s; display: block; }
+.toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink-2); transition: transform .15s, background .15s; }
+.toggle[aria-checked="true"] i { background: var(--accent); border-color: var(--accent); }
+.toggle[aria-checked="true"] i::after { background: var(--accent-ink); transform: translateX(20px); }
+.select { display: inline-flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--card); min-width: 160px; justify-content: space-between; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: var(--r-s); background: var(--card); border: 1px solid var(--line-2); border-bottom-color: var(--ink-3); color: var(--ink); }
+.btn:hover { background: var(--layer); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.links a { color: var(--ink); text-decoration: none; padding: 10px 12px; border-radius: var(--r-s); display: flex; align-items: center; gap: 10px; background: var(--layer-solid); border: 1px solid var(--line); }
+.links a:hover { background: var(--layer); }
+.links a svg { color: var(--accent); }
+.links a .arrow { margin-left: auto; color: var(--ink-3); }
+kbd { font: 11.5px/1 var(--font); background: var(--card); border: 1px solid var(--line-2); border-radius: 3px; padding: 2px 5px; color: var(--ink-2); }
+.toast { position: fixed; bottom: 44px; left: 50%; transform: translateX(-50%); background: var(--card); color: var(--ink); padding: 10px 14px; border-radius: var(--r); font-size: 13px; box-shadow: var(--shadow); border: 1px solid var(--line); opacity: 0; transition: opacity .2s; pointer-events: none; display: flex; gap: 10px; align-items: center; }
+.toast::before { content: ""; width: 3px; height: 18px; border-radius: 2px; background: var(--accent); }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M7 4v6a4 4 0 0 0 4 4h2a4 4 0 0 1 4 4v2M7 4 4 7m3-3 3 3m7 13 3-3m-3 3-3-3"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M5 8l-2 4 2 4M19 8l2 4-2 4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></symbol>
+  <symbol id="i-pages" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1"/><rect x="14" y="4" width="7" height="9" rx="1"/><rect x="3" y="15" width="7" height="5" rx="1"/><rect x="14" y="15" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h6l2 2h6v14H5zM11 4v16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M6 4l12 7-5 1.5L11 18z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 0 1 3 0v5m0-6a1.5 1.5 0 0 1 3 0v6m0-4a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3 14a1.6 1.6 0 0 1 2.7-1.7L8 14"/></symbol>
+  <symbol id="i-marker" viewBox="0 0 24 24"><path d="m4 20 4-1 10-10-3-3L5 16zM13 7l3 3M3 22h18"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20c3-8 8-12 15-15-2 7-7 12-15 15zM4 20l4-4"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><rect x="3" y="12" width="9" height="9" rx="1"/><circle cx="16" cy="8" r="5"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M3 17c3-6 5-8 6-6s-1 7 1 7 3-6 5-6 1 5 3 5 2-2 3-3"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8 11h6m-3-3v6"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8 11h6"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8 7H4V3M4 7a9 9 0 1 1-1 7"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V4h10v4M5 8h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-panel-r" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m6 7-7-7 7-7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.5"/></symbol>
+  <symbol id="i-update" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.6-5.7M20 12a8 8 0 0 1-13.6 5.7M17 3v4h-4M7 21v-4h4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-open-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v6H5V6h6"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2s-1-2 0-3 3 0 4-1a9 9 0 0 0-6-12z"/><circle cx="8" cy="12" r="1"/><circle cx="10" cy="8" r="1"/><circle cx="15" cy="8" r="1"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="titlebar">
+    <div class="brand"><span class="logo">P</span>PDFwright</div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="false" data-go="start"><svg class="i"><use href="#i-home"/></svg><span>Начало</span></button>
+      <button class="tab" role="tab" aria-selected="true" data-go="viewer"><svg class="i"><use href="#i-doc"/></svg><span>Договор_аренды_2026.pdf</span><span class="x"><svg class="i" style="width:12px;height:12px"><use href="#i-x"/></svg></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-go="viewer"><svg class="i"><use href="#i-doc"/></svg><span>Презентация.pdf</span><span class="x"><svg class="i" style="width:12px;height:12px"><use href="#i-x"/></svg></span></button>
+      <button class="tab add" title="Открыть файл"><svg class="i"><use href="#i-plus"/></svg></button>
+    </div>
+    <div class="tb-actions">
+      <button class="icon-btn" id="theme-toggle" title="Переключить тему"><svg class="i"><use href="#i-sun"/></svg></button>
+      <button class="icon-btn" data-go="settings" title="Параметры"><svg class="i"><use href="#i-settings"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ===== Стартовый экран ===== -->
+  <main class="screen" id="screen-start">
+    <div class="start">
+      <div><h1>Добро пожаловать в&nbsp;PDFwright</h1><p class="lead">Документы обрабатываются на&nbsp;этом компьютере и&nbsp;никуда не&nbsp;отправляются.</p></div>
+      <div class="hero">
+        <button class="tile primary" data-go="viewer"><svg class="i"><use href="#i-folder"/></svg><b>Открыть PDF</b><small>Выбрать файл или перетащить его в&nbsp;окно. Двойной клик в&nbsp;Проводнике тоже откроет документ здесь.</small></button>
+        <button class="tile" data-toast="Объединение: выберите файлы"><svg class="i"><use href="#i-merge"/></svg><b>Объединить</b><small>Несколько файлов в&nbsp;один</small></button>
+        <button class="tile" data-toast="Разделение: выберите файл"><svg class="i"><use href="#i-split"/></svg><b>Разделить</b><small>По&nbsp;диапазонам или на&nbsp;страницы</small></button>
+        <button class="tile" data-toast="Изображения → PDF"><svg class="i"><use href="#i-image"/></svg><b>Из&nbsp;изображений</b><small>JPG, PNG, WebP в&nbsp;PDF</small></button>
+      </div>
+      <div>
+        <p class="section-title">Недавние</p>
+        <div class="list">
+          <button class="list-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Договор_аренды_2026.pdf</span><br><small>D:\Документы</small></span><small>14 стр. · 11:02</small><svg class="i"><use href="#i-chev"/></svg></button>
+          <button class="list-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Презентация.pdf</span><br><small>Загрузки</small></span><small>32 стр. · вчера</small><svg class="i"><use href="#i-chev"/></svg></button>
+          <button class="list-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Сканы_паспорт.pdf</span><br><small>Рабочий стол</small></span><small>2 стр. · 20 окт.</small><svg class="i"><use href="#i-chev"/></svg></button>
+          <button class="list-item" data-go="viewer"><span class="thumb"></span><span><span class="name">Инструкция_котёл.pdf</span><br><small>Загрузки</small></span><small>118 стр. · 18 окт.</small><svg class="i"><use href="#i-chev"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Просмотр ===== -->
+  <main class="screen active" id="screen-viewer">
+    <div class="cmdbar" role="toolbar" aria-label="Команды">
+      <button class="cmd" data-toast="Сохранено"><svg class="i"><use href="#i-save"/></svg>Сохранить</button>
+      <button class="cmd" data-toast="Печать"><svg class="i"><use href="#i-print"/></svg>Печать</button>
+      <button class="cmd" data-toast="Отменить"><svg class="i"><use href="#i-undo"/></svg>Отменить</button>
+      <span class="sep"></span>
+      <button class="cmd" aria-pressed="true" data-tool><svg class="i"><use href="#i-cursor"/></svg>Выделение</button>
+      <button class="cmd" aria-pressed="false" data-tool><svg class="i"><use href="#i-hand"/></svg>Рука</button>
+      <button class="cmd" aria-pressed="false" data-tool><svg class="i"><use href="#i-marker"/></svg>Маркер</button>
+      <button class="cmd" aria-pressed="false" data-tool><svg class="i"><use href="#i-pen"/></svg>Перо</button>
+      <button class="cmd" aria-pressed="false" data-tool><svg class="i"><use href="#i-shapes"/></svg>Фигуры</button>
+      <button class="cmd" aria-pressed="false" data-tool><svg class="i"><use href="#i-text"/></svg>Текст</button>
+      <button class="cmd" aria-pressed="false" data-tool><svg class="i"><use href="#i-sign"/></svg>Подпись</button>
+      <span class="sep"></span>
+      <button class="cmd" id="mode-pages" aria-pressed="false"><svg class="i"><use href="#i-pages"/></svg>Страницы</button>
+      <button class="cmd" data-toast="Повернуть страницу"><svg class="i"><use href="#i-rotate"/></svg>Повернуть</button>
+      <span class="spacer"></span>
+      <div class="inline">
+        <div class="zoom">
+          <button data-zoom="-1" title="Уменьшить"><svg class="i"><use href="#i-zoom-out"/></svg></button>
+          <output id="zoom-out">100%</output>
+          <button data-zoom="1" title="Увеличить"><svg class="i"><use href="#i-zoom-in"/></svg></button>
+        </div>
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><input placeholder="Поиск в документе"></label>
+        <button class="icon-btn" id="toggle-left" aria-pressed="true" title="Боковая панель"><svg class="i"><use href="#i-panel"/></svg></button>
+        <button class="icon-btn" id="toggle-right" aria-pressed="true" title="Свойства"><svg class="i"><use href="#i-panel-r"/></svg></button>
+      </div>
+    </div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="stabs" role="tablist">
+        <button role="tab" aria-selected="true" data-panel="thumbs">Страницы</button>
+        <button role="tab" aria-selected="false" data-panel="outline">Закладки</button>
+        <button role="tab" aria-selected="false" data-panel="search">Поиск</button>
+      </div>
+      <div class="thumbs" id="panel-thumbs">
+        <button class="thumb-page" aria-current="true"><span class="pg"></span><small>1</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>2</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>3</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>4</small></button>
+        <button class="thumb-page"><span class="pg"></span><small>5</small></button>
+      </div>
+      <div class="outline hidden" id="panel-outline">
+        <button>1. Предмет договора</button>
+        <button>2. Срок аренды</button>
+        <button class="lvl2">2.1. Продление</button>
+        <button>3. Арендная плата</button>
+        <button class="lvl2">3.1. Порядок расчётов</button>
+        <button class="lvl2">3.2. Коммунальные платежи</button>
+        <button>4. Ответственность сторон</button>
+        <button>5. Реквизиты</button>
+      </div>
+      <div class="outline hidden" id="panel-search">
+        <p class="note" style="padding:4px 10px">3 совпадения для «арендная плата»</p>
+        <button>стр. 2 — …ежемесячная <b>арендная плата</b>…</button>
+        <button>стр. 3 — …<b>арендная плата</b> вносится…</button>
+        <button>стр. 7 — …размера <b>арендной платы</b>…</button>
+      </div>
+    </aside>
+
+    <section class="canvas" id="canvas" aria-label="Документ">
+      <article class="page">
+        <div class="h"></div>
+        <div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="l"></div><div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="img"></div>
+        <div class="l"></div><div class="l m"></div><div class="l s"></div>
+        <span class="mark"></span>
+        <span class="num">1 / 14</span>
+      </article>
+      <article class="page">
+        <div class="l"></div><div class="l m"></div><div class="l"></div><div class="l s gap"></div>
+        <div class="l"></div><div class="l"></div><div class="l m gap"></div>
+        <div class="l"></div><div class="l s"></div><div class="l m"></div><div class="l"></div>
+        <span class="num">2 / 14</span>
+      </article>
+    </section>
+
+    <aside class="props" id="props">
+      <h3 id="props-title">Маркер</h3>
+      <div class="pcardx">
+        <div class="field"><label>Цвет</label><div class="swatches">
+          <button style="background:#ffd86b" aria-pressed="true"></button><button style="background:#9be39b"></button><button style="background:#9fd3ff"></button><button style="background:#ffb0c8"></button><button style="background:#d7bfff"></button>
+        </div></div>
+        <div class="field"><label>Непрозрачность · 55%</label><input class="range" type="range" min="10" max="100" value="55"></div>
+      </div>
+      <div class="pcardx">
+        <div class="field"><label>Сохранять как</label>
+          <button class="radio" role="radio" aria-checked="true"><i></i>Аннотацию</button>
+          <button class="radio" role="radio" aria-checked="false"><i></i>Часть содержимого страницы</button>
+        </div>
+        <p class="note" style="margin:0">Аннотацию можно удалить в&nbsp;любой программе. Содержимое страницы — нельзя.</p>
+      </div>
+      <div class="pcardx">
+        <b style="font-weight:600">Документ</b>
+        <p class="note" style="margin:0">Договор_аренды_2026.pdf<br>14 страниц · 1,2 МБ · A4<br>Изменён: сегодня, 11:02</p>
+      </div>
+    </aside>
+
+    <div class="pages-actions hidden" id="pages-actions">
+      <span class="note" id="sel-count" style="padding:0 8px">Выбрано: 2</span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="cmd" data-toast="Повернуть выбранные"><svg class="i"><use href="#i-rotate"/></svg>Повернуть</button>
+      <button class="cmd" data-toast="Извлечь выбранные"><svg class="i"><use href="#i-split"/></svg>Извлечь</button>
+      <button class="cmd" data-toast="Вставить страницы"><svg class="i"><use href="#i-plus"/></svg>Вставить</button>
+      <button class="cmd" data-toast="Удалить выбранные"><svg class="i"><use href="#i-trash"/></svg>Удалить</button>
+    </div>
+    <div class="pages-grid hidden" id="pages-grid"></div>
+  </main>
+
+  <!-- ===== Параметры ===== -->
+  <main class="screen" id="screen-settings">
+    <nav class="snav">
+      <h2>Параметры</h2>
+      <button aria-current="true" data-sec="general"><svg class="i"><use href="#i-settings"/></svg>Общие</button>
+      <button data-sec="view"><svg class="i"><use href="#i-eye"/></svg>Просмотр</button>
+      <button data-sec="updates"><svg class="i"><use href="#i-update"/></svg>Обновления</button>
+      <button data-sec="about"><svg class="i"><use href="#i-info"/></svg>О&nbsp;программе</button>
+      <button data-sec="author"><svg class="i"><use href="#i-user"/></svg>О&nbsp;разработчике</button>
+      <button class="back" data-go="viewer"><svg class="i"><use href="#i-back"/></svg>Назад к&nbsp;документу</button>
+    </nav>
+    <div class="sbody">
+      <section class="active" data-sec="general">
+        <h1>Общие</h1><p class="desc">Тема, язык и&nbsp;поведение при сохранении.</p>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-palette"/></svg><span><b>Тема приложения</b><small>Как в&nbsp;системе, светлая или тёмная</small></span></div><button class="select" id="theme-select"><span>Светлая</span><svg class="i"><use href="#i-chev-d"/></svg></button></div>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-text"/></svg><span><b>Язык интерфейса</b><small>English появится в&nbsp;0.2.0</small></span></div><button class="select" disabled style="opacity:.6"><span>Русский</span><svg class="i"><use href="#i-chev-d"/></svg></button></div>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-save"/></svg><span><b>Резервная копия при сохранении</b><small>Рядом с&nbsp;файлом создаётся копия .bak</small></span></div><button class="toggle" role="switch" aria-checked="false"><span>Выкл.</span><i></i></button></div>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-doc"/></svg><span><b>Открывать последний документ при запуске</b></span></div><button class="toggle" role="switch" aria-checked="true"><span>Вкл.</span><i></i></button></div>
+      </section>
+      <section data-sec="view">
+        <h1>Просмотр</h1><p class="desc">Как открываются документы.</p>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-zoom-in"/></svg><span><b>Масштаб по умолчанию</b></span></div><button class="select"><span>По&nbsp;ширине</span><svg class="i"><use href="#i-chev-d"/></svg></button></div>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-pages"/></svg><span><b>Режим прокрутки</b></span></div><button class="select"><span>Непрерывно</span><svg class="i"><use href="#i-chev-d"/></svg></button></div>
+        <div class="scard"><div class="t"><svg class="i"><use href="#i-eye"/></svg><span><b>Запоминать позицию в&nbsp;документе</b></span></div><button class="toggle" role="switch" aria-checked="true"><span>Вкл.</span><i></i></button></div>
+      </section>
+      <section data-sec="updates">
+        <h1>Обновления</h1><p class="desc">Проверка выполняется только по&nbsp;кнопке. Программа обращается к&nbsp;GitHub; документы и&nbsp;настройки не&nbsp;передаются.</p>
+        <div class="scard column">
+          <div class="t"><svg class="i"><use href="#i-update"/></svg><span><b>Установлена версия 0.1.0</b><small>Нажмите «Проверить обновления», чтобы узнать о&nbsp;новой версии.</small></span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-toast="Проверяем последнюю версию на GitHub…">Проверить обновления</button><button class="btn" data-toast="Открываем страницу релизов">Страница релизов <svg class="i" style="width:14px;height:14px"><use href="#i-open-ext"/></svg></button></div>
+        </div>
+      </section>
+      <section data-sec="about">
+        <h1>О&nbsp;программе</h1><p class="desc">PDFwright 0.1.0 · Windows x64 · установленная версия</p>
+        <div class="scard column">
+          <div class="note">Локальная программа для просмотра и&nbsp;редактирования PDF. Код открыт под лицензией MIT.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-toast="Диагностика скопирована">Скопировать диагностику</button><button class="btn" data-toast="Открываем лицензии">Лицензии компонентов</button></div>
+        </div>
+      </section>
+      <section data-sec="author">
+        <h1>О&nbsp;разработчике</h1><p class="desc">Текст будет согласован отдельно; здесь показан макет раздела.</p>
+        <div class="scard column">
+          <div class="note">Я Андрей, автор Promptix. Делаю небольшие локальные инструменты для Windows и&nbsp;показываю на&nbsp;YouTube, как они создаются.</div>
+          <div class="links">
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Сайт Promptix<svg class="i arrow"><use href="#i-open-ext"/></svg></a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>YouTube · Promptix<svg class="i arrow"><use href="#i-open-ext"/></svg></a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Telegram · Promptix<svg class="i arrow"><use href="#i-open-ext"/></svg></a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Telegram · Кодовая Артель<svg class="i arrow"><use href="#i-open-ext"/></svg></a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>DonationAlerts<svg class="i arrow"><use href="#i-open-ext"/></svg></a>
+            <a href="#"><svg class="i"><use href="#i-link"/></svg>Boosty<svg class="i arrow"><use href="#i-open-ext"/></svg></a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <span id="status-page">Страница 1 из&nbsp;14</span>
+    <span>A4 · 210 × 297 мм</span>
+    <span class="grow"></span>
+    <span><kbd>Ctrl</kbd> + <kbd>F</kbd> поиск</span>
+    <span>Сохранено</span>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 1600); };
+  const go = (name) => {
+    $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+    $$('.tab[role=tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.go === name && name !== 'settings')));
+  };
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-go]'); if (g) { go(g.dataset.go); return; }
+    const t = e.target.closest('[data-toast]'); if (t) toast(t.dataset.toast);
+  });
+  const html = document.documentElement;
+  const themeNames = { light: 'Светлая', dark: 'Тёмная' };
+  const setTheme = (th) => { html.dataset.theme = th; $('#theme-select span').textContent = themeNames[th]; };
+  $('#theme-toggle').onclick = () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');
+  $('#theme-select').onclick = () => setTheme(html.dataset.theme === 'dark' ? 'light' : 'dark');
+
+  $$('[data-tool]').forEach(b => b.onclick = () => { $$('[data-tool]').forEach(x => x.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); $('#props-title').textContent = b.textContent.trim(); });
+
+  const steps = [50, 67, 80, 90, 100, 110, 125, 150, 175, 200]; let zi = 4;
+  const applyZoom = () => { html.style.setProperty('--scale', steps[zi] / 100); $('#zoom-out').value = steps[zi] + '%'; };
+  $$('[data-zoom]').forEach(b => b.onclick = () => { zi = Math.max(0, Math.min(steps.length - 1, zi + Number(b.dataset.zoom))); applyZoom(); });
+
+  $$('[data-panel]').forEach(b => b.onclick = () => {
+    $$('[data-panel]').forEach(x => x.setAttribute('aria-selected', 'false')); b.setAttribute('aria-selected', 'true');
+    ['thumbs', 'outline', 'search'].forEach(p => $('#panel-' + p).classList.toggle('hidden', p !== b.dataset.panel));
+  });
+  $('#toggle-left').onclick = (e) => { const v = $('#screen-viewer').classList.toggle('no-left'); e.currentTarget.setAttribute('aria-pressed', String(!v)); };
+  $('#toggle-right').onclick = (e) => { const v = $('#screen-viewer').classList.toggle('no-right'); e.currentTarget.setAttribute('aria-pressed', String(!v)); };
+  $$('.thumb-page').forEach((t, i) => t.onclick = () => { $$('.thumb-page').forEach(x => x.removeAttribute('aria-current')); t.setAttribute('aria-current', 'true'); $('#status-page').innerHTML = `Страница ${i + 1} из&nbsp;14`; });
+
+  const grid = $('#pages-grid'); const selected = new Set([2, 3]);
+  const renderGrid = () => {
+    grid.innerHTML = Array.from({ length: 14 }, (_, i) => `<button class="pcard" aria-selected="${selected.has(i)}" data-i="${i}"><span class="pg"><span class="chk">${selected.has(i) ? '<svg class="i" style="width:12px;height:12px;stroke-width:2.5"><use href="#i-check"/></svg>' : ''}</span></span><small>${i + 1}</small></button>`).join('');
+    $('#sel-count').textContent = selected.size ? `Выбрано: ${selected.size}` : 'Выберите страницы';
+  };
+  grid.addEventListener('click', (e) => { const c = e.target.closest('.pcard'); if (!c) return; const i = Number(c.dataset.i); selected.has(i) ? selected.delete(i) : selected.add(i); renderGrid(); });
+  $('#mode-pages').onclick = (e) => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    $('#screen-viewer').classList.toggle('pages-mode', on);
+    ['#canvas', '#props', '#sidebar'].forEach(s => $(s).classList.toggle('hidden', on));
+    ['#pages-actions', '#pages-grid'].forEach(s => $(s).classList.toggle('hidden', !on));
+    if (on) renderGrid();
+  };
+
+  $$('.snav [data-sec]').forEach(b => b.onclick = () => {
+    $$('.snav [data-sec]').forEach(x => x.removeAttribute('aria-current')); b.setAttribute('aria-current', 'true');
+    $$('.sbody section').forEach(s => s.classList.toggle('active', s.dataset.sec === b.dataset.sec));
+  });
+  $$('.toggle').forEach(t => t.onclick = () => { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', String(on)); $('span', t).textContent = on ? 'Вкл.' : 'Выкл.'; });
+  $$('.radio').forEach(r => r.onclick = () => { $$('.radio', r.parentElement).forEach(x => x.setAttribute('aria-checked', 'false')); r.setAttribute('aria-checked', 'true'); });
+  $$('.swatches').forEach(s => s.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('button', s).forEach(x => x.removeAttribute('aria-pressed')); b.setAttribute('aria-pressed', 'true'); $('.page .mark').style.background = b.style.background; }));
+
+  if (location.search.includes('start')) go('start');
+  if (location.search.includes('settings')) go('settings');
+  if (location.search.includes('dark')) setTheme('dark');
+})();
+</script>
+</body>
+</html>
