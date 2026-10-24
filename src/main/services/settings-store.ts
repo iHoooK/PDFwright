@@ -1,5 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import {
   applySettingsPatch,
   createDefaultSettings,
@@ -7,6 +7,7 @@ import {
   type AppSettings,
   type SettingsPatch
 } from '@shared/settings-schema'
+import { isMissingFile, writeAtomic } from './fs-utils'
 
 /**
  * Хранилище настроек: один JSON-файл в userData. Запись атомарная —
@@ -63,20 +64,4 @@ export class SettingsStore {
       .then(() => writeAtomic(this.filePath, snapshot))
     return this.writeQueue
   }
-}
-
-function isMissingFile(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === 'ENOENT'
-  )
-}
-
-async function writeAtomic(filePath: string, content: string): Promise<void> {
-  await mkdir(dirname(filePath), { recursive: true })
-  const tempPath = `${filePath}.${process.pid}.tmp`
-  await writeFile(tempPath, content, 'utf8')
-  await rename(tempPath, filePath)
 }

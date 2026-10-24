@@ -11,7 +11,6 @@ import {
   Tabs,
   Toggle
 } from '@renderer/components/controls'
-import { PageThumb } from '@renderer/components/PagePlaceholder'
 import { MARK_COLORS } from '@renderer/app/store'
 
 /**
@@ -102,7 +101,7 @@ export function KitScreen(): React.JSX.Element {
         />
       </div>
       <div style={block}>
-        <b>Tabs · Swatches · PageThumb</b>
+        <b>Tabs · Swatches</b>
         <Tabs
           label="Пример"
           value={tab}
@@ -113,17 +112,6 @@ export function KitScreen(): React.JSX.Element {
           ]}
         />
         <Swatches colors={MARK_COLORS} value={color} onChange={setColor} label="Цвет" />
-        <div style={{ ...row, width: 420 }}>
-          <div style={{ width: 120 }}>
-            <PageThumb number={1} current onClick={() => undefined} />
-          </div>
-          <div style={{ width: 120 }}>
-            <PageThumb number={2} selected onClick={() => undefined} />
-          </div>
-          <div style={{ width: 120 }}>
-            <PageThumb number={3} selected={false} onClick={() => undefined} />
-          </div>
-        </div>
       </div>
       <SettingCard icon={<IconSettings />} title="SettingCard" hint="Подпись параметра">
         <Toggle checked={toggle} onChange={setToggle} onLabel="Вкл." offLabel="Выкл." />

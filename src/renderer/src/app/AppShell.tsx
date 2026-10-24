@@ -14,7 +14,7 @@ import { ViewerScreen } from '@renderer/features/viewer/ViewerScreen'
 import { SettingsScreen } from '@renderer/features/settings/SettingsScreen'
 import { KitScreen } from '@renderer/features/kit/KitScreen'
 import logo from '../assets/logo.svg'
-import { activeDoc, useStore } from './store'
+import { activeDoc, useStore, type DocTab } from './store'
 import { useHotkeys } from './hotkeys'
 import { resolvedTheme } from './theme'
 import s from './app.module.css'
@@ -26,7 +26,16 @@ export function AppShell(): React.JSX.Element {
   const dark = resolvedTheme() === 'dark'
 
   return (
-    <div className={s.app}>
+    <div
+      className={s.app}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes('Files')) event.preventDefault()
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        if (event.dataTransfer.files.length > 0) actions.openFiles(event.dataTransfer.files)
+      }}
+    >
       <header className={s.titlebar}>
         <div className={s.brand}>
           <img className={s.logo} src={logo} alt="" width={20} height={20} />
@@ -114,22 +123,30 @@ export function AppShell(): React.JSX.Element {
       </main>
 
       <footer className={s.statusbar}>
-        {doc ? (
+        {doc?.status === 'ready' ? (
           <>
             <span>{t.viewer.pageOf(state.page, doc.pages)}</span>
-            <span>{t.viewer.paperA4}</span>
+            <span>{pageSizeLabel(doc)}</span>
+            <span>{state.resolvedZoom}%</span>
           </>
         ) : (
-          <span>{t.app.name}</span>
+          <span>{doc ? doc.name : t.app.name}</span>
         )}
         <span className={s.grow} />
         <span>
           <kbd>Ctrl</kbd> + <kbd>F</kbd> {t.viewer.searchHint}
         </span>
-        {doc && <span className={s.ok}>{t.viewer.saved}</span>}
+        {doc?.status === 'ready' && <span className={s.ok}>{t.viewer.saved}</span>}
       </footer>
 
       <Toast message={state.toast} />
     </div>
   )
+}
+
+function pageSizeLabel(doc: DocTab): string {
+  const size = doc.doc?.sizeOf(1)
+  if (!size) return ''
+  const mm = (pt: number): number => Math.round((pt / 72) * 25.4)
+  return `${mm(size.width)} × ${mm(size.height)} мм`
 }

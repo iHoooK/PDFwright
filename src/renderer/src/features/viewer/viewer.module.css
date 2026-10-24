@@ -3,6 +3,7 @@
   grid-template-columns: var(--w-sidebar) 1fr var(--w-props);
   grid-template-rows: var(--h-cmdbar) 1fr;
   min-height: 0;
+  position: relative;
 }
 .noLeft {
   grid-template-columns: 0 1fr var(--w-props);
@@ -49,7 +50,7 @@
   gap: 2px;
 }
 .zoomValue {
-  min-width: 54px;
+  min-width: 58px;
   height: 30px;
   display: grid;
   place-items: center;
@@ -58,32 +59,13 @@
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   background: var(--card);
-}
-.search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: var(--r-s);
-  background: var(--card);
-  border: 1px solid var(--line-2);
-  border-bottom-color: var(--ink-3);
-  min-width: 200px;
-  color: var(--ink-3);
-}
-.search:focus-within {
-  border-bottom: 2px solid var(--accent);
-}
-.search input {
-  border: 0;
-  background: none;
-  outline: none;
-  width: 100%;
   color: var(--ink);
 }
-.search input::placeholder {
-  color: var(--ink-3);
+.zoomValue:hover:not(:disabled) {
+  background: var(--layer);
+}
+.zoomValue:disabled {
+  opacity: 0.45;
 }
 
 .sidebar {
@@ -100,6 +82,7 @@
   display: grid;
   gap: 4px;
   align-content: start;
+  min-height: 0;
 }
 .thumbs {
   padding: 14px;
@@ -110,13 +93,14 @@
   padding: 8px 10px;
   border-radius: var(--r-s);
   color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
 }
 .outlineItem:hover {
   background: var(--layer);
   color: var(--ink);
-}
-.lvl2 {
-  padding-left: 28px;
 }
 .sideEmpty {
   padding: 24px 12px;
@@ -125,15 +109,96 @@
   font-size: 13px;
 }
 
+.searchField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-s);
+  background: var(--card);
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--ink-3);
+  color: var(--ink-3);
+  margin: 4px 4px 0;
+}
+.searchField:focus-within {
+  border-bottom: 2px solid var(--accent);
+}
+.searchField input {
+  border: 0;
+  background: none;
+  outline: none;
+  width: 100%;
+  color: var(--ink);
+}
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+}
+.searchStatus {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding-left: 6px;
+}
+.result {
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: var(--r-s);
+  display: grid;
+  gap: 2px;
+  color: var(--ink-2);
+}
+.result:hover {
+  background: var(--layer);
+  color: var(--ink);
+}
+.resultActive {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.resultPage {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.resultPage svg {
+  width: 14px;
+  height: 14px;
+}
+.resultText {
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .canvas {
   overflow: auto;
   background: var(--bg);
-  padding: 24px 0 64px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
   min-height: 0;
+  overscroll-behavior: contain;
+}
+.spread {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+}
+.handCursor {
+  cursor: grab;
 }
 .canvasEmpty {
   display: grid;
@@ -147,6 +212,10 @@
   color: var(--ink-2);
   font-size: 16px;
   font-weight: 600;
+}
+.canvasEmpty p {
+  margin: 0;
+  max-width: 48ch;
 }
 
 .props {
@@ -175,7 +244,8 @@
   display: grid;
   gap: 6px;
 }
-.field label {
+.field label,
+.fieldLabel {
   font-size: 12px;
   color: var(--ink-2);
 }
@@ -196,7 +266,7 @@
   overflow: auto;
   padding: 22px 26px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 16px;
   align-content: start;
   background: var(--bg);

@@ -14,7 +14,8 @@ export default defineConfig(
       'release/**',
       'coverage/**',
       'scripts/**',
-      'docs/**'
+      'docs/**',
+      'src/renderer/public/**'
     ]
   },
   js.configs.recommended,

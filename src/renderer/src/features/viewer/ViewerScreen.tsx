@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import {
   IconDelete,
   IconHand,
+  IconInfo,
   IconInsert,
   IconMarker,
   IconPages,
@@ -25,14 +26,14 @@ import {
 import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
 import {
+  Button,
   Command,
   IconButton,
   RadioGroup,
+  Range,
   Swatches,
-  Tabs,
-  Range
+  Tabs
 } from '@renderer/components/controls'
-import { PagePlaceholder, PageThumb } from '@renderer/components/PagePlaceholder'
 import {
   activeDoc,
   MARK_COLORS,
@@ -41,6 +42,11 @@ import {
   type SidebarTab,
   type Tool
 } from '@renderer/app/store'
+import { DocumentView } from './DocumentView'
+import { PageThumbnail } from './PageThumbnail'
+import { PasswordDialog } from './PasswordDialog'
+import { PropertiesDialog } from './PropertiesDialog'
+import { OutlinePanel, SearchPanel, ThumbsPanel } from './SidebarPanels'
 import s from './viewer.module.css'
 
 const TOOL_META: readonly { tool: Tool; label: string; icon: ReactNode }[] = [
@@ -59,23 +65,17 @@ const SIDEBAR_TABS: readonly { value: SidebarTab; label: string }[] = [
   { value: 'search', label: t.sidebar.search }
 ]
 
-const OUTLINE_DEMO: readonly { title: string; level: 1 | 2 }[] = [
-  { title: '1. Предмет договора', level: 1 },
-  { title: '2. Срок аренды', level: 1 },
-  { title: '2.1. Продление', level: 2 },
-  { title: '3. Арендная плата', level: 1 },
-  { title: '3.1. Порядок расчётов', level: 2 },
-  { title: '4. Ответственность сторон', level: 1 }
-]
-
 export function ViewerScreen(): React.JSX.Element {
-  const { state, actions, searchRef } = useStore()
-  const doc = activeDoc(state)
-  const total = doc?.pages ?? 0
+  const { state, actions } = useStore()
+  const tab = activeDoc(state)
+  const doc = tab?.doc ?? null
+  const readyDoc = tab && doc && tab.status === 'ready' ? { tab, doc } : null
+  const ready = readyDoc !== null
   const soon = (): void => {
     actions.toast(t.toast.soon)
   }
   const toolLabel = TOOL_META.find((m) => m.tool === state.tool)?.label ?? ''
+  const zoomLabel = `${state.resolvedZoom}%`
 
   return (
     <div
@@ -85,7 +85,6 @@ export function ViewerScreen(): React.JSX.Element {
         !state.props && s.noRight,
         state.pagesMode && s.pagesMode
       )}
-      style={{ ['--scale' as string]: state.zoom / 100 }}
     >
       <div className={s.cmdbar} role="toolbar" aria-label="Команды">
         <Command
@@ -93,14 +92,14 @@ export function ViewerScreen(): React.JSX.Element {
           label={t.cmd.save}
           hotkey="Ctrl+S"
           onClick={soon}
-          disabled={!doc}
+          disabled={!ready}
         />
         <Command
           icon={<IconPrint />}
           label={t.cmd.print}
           hotkey="Ctrl+P"
-          onClick={soon}
-          disabled={!doc}
+          onClick={actions.print}
+          disabled={!ready}
         />
         <Command icon={<IconUndo />} label={t.cmd.undo} hotkey="Ctrl+Z" onClick={soon} disabled />
         <Command icon={<IconRedo />} label={t.cmd.redo} hotkey="Ctrl+Y" onClick={soon} disabled />
@@ -122,12 +121,18 @@ export function ViewerScreen(): React.JSX.Element {
           icon={<IconPages />}
           label={t.cmd.pages}
           pressed={state.pagesMode}
-          disabled={!doc}
+          disabled={!ready}
           onClick={() => {
             actions.togglePagesMode()
           }}
         />
-        <Command icon={<IconRotate />} label={t.cmd.rotate} onClick={soon} disabled={!doc} />
+        <Command
+          icon={<IconRotate />}
+          label={t.cmd.rotate}
+          hotkey="Ctrl+R"
+          onClick={actions.rotate}
+          disabled={!ready}
+        />
         <span className={s.spacer} />
         <div className={s.inline}>
           <div className={s.zoom}>
@@ -136,33 +141,38 @@ export function ViewerScreen(): React.JSX.Element {
               onClick={() => {
                 actions.zoomBy(-1)
               }}
+              disabled={!ready}
             >
               <IconZoomOut />
             </IconButton>
-            <output className={s.zoomValue} aria-live="polite">
-              {state.zoom}%
-            </output>
+            <button
+              type="button"
+              className={s.zoomValue}
+              title={t.cmd.zoomMenu}
+              aria-label={`${t.cmd.zoomMenu}: ${zoomLabel}`}
+              onClick={actions.cycleZoomMode}
+              disabled={!ready}
+            >
+              {zoomLabel}
+            </button>
             <IconButton
               label={t.cmd.zoomIn}
               onClick={() => {
                 actions.zoomBy(1)
               }}
+              disabled={!ready}
             >
               <IconZoomIn />
             </IconButton>
           </div>
-          <label className={s.search}>
+          <IconButton
+            label={t.cmd.search}
+            pressed={state.sidebar && state.sidebarTab === 'search'}
+            onClick={actions.focusSearch}
+            disabled={!ready}
+          >
             <IconSearch />
-            <input
-              ref={searchRef}
-              type="search"
-              placeholder={t.cmd.search}
-              aria-label={t.cmd.search}
-              onFocus={() => {
-                actions.setSidebarTab('search')
-              }}
-            />
-          </label>
+          </IconButton>
           <IconButton
             label={t.cmd.sidebar}
             pressed={state.sidebar}
@@ -184,7 +194,7 @@ export function ViewerScreen(): React.JSX.Element {
         </div>
       </div>
 
-      {state.pagesMode && doc ? (
+      {state.pagesMode && readyDoc ? (
         <>
           <div className={s.pagesActions} role="toolbar" aria-label={t.cmd.pages}>
             <span className={s.count}>{t.pages.selected(state.selectedPages.size)}</span>
@@ -210,10 +220,12 @@ export function ViewerScreen(): React.JSX.Element {
             />
           </div>
           <div className={s.pagesGrid}>
-            {Array.from({ length: total }, (_, i) => (
-              <PageThumb
+            {Array.from({ length: readyDoc.tab.pages }, (_, i) => (
+              <PageThumbnail
                 key={i}
-                number={i + 1}
+                doc={readyDoc.doc}
+                pageNumber={i + 1}
+                rotation={state.rotation}
                 selected={state.selectedPages.has(i + 1)}
                 onClick={() => {
                   actions.togglePage(i + 1)
@@ -231,68 +243,62 @@ export function ViewerScreen(): React.JSX.Element {
               onChange={actions.setSidebarTab}
               label={t.cmd.sidebar}
             />
-            {state.sidebarTab === 'thumbs' && (
-              <div className={cx(s.sidebarBody, s.thumbs)}>
-                {doc ? (
-                  Array.from({ length: total }, (_, i) => (
-                    <PageThumb
-                      key={i}
-                      number={i + 1}
-                      current={state.page === i + 1}
-                      onClick={() => {
-                        actions.setPage(i + 1)
-                      }}
-                    />
-                  ))
-                ) : (
-                  <p className={s.sideEmpty}>{t.viewer.emptyTitle}</p>
-                )}
-              </div>
-            )}
-            {state.sidebarTab === 'outline' && (
-              <div className={s.sidebarBody}>
-                {doc ? (
-                  OUTLINE_DEMO.map((o) => (
-                    <button
-                      key={o.title}
-                      type="button"
-                      className={cx(s.outlineItem, o.level === 2 && s.lvl2)}
-                      onClick={soon}
-                    >
-                      {o.title}
-                    </button>
-                  ))
-                ) : (
-                  <p className={s.sideEmpty}>{t.sidebar.outlineEmpty}</p>
-                )}
-              </div>
-            )}
-            {state.sidebarTab === 'search' && (
-              <div className={s.sidebarBody}>
-                <p className={s.sideEmpty}>{t.sidebar.searchEmpty}</p>
-              </div>
+            {!readyDoc ? (
+              <p className={s.sideEmpty}>{t.viewer.emptyTitle}</p>
+            ) : state.sidebarTab === 'thumbs' ? (
+              <ThumbsPanel tab={readyDoc.tab} doc={readyDoc.doc} />
+            ) : state.sidebarTab === 'outline' ? (
+              <OutlinePanel doc={readyDoc.doc} />
+            ) : (
+              <SearchPanel />
             )}
           </aside>
 
-          <section className={s.canvas} aria-label="Документ">
-            {doc ? (
-              Array.from({ length: Math.min(total, 3) }, (_, i) => (
-                <PagePlaceholder key={i} number={i + 1} total={total} markColor={state.markColor} />
-              ))
-            ) : (
-              <div className={s.canvasEmpty}>
-                <h2>{t.viewer.emptyTitle}</h2>
-                <p>{t.viewer.emptyLead}</p>
-              </div>
-            )}
-          </section>
+          {readyDoc ? (
+            <DocumentView tab={readyDoc.tab} doc={readyDoc.doc} />
+          ) : (
+            <section className={cx(s.canvas, s.canvasEmpty)} aria-label="Документ">
+              {tab?.status === 'loading' ? (
+                <>
+                  <h2>{t.viewer.loading}</h2>
+                  <p>{tab.name}</p>
+                </>
+              ) : tab?.status === 'error' ? (
+                <>
+                  <h2>{t.viewer.errorTitle}</h2>
+                  <p>{tab.error}</p>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    <Button
+                      onClick={() => {
+                        actions.openPath(tab.path)
+                      }}
+                    >
+                      {t.viewer.retry}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        actions.closeDoc(tab.id)
+                      }}
+                    >
+                      {t.viewer.closeTab}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2>{t.viewer.emptyTitle}</h2>
+                  <p>{t.viewer.emptyLead}</p>
+                </>
+              )}
+            </section>
+          )}
 
           <aside className={s.props} aria-label={t.cmd.props} hidden={!state.props}>
             <h3>{toolLabel}</h3>
             {state.tool !== 'select' && state.tool !== 'hand' && (
               <div className={s.pcard}>
                 <div className={s.field}>
-                  <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t.props.color}</span>
+                  <span className={s.fieldLabel}>{t.props.color}</span>
                   <Swatches
                     colors={MARK_COLORS}
                     value={state.markColor}
@@ -304,12 +310,8 @@ export function ViewerScreen(): React.JSX.Element {
                   <label htmlFor="opacity">{t.props.opacity} · 55%</label>
                   <Range id="opacity" min={10} max={100} defaultValue={55} />
                 </div>
-              </div>
-            )}
-            {state.tool !== 'select' && state.tool !== 'hand' && (
-              <div className={s.pcard}>
                 <div className={s.field}>
-                  <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{t.props.saveAs}</span>
+                  <span className={s.fieldLabel}>{t.props.saveAs}</span>
                   <RadioGroup
                     value="annotation"
                     label={t.props.saveAs}
@@ -321,25 +323,34 @@ export function ViewerScreen(): React.JSX.Element {
                   />
                 </div>
                 <p className="muted" style={{ margin: 0 }}>
-                  {t.props.saveNote}
+                  {t.props.annotationsSoon}
                 </p>
               </div>
             )}
-            {doc && (
+            {tab && (
               <div className={s.pcard}>
                 <b style={{ fontWeight: 600 }}>{t.props.document}</b>
                 <p className="muted" style={{ margin: 0, userSelect: 'text' }}>
-                  {doc.name}
+                  {tab.name}
                   <br />
-                  {doc.pages} {t.start.pages} · {t.viewer.paperA4}
+                  {ready
+                    ? `${tab.pages} ${t.start.pages}`
+                    : tab.status === 'loading'
+                      ? t.viewer.loading
+                      : t.viewer.errorTitle}
                   <br />
-                  {doc.path}
+                  {tab.path}
                 </p>
+                <Button icon={<IconInfo />} onClick={actions.openProperties} disabled={!ready}>
+                  {t.props.properties}
+                </Button>
               </div>
             )}
           </aside>
         </>
       )}
+      <PasswordDialog />
+      <PropertiesDialog />
     </div>
   )
 }

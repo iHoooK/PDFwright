@@ -1,18 +1,31 @@
 import { app, BrowserWindow, session, shell } from 'electron'
 import { join } from 'node:path'
+import { APP_OPEN_FILE_CHANNEL } from '@shared/ipc-contract'
 import { isAllowedExternalUrl } from '@shared/external-links'
 import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH } from '@shared/settings-schema'
 import { registerIpcHandlers } from './ipc'
 import { installApplicationMenu } from './menu'
+import { extractPdfPath } from './open-args'
+import {
+  installAppProtocol,
+  registerAppScheme,
+  rendererDirFromMain,
+  rendererIndexUrl
+} from './protocol'
+import { RecentFilesStore } from './services/recent-files'
 import { SettingsStore } from './services/settings-store'
 
 const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
 
+let mainWindow: BrowserWindow | null = null
+let pendingFile: string | null = null
+
 // Один экземпляр: второй запуск передаёт аргументы первому и завершается.
-// Передача пути к файлу появится в фазе 2 вместе с просмотрщиком.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  registerAppScheme()
+  pendingFile = extractPdfPath(process.argv, process.cwd())
   void bootstrap()
 }
 
@@ -21,22 +34,40 @@ async function bootstrap(): Promise<void> {
 
   const settings = SettingsStore.forUserData(app.getPath('userData'))
   await settings.load()
+  const recent = RecentFilesStore.forUserData(
+    app.getPath('userData'),
+    () => settings.get().files.recentLimit
+  )
 
   await app.whenReady()
 
-  applyContentSecurityPolicy()
-  registerIpcHandlers(settings)
+  const csp = buildContentSecurityPolicy()
+  applyContentSecurityPolicy(csp)
+  installAppProtocol(rendererDirFromMain(import.meta.dirname), csp)
+  registerIpcHandlers({
+    settings,
+    recent,
+    takePendingFile: () => {
+      const file = pendingFile
+      pendingFile = null
+      return file
+    }
+  })
   installApplicationMenu()
 
-  const window = createMainWindow(settings)
+  mainWindow = createMainWindow(settings)
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv, workingDirectory) => {
+    const window = mainWindow
+    if (!window) return
     if (window.isMinimized()) window.restore()
     window.focus()
+    const file = extractPdfPath(argv, workingDirectory)
+    if (file !== null) window.webContents.send(APP_OPEN_FILE_CHANNEL, file)
   })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow(settings)
+    if (BrowserWindow.getAllWindows().length === 0) mainWindow = createMainWindow(settings)
   })
 
   app.on('window-all-closed', () => {
@@ -104,12 +135,15 @@ function createMainWindow(settings: SettingsStore): BrowserWindow {
       }
     })
   })
+  window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null
+  })
 
   const devServerUrl = process.env.ELECTRON_RENDERER_URL
   if (!app.isPackaged && devServerUrl) {
     void window.loadURL(devServerUrl)
   } else {
-    void window.loadFile(join(import.meta.dirname, '../renderer/index.html'))
+    void window.loadURL(rendererIndexUrl())
   }
 
   return window
@@ -118,9 +152,10 @@ function createMainWindow(settings: SettingsStore): BrowserWindow {
 /**
  * Content Security Policy задаётся заголовком, а не meta-тегом: в dev-режиме
  * Vite и React Fast Refresh внедряют inline-скрипты, поэтому там политика
- * мягче; в собранном приложении — только собственные ресурсы.
+ * мягче; в собранном приложении — только собственные ресурсы по схеме app://.
+ * pdf.js подключает шрифты как data:, worker и blob: нужны его потокам.
  */
-function applyContentSecurityPolicy(): void {
+function buildContentSecurityPolicy(): string {
   const dev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
   const policy = dev
     ? [
@@ -134,7 +169,7 @@ function applyContentSecurityPolicy(): void {
       ]
     : [
         "default-src 'self'",
-        "script-src 'self'",
+        "script-src 'self' 'wasm-unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
@@ -144,13 +179,13 @@ function applyContentSecurityPolicy(): void {
         "base-uri 'none'",
         "form-action 'none'"
       ]
+  return policy.join('; ')
+}
 
+function applyContentSecurityPolicy(csp: string): void {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [policy.join('; ')]
-      }
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] }
     })
   })
 }

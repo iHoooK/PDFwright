@@ -1,0 +1,85 @@
+.page {
+  position: relative;
+  background: var(--paper);
+  box-shadow: var(--page-shadow);
+  border-radius: 2px;
+  overflow: hidden;
+  flex: none;
+  contain: strict;
+}
+.canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+/* Подсветка результатов поиска внутри текстового слоя pdf.js. */
+.page :global(.textLayer mark.highlight) {
+  background: rgba(255, 216, 107, 0.55);
+  color: transparent;
+  border-radius: 2px;
+  padding: 0;
+}
+.page :global(.textLayer mark.highlight.selected) {
+  background: rgba(0, 103, 192, 0.45);
+}
+.page :global(.textLayer ::selection) {
+  background: rgba(0, 103, 192, 0.3);
+}
+
+.thumbCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--paper);
+}
+.thumb {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 6px;
+  border-radius: var(--r);
+  width: 100%;
+  transition: background var(--motion);
+}
+.thumb:hover {
+  background: var(--layer);
+}
+.thumb[aria-current='true'],
+.thumb[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+.thumbFrame {
+  width: 100%;
+  background: var(--paper);
+  border-radius: 3px;
+  border: 2px solid transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+  position: relative;
+  overflow: hidden;
+}
+.thumb[aria-current='true'] .thumbFrame,
+.thumb[aria-selected='true'] .thumbFrame {
+  border-color: var(--accent);
+}
+.thumb small {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--ink-3);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.thumb[aria-selected='true'] .check {
+  background: var(--accent);
+  border-color: var(--accent);
+}

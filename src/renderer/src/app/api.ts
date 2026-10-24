@@ -1,4 +1,10 @@
-import type { AppInfo, OpenedPdfFile, PdfwrightApi } from '@shared/ipc-contract'
+import type {
+  AppInfo,
+  FileReadResult,
+  OpenedPdfFile,
+  PdfwrightApi,
+  RecentFile
+} from '@shared/ipc-contract'
 import {
   applySettingsPatch,
   createDefaultSettings,
@@ -8,8 +14,8 @@ import {
 
 /**
  * Доступ к API preload. В обычном браузере (dev-сервер Vite без Electron)
- * в режиме разработки подставляется заглушка на localStorage, чтобы интерфейс
- * можно было смотреть и проверять без запуска Electron.
+ * в режиме разработки подставляется заглушка: настройки в localStorage,
+ * выбор файла через <input type="file">, чтение через File.arrayBuffer().
  */
 export function getApi(): PdfwrightApi {
   const exposed = (window as { pdfwright?: PdfwrightApi }).pdfwright
@@ -47,7 +53,31 @@ function createBrowserMock(): PdfwrightApi {
     userDataPath: '(браузер)',
     packaged: false
   }
-  let counter = 0
+  const files = new Map<string, File>()
+  let recent: RecentFile[] = []
+  const pathFor = (file: File): string => `C:\\Браузер\\${file.name}`
+
+  const pickFile = (): Promise<OpenedPdfFile | null> =>
+    new Promise((resolve) => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'application/pdf,.pdf'
+      input.onchange = () => {
+        const file = input.files?.[0]
+        if (!file) {
+          resolve(null)
+          return
+        }
+        const path = pathFor(file)
+        files.set(path, file)
+        resolve({ path, name: file.name })
+      }
+      input.oncancel = () => {
+        resolve(null)
+      }
+      input.click()
+    })
+
   return {
     getAppInfo: () => Promise.resolve(info),
     getSettings: () => Promise.resolve(settings),
@@ -60,14 +90,37 @@ function createBrowserMock(): PdfwrightApi {
       window.open(url, '_blank', 'noopener')
       return Promise.resolve()
     },
-    openPdfDialog: () => {
-      counter += 1
-      const file: OpenedPdfFile = {
-        name: `Документ_${counter}.pdf`,
-        path: `C:\\Документы\\Документ_${counter}.pdf`
+    openPdfDialog: pickFile,
+    readFile: async (path): Promise<FileReadResult> => {
+      let file = files.get(path)
+      if (!file) {
+        // В браузере путь из «недавних» нельзя прочитать заново — просим выбрать файл.
+        const picked = await pickFile()
+        file = picked ? files.get(picked.path) : undefined
+        if (!file) throw new Error('Файл не выбран')
       }
-      return Promise.resolve(file)
+      recent = [
+        { path, name: file.name, lastOpenedMs: Date.now() },
+        ...recent.filter((r) => r.path !== path)
+      ]
+      return { bytes: await file.arrayBuffer(), size: file.size, modifiedMs: file.lastModified }
     },
-    onCommand: () => () => undefined
+    printFile: () => {
+      window.print()
+      return Promise.resolve()
+    },
+    getRecentFiles: () => Promise.resolve(recent),
+    removeRecentFile: (path) => {
+      recent = recent.filter((r) => r.path !== path)
+      return Promise.resolve(recent)
+    },
+    takePendingOpenFile: () => Promise.resolve(null),
+    getPathForFile: (file) => {
+      const path = pathFor(file)
+      files.set(path, file)
+      return path
+    },
+    onCommand: () => () => undefined,
+    onOpenFile: () => () => undefined
   }
 }

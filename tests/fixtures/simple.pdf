@@ -1,0 +1,78 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /Outlines 11 0 R /PageMode /UseOutlines >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Title (PDFwright fixture) /Author (Promptix) /Subject (Test document) /Creator (make-fixture) /CreationDate (D:20261024120000+03'00') >>
+endobj
+5 0 obj
+<< /Length 137 >>
+stream
+BT /F1 24 Tf 72 700 Td (PDFwright test page 1) Tj ET
+BT /F1 12 Tf 72 660 Td (Arendnaya plata vnositsya ezhemesyachno. Page 1 of 3.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+7 0 obj
+<< /Length 137 >>
+stream
+BT /F1 24 Tf 72 700 Td (PDFwright test page 2) Tj ET
+BT /F1 12 Tf 72 660 Td (Arendnaya plata vnositsya ezhemesyachno. Page 2 of 3.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 7 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+9 0 obj
+<< /Length 137 >>
+stream
+BT /F1 24 Tf 72 700 Td (PDFwright test page 3) Tj ET
+BT /F1 12 Tf 72 660 Td (Arendnaya plata vnositsya ezhemesyachno. Page 3 of 3.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 9 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+11 0 obj
+<< /Type /Outlines /First 12 0 R /Last 14 0 R /Count 3 >>
+endobj
+12 0 obj
+<< /Title (Page 1 heading) /Parent 11 0 R /Next 13 0 R /Dest [6 0 R /XYZ 0 842 0] >>
+endobj
+13 0 obj
+<< /Title (Page 2 heading) /Parent 11 0 R /Prev 12 0 R /Next 14 0 R /Dest [8 0 R /XYZ 0 842 0] >>
+endobj
+14 0 obj
+<< /Title (Page 3 heading) /Parent 11 0 R /Prev 13 0 R /Dest [10 0 R /XYZ 0 842 0] >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000104 00000 n 
+0000000174 00000 n 
+0000000244 00000 n 
+0000000400 00000 n 
+0000000588 00000 n 
+0000000714 00000 n 
+0000000902 00000 n 
+0000001028 00000 n 
+0000001216 00000 n 
+0000001343 00000 n 
+0000001417 00000 n 
+0000001518 00000 n 
+0000001632 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R /Info 4 0 R >>
+startxref
+1734
+%%EOF

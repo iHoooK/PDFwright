@@ -26,6 +26,7 @@ export const ru = {
     imagesHint: 'JPG, PNG, WebP в\u00a0PDF',
     recent: 'Недавние',
     recentEmpty: 'Нет недавних файлов. Откройте PDF или перетащите его в\u00a0окно.',
+    removeRecent: 'Убрать из\u00a0списка',
     pages: 'стр.',
     soon: 'Появится в\u00a0следующих версиях'
   },
@@ -47,19 +48,29 @@ export const ru = {
     zoomOut: 'Уменьшить',
     search: 'Поиск в\u00a0документе',
     sidebar: 'Боковая панель',
-    props: 'Свойства'
+    props: 'Свойства',
+    zoomMenu: 'Режим масштаба',
+    fitWidth: 'По\u00a0ширине',
+    fitPage: 'Страница целиком',
+    zoomActual: 'Масштаб 100%'
   },
   sidebar: {
     thumbs: 'Страницы',
     outline: 'Закладки',
     search: 'Поиск',
     outlineEmpty: 'В\u00a0документе нет закладок.',
-    searchEmpty: 'Введите текст для поиска по\u00a0документу.'
+    outlineBroken: 'Закладка ведёт в\u00a0никуда.',
+    searchEmpty: 'Введите текст и\u00a0нажмите Enter. Shift+Enter — предыдущее совпадение.'
   },
   viewer: {
     emptyTitle: 'Документ ещё не\u00a0открыт',
     emptyLead:
-      'Просмотр появится в\u00a0фазе 2. Сейчас это каркас экрана с\u00a0условными страницами.',
+      'Откройте PDF через кнопку «+» на\u00a0панели вкладок или перетащите файл в\u00a0окно.',
+    loading: 'Открываем документ…',
+    errorTitle: 'Не\u00a0удалось открыть документ',
+    retry: 'Повторить',
+    closeTab: 'Закрыть вкладку',
+    printFailed: 'Печать не\u00a0выполнена',
     pageOf: (n: number, total: number) => `Страница ${n} из\u00a0${total}`,
     pageShort: (n: number, total: number) => `${n} / ${total}`,
     paperA4: 'A4 · 210 × 297 мм',
@@ -82,7 +93,10 @@ export const ru = {
     asContent: 'Часть содержимого страницы',
     saveNote: 'Аннотацию можно удалить в\u00a0любой программе. Содержимое страницы — нельзя.',
     document: 'Документ',
-    modified: 'Изменён'
+    modified: 'Изменён',
+    properties: 'Свойства документа',
+    annotationsSoon:
+      'Инструменты разметки появятся в\u00a0версии 0.2.0. Сейчас работают просмотр, выделение и\u00a0копирование текста.'
   },
   settings: {
     title: 'Параметры',
@@ -135,9 +149,46 @@ export const ru = {
     off: 'Выкл.',
     hotkeys: 'Горячие клавиши'
   },
+  password: {
+    title: 'Документ защищён паролем',
+    lead: (name: string) => `Введите пароль, чтобы открыть «${name}».`,
+    wrong: 'Неверный пароль. Попробуйте ещё раз.',
+    open: 'Открыть',
+    cancel: 'Отмена'
+  },
+  properties: {
+    title_: 'Свойства документа',
+    close: 'Закрыть',
+    file: 'Файл',
+    path: 'Расположение',
+    size: 'Размер файла',
+    pages: 'Страниц',
+    pageSize: 'Размер страницы',
+    title: 'Заголовок',
+    author: 'Автор',
+    subject: 'Тема',
+    keywords: 'Ключевые слова',
+    creator: 'Создано в',
+    producer: 'Обработано',
+    created: 'Дата создания',
+    modified: 'Дата изменения',
+    version: 'Версия PDF',
+    encrypted: 'Шифрование',
+    yes: 'Да',
+    no: 'Нет'
+  },
+  search: {
+    running: 'Ищем…',
+    none: (q: string) => `Ничего не найдено: «${q}»`,
+    found: (n: number, current: number) => `${current} из ${n}`,
+    prev: 'Предыдущее совпадение',
+    next: 'Следующее совпадение',
+    page: (n: number) => `стр. ${n}`
+  },
   toast: {
     soon: 'Появится в\u00a0следующих версиях',
-    linkBlocked: 'Открытие этого адреса не\u00a0разрешено'
+    linkBlocked: 'Открытие этого адреса не\u00a0разрешено',
+    dropFailed: 'Не\u00a0удалось определить путь к\u00a0файлу'
   }
 } as const
 

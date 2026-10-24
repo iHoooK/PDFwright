@@ -23,6 +23,7 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
+    publicDir: resolve(import.meta.dirname, 'src/renderer/public'),
     resolve: {
       alias: {
         '@shared': shared,

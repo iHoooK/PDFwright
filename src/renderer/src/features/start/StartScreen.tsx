@@ -1,8 +1,19 @@
-import { IconChevronRight, IconImage, IconMerge, IconOpen, IconSplit } from '@renderer/icons'
+import { IconClose, IconImage, IconMerge, IconOpen, IconSplit } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
+import { IconButton } from '@renderer/components/controls'
 import { useStore } from '@renderer/app/store'
 import s from './start.module.css'
+
+function formatOpened(ms: number): string {
+  if (ms <= 0) return ''
+  const date = new Date(ms)
+  const today = new Date()
+  const sameDay = date.toDateString() === today.toDateString()
+  return sameDay
+    ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+}
 
 export function StartScreen(): React.JSX.Element {
   const { state, actions } = useStore()
@@ -53,25 +64,33 @@ export function StartScreen(): React.JSX.Element {
             {state.recent.length === 0 ? (
               <p className={s.empty}>{t.start.recentEmpty}</p>
             ) : (
-              state.recent.map((d) => (
-                <button
-                  key={d.path}
-                  type="button"
-                  className={s.item}
-                  onClick={() => {
-                    actions.openDoc(d)
-                  }}
-                >
-                  <span className={s.thumb} aria-hidden="true" />
-                  <span>
-                    <span className={s.name}>{d.name}</span>
-                    <span className={s.meta}>{d.path}</span>
-                  </span>
-                  <span className={s.meta}>
-                    {d.pages} {t.start.pages}
-                  </span>
-                  <IconChevronRight />
-                </button>
+              state.recent.map((file) => (
+                <div key={file.path} className={s.item}>
+                  <button
+                    type="button"
+                    className={s.itemMain}
+                    title={file.path}
+                    onClick={() => {
+                      actions.openPath(file.path)
+                    }}
+                  >
+                    <span className={s.thumb} aria-hidden="true" />
+                    <span className={s.itemText}>
+                      <span className={s.name}>{file.name}</span>
+                      <span className={s.meta}>{file.path}</span>
+                    </span>
+                    <span className={s.meta}>{formatOpened(file.lastOpenedMs)}</span>
+                  </button>
+                  <IconButton
+                    label={`${t.start.removeRecent}: ${file.name}`}
+                    small
+                    onClick={() => {
+                      actions.removeRecent(file.path)
+                    }}
+                  >
+                    <IconClose />
+                  </IconButton>
+                </div>
               ))
             )}
           </div>

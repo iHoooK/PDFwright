@@ -20,7 +20,9 @@
     "node": ">=22"
   },
   "scripts": {
+    "predev": "node scripts/copy-pdfjs-assets.mjs",
     "dev": "electron-vite dev",
+    "prebuild": "node scripts/copy-pdfjs-assets.mjs",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
@@ -48,6 +50,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
+    "pdfjs-dist": "^6.4.299",
     "prettier": "^3.9.10",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

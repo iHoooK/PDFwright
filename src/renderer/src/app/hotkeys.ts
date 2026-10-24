@@ -14,6 +14,9 @@ export const HOTKEYS: readonly { keys: string; action: string }[] = [
   { keys: 'Ctrl + W', action: 'Закрыть документ' },
   { keys: 'Ctrl + F', action: 'Поиск в документе' },
   { keys: 'Ctrl + «+» / «−» / 0', action: 'Масштаб больше / меньше / 100%' },
+  { keys: 'Ctrl + 1 / 2', action: 'По ширине / страница целиком' },
+  { keys: 'Ctrl + R', action: 'Повернуть вид' },
+  { keys: 'Ctrl + колесо', action: 'Масштаб' },
   { keys: 'Ctrl + B', action: 'Боковая панель' },
   { keys: 'Ctrl + Shift + B', action: 'Панель свойств' },
   { keys: 'Ctrl + ,', action: 'Параметры' },
@@ -69,13 +72,25 @@ export function useHotkeys(): void {
         } else if (lower === 'w') {
           event.preventDefault()
           actions.closeDoc()
+        } else if (lower === 'p' && inViewer) {
+          event.preventDefault()
+          actions.print()
+        } else if (lower === 'r' && inViewer) {
+          event.preventDefault()
+          actions.rotate()
+        } else if (key === '1' && inViewer) {
+          event.preventDefault()
+          actions.setZoomMode('fit-width')
+        } else if (key === '2' && inViewer) {
+          event.preventDefault()
+          actions.setZoomMode('fit-page')
         }
         return
       }
       if (isTypingTarget(event.target) || !inViewer || event.altKey) return
       if (key === 'PageDown') {
         event.preventDefault()
-        actions.setPage(Math.min(state.page + 1, pageCount(state.docs.length)))
+        actions.setPage(state.page + 1)
       } else if (key === 'PageUp') {
         event.preventDefault()
         actions.setPage(Math.max(1, state.page - 1))
@@ -88,9 +103,5 @@ export function useHotkeys(): void {
     return () => {
       window.removeEventListener('keydown', onKey)
     }
-  }, [actions, inViewer, state.page, state.docs.length])
-}
-
-function pageCount(docs: number): number {
-  return docs > 0 ? 14 : 1
+  }, [actions, inViewer, state.page])
 }
