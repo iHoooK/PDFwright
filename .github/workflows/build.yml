@@ -16,7 +16,7 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -28,24 +28,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      # Та же команда, что у автора: проверки, сборка, установщик, portable, суммы.
+      - name: Release build
+        shell: bash
+        run: bash scripts/build-release.sh
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Build renderer, preload and main
-        run: npm run build
-
-      - name: Package unpacked app (smoke)
-        run: npx electron-builder --dir --publish never
-
-      - name: Verify unpacked executable exists
+      - name: Verify release files
         shell: pwsh
         run: |
-          $exe = Join-Path $env:GITHUB_WORKSPACE 'release/win-unpacked/PDFwright.exe'
-          if (-not (Test-Path $exe)) { throw "Unpacked executable not found: $exe" }
-          Get-Item $exe | Select-Object Name, Length
+          foreach ($name in 'PDFwright-Setup-x64.exe', 'PDFwright-Portable-x64.zip', 'SHA256SUMS.txt') {
+            $path = Join-Path $env:GITHUB_WORKSPACE "release/$name"
+            if (-not (Test-Path $path)) { throw "Release file not found: $path" }
+            Get-Item $path | Select-Object Name, Length
+          }
+          Get-Content (Join-Path $env:GITHUB_WORKSPACE 'release/SHA256SUMS.txt')
+
+      - name: Upload release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDFwright-win-x64
+          path: |
+            release/PDFwright-Setup-x64.exe
+            release/PDFwright-Portable-x64.zip
+            release/SHA256SUMS.txt
+          if-no-files-found: error

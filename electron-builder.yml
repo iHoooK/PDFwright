@@ -1,5 +1,6 @@
-# Конфигурация упаковки. Полная настройка установщика (языки, задачи,
-# ассоциация .pdf, иконки) — фаза 7; здесь минимум для CI и `--dir`.
+# Конфигурация упаковки electron-builder (фаза 7).
+# Установщик NSIS с выбором папки и дополнительными задачами (build/installer.nsh),
+# portable-архив собирается скриптом scripts/package-release.ps1 из win-unpacked.
 appId: ru.promptix.pdfwright
 productName: PDFwright
 copyright: Copyright © 2026 Promptix
@@ -15,6 +16,15 @@ files:
   - package.json
   - '!**/*.map'
 
+# Документы рядом с программой, как у ЛовиКадра.
+extraFiles:
+  - from: LICENSE
+    to: LICENSE.txt
+  - from: PRIVACY.md
+    to: PRIVACY.md
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+
 asar: true
 
 win:
@@ -22,9 +32,8 @@ win:
   target:
     - target: nsis
       arch: [x64]
-    - target: portable
-      arch: [x64]
   requestedExecutionLevel: asInvoker
+  legalTrademarks: Promptix
 
 nsis:
   oneClick: false
@@ -35,10 +44,18 @@ nsis:
   createStartMenuShortcut: true
   runAfterFinish: true
   deleteAppDataOnUninstall: false
+  multiLanguageInstaller: true
+  installerLanguages:
+    - ru_RU
+    - en_US
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  include: build/installer.nsh
   artifactName: ${productName}-Setup-x64.${ext}
   shortcutName: PDFwright
-
-portable:
-  artifactName: ${productName}-Portable-x64.${ext}
+  uninstallDisplayName: PDFwright
+  # Имя для «Установленных приложений» и пути обновления (фаза 8).
+  guid: 6D5C0B6E-3B2A-4F3E-9C1E-5A4B7C8D9E01
 
 publish: null

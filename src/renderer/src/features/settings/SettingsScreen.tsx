@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   IconBack,
   IconCopy,
@@ -22,6 +22,7 @@ import { Button, SelectField, SettingCard, Toggle } from '@renderer/components/c
 import { cx } from '@renderer/components/cx'
 import { useStore, type SettingsSection } from '@renderer/app/store'
 import { HOTKEYS } from '@renderer/app/hotkeys'
+import { LicensesDialog } from './LicensesDialog'
 import { DEVELOPER_LINKS, RELEASES_PAGE } from '@shared/external-links'
 import {
   SCROLL_MODES,
@@ -58,8 +59,9 @@ const SCROLL_LABELS: Record<ScrollMode, string> = {
 }
 
 export function SettingsScreen(): React.JSX.Element {
-  const { state, actions } = useStore()
+  const { state, actions, api } = useStore()
   const { settings, info } = state
+  const [licensesOpen, setLicensesOpen] = useState(false)
   const section = state.settingsSection
   const version = info?.version ?? '…'
   const kind = info
@@ -242,13 +244,28 @@ export function SettingsScreen(): React.JSX.Element {
                 </Button>
                 <Button
                   onClick={() => {
-                    actions.toast(t.toast.soon)
+                    setLicensesOpen(true)
                   }}
                 >
                   {t.settings.licenses}
                 </Button>
               </div>
             </SettingCard>
+            {info && (
+              <SettingCard
+                icon={<IconDocument />}
+                title={t.settings.dataFolder}
+                hint={info.userDataPath}
+              >
+                <Button
+                  onClick={() => {
+                    void api.showItemInFolder(info.userDataPath).catch(() => undefined)
+                  }}
+                >
+                  {t.settings.showFolder}
+                </Button>
+              </SettingCard>
+            )}
           </section>
         )}
 
@@ -258,6 +275,7 @@ export function SettingsScreen(): React.JSX.Element {
             <p className={s.lead}>{t.settings.authorLead}</p>
             <SettingCard icon={<IconPerson />} title="Promptix" column>
               <p className={s.text}>{t.settings.authorText}</p>
+              <p className={s.text}>{t.settings.authorText2}</p>
               <div className={s.links}>
                 {DEVELOPER_LINKS.map((link) => (
                   <button
@@ -278,6 +296,12 @@ export function SettingsScreen(): React.JSX.Element {
           </section>
         )}
       </div>
+      <LicensesDialog
+        open={licensesOpen}
+        onClose={() => {
+          setLicensesOpen(false)
+        }}
+      />
     </div>
   )
 }

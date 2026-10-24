@@ -115,3 +115,17 @@
   line-height: 1.5;
   user-select: text;
 }
+
+.licenseText {
+  margin: 0;
+  max-height: 52vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  font: 12px/1.5 var(--font-mono);
+  color: var(--ink-2);
+  background: var(--layer-solid);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 12px;
+  user-select: text;
+}
