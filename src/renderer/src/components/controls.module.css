@@ -1,0 +1,320 @@
+/* Базовые элементы управления «Ленты» (docs/DESIGN.md §4). */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-s);
+  background: var(--card);
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--ink-3);
+  color: var(--ink);
+  white-space: nowrap;
+  transition:
+    background var(--motion),
+    border-color var(--motion);
+}
+.btn:hover:not(:disabled) {
+  background: var(--layer);
+}
+.btn:active:not(:disabled) {
+  background: var(--line);
+}
+.btn:disabled {
+  opacity: 0.45;
+}
+.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.subtle {
+  background: transparent;
+  border-color: transparent;
+}
+.subtle:hover:not(:disabled) {
+  background: var(--layer);
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink-2);
+  border-radius: var(--r-s);
+  transition:
+    background var(--motion),
+    color var(--motion);
+}
+.iconBtn:hover:not(:disabled) {
+  background: var(--layer);
+  color: var(--ink);
+}
+.iconBtn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.iconBtn:disabled {
+  opacity: 0.45;
+}
+.iconBtnSmall {
+  width: 24px;
+  height: 24px;
+}
+
+.cmd {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 56px;
+  height: 52px;
+  padding: 4px 8px;
+  border-radius: var(--r-s);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background var(--motion),
+    color var(--motion);
+}
+.cmd:hover:not(:disabled) {
+  background: var(--layer);
+  color: var(--ink);
+}
+.cmd:active:not(:disabled) {
+  background: var(--line);
+}
+.cmd[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.cmd[aria-pressed='true'] svg {
+  stroke-width: 0.6px;
+  stroke: currentColor;
+}
+.cmd:disabled {
+  opacity: 0.45;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.toggle i {
+  display: block;
+  width: 40px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--ink-3);
+  position: relative;
+  transition:
+    background var(--motion),
+    border-color var(--motion);
+}
+.toggle i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink-2);
+  transition:
+    transform var(--motion),
+    background var(--motion);
+}
+.toggle[aria-checked='true'] i {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle[aria-checked='true'] i::after {
+  background: var(--accent-ink);
+  transform: translateX(20px);
+}
+.toggle:disabled {
+  opacity: 0.45;
+}
+
+.select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 170px;
+}
+.select select {
+  appearance: none;
+  width: 100%;
+  height: 32px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--ink-3);
+  border-radius: var(--r-s);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+.select select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.select svg {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: var(--ink-2);
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  text-align: left;
+}
+.radio i {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-3);
+  flex: none;
+  transition: border var(--motion);
+}
+.radio[aria-checked='true'] {
+  color: var(--ink);
+}
+.radio[aria-checked='true'] i {
+  border: 5px solid var(--accent);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  padding: 8px 10px 10px;
+  color: var(--ink-2);
+  font-size: 13px;
+  position: relative;
+  border-radius: var(--r-s) var(--r-s) 0 0;
+}
+.tab:hover {
+  color: var(--ink);
+  background: var(--layer);
+}
+.tab[aria-selected='true'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+}
+.cardColumn {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.cardTitle svg {
+  color: var(--ink-2);
+  flex: none;
+}
+.cardTitle b {
+  display: block;
+  font-weight: 500;
+}
+.cardTitle small {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(var(--h-statusbar) + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: var(--r);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+.toast::before {
+  content: '';
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.swatches {
+  display: flex;
+  gap: 6px;
+}
+.swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+.swatch[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--card) inset;
+}
+
+.range {
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-2);
+  accent-color: var(--accent);
+}

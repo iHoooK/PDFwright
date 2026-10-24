@@ -1,0 +1,127 @@
+/* Каркас окна: заголовок с вкладками, экран, строка состояния. */
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: var(--h-titlebar) 1fr var(--h-statusbar);
+  overflow: hidden;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 0 12px;
+  min-width: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-right: 10px;
+  padding-bottom: 6px;
+  flex: none;
+}
+.logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: block;
+}
+.tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  align-items: flex-end;
+  height: 100%;
+  overflow: hidden;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--r) var(--r) 0 0;
+  color: var(--ink-2);
+  max-width: 240px;
+  min-width: 0;
+  flex: 0 1 auto;
+  transition: background var(--motion);
+}
+.tab:hover {
+  background: var(--layer);
+}
+.tab[aria-selected='true'] {
+  background: var(--layer-solid);
+  color: var(--ink);
+  box-shadow:
+    0 -1px 0 var(--line),
+    -1px 0 0 var(--line),
+    1px 0 0 var(--line);
+}
+.tab > svg {
+  flex: none;
+}
+.tabName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tabClose {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--ink-3);
+  flex: none;
+  opacity: 0;
+  transition: opacity var(--motion);
+}
+.tab:hover .tabClose,
+.tab[aria-selected='true'] .tabClose,
+.tabClose:focus-visible {
+  opacity: 1;
+}
+.tabClose:hover {
+  background: var(--line-2);
+  color: var(--ink);
+}
+.tabAdd {
+  margin-bottom: 4px;
+  flex: none;
+}
+.actions {
+  display: flex;
+  gap: 2px;
+  padding-bottom: 6px;
+  flex: none;
+}
+
+.screen {
+  min-height: 0;
+  background: var(--layer-solid);
+  border-top: 1px solid var(--line);
+  display: grid;
+}
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 14px;
+  font-size: 12px;
+  color: var(--ink-3);
+  background: var(--layer-solid);
+  border-top: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.grow {
+  flex: 1;
+}
+.ok {
+  color: var(--success);
+}

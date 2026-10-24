@@ -6,7 +6,17 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default defineConfig(
-  { ignores: ['node_modules/**', 'out/**', 'dist/**', 'release/**', 'coverage/**'] },
+  {
+    ignores: [
+      'node_modules/**',
+      'out/**',
+      'dist/**',
+      'release/**',
+      'coverage/**',
+      'scripts/**',
+      'docs/**'
+    ]
+  },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,

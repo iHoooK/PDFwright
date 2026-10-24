@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { isAllowedExternalUrl } from '@shared/external-links'
 import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH } from '@shared/settings-schema'
 import { registerIpcHandlers } from './ipc'
+import { installApplicationMenu } from './menu'
 import { SettingsStore } from './services/settings-store'
 
 const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
@@ -25,6 +26,7 @@ async function bootstrap(): Promise<void> {
 
   applyContentSecurityPolicy()
   registerIpcHandlers(settings)
+  installApplicationMenu()
 
   const window = createMainWindow(settings)
 
@@ -52,8 +54,9 @@ function createMainWindow(settings: SettingsStore): BrowserWindow {
     minHeight: WINDOW_MIN_HEIGHT,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#1b1b1f',
+    backgroundColor: '#f3f3f3',
     title: 'PDFwright',
+    ...(app.isPackaged ? {} : { icon: join(app.getAppPath(), 'resources', 'icon-256.png') }),
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,

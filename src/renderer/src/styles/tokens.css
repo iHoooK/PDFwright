@@ -1,0 +1,72 @@
+/* Токены дизайн-системы «Лента» — источник правды docs/DESIGN.md §1–3.
+   Светлая тема по умолчанию; тёмная через [data-theme="dark"].
+   data-theme выставляет приложение (system → по prefers-color-scheme). */
+
+:root {
+  color-scheme: light;
+
+  --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, monospace;
+
+  --mica: linear-gradient(180deg, #f1f3f8 0%, #edf0f5 100%);
+  --bg: #f3f3f3;
+  --layer: rgba(255, 255, 255, 0.7);
+  --layer-solid: #fbfbfb;
+  --card: #ffffff;
+  --paper: #ffffff;
+  --ink: #1b1b1b;
+  --ink-2: #5d5d5d;
+  --ink-3: #8a8a8a;
+  --line: rgba(0, 0, 0, 0.08);
+  --line-2: rgba(0, 0, 0, 0.16);
+  --accent: #0067c0;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(0, 103, 192, 0.1);
+  --mark: #ffd86b;
+  --danger: #c42b1c;
+  --success: #0f7b0f;
+
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.1);
+  --page-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 10px 28px rgba(0, 0, 0, 0.14);
+
+  --r: 8px;
+  --r-s: 4px;
+
+  --h-titlebar: 46px;
+  --h-cmdbar: 60px;
+  --h-statusbar: 26px;
+  --w-sidebar: 236px;
+  --w-props: 252px;
+
+  --motion: 160ms ease-out;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --mica: linear-gradient(180deg, #202020 0%, #1c1c1c 100%);
+  --bg: #202020;
+  --layer: rgba(255, 255, 255, 0.055);
+  --layer-solid: #2b2b2b;
+  --card: #2b2b2b;
+  --paper: #ffffff;
+  --ink: #ffffff;
+  --ink-2: #c5c5c5;
+  --ink-3: #8f8f8f;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.16);
+  --accent: #4cc2ff;
+  --accent-ink: #003a5c;
+  --accent-soft: rgba(76, 194, 255, 0.14);
+  --danger: #ff99a4;
+  --success: #6ccb5f;
+
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --page-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 36px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0ms linear;
+  }
+}

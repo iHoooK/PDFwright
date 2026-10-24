@@ -1,0 +1,117 @@
+.settings {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 0;
+}
+.nav {
+  padding: 18px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.nav h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 12px 14px;
+}
+.navItem {
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: var(--r-s);
+  color: var(--ink-2);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  position: relative;
+  transition: background var(--motion);
+}
+.navItem:hover {
+  background: var(--layer);
+  color: var(--ink);
+}
+.navItem[aria-current='true'] {
+  background: var(--layer);
+  color: var(--ink);
+}
+.navItem[aria-current='true']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.back {
+  margin-top: auto;
+}
+.body {
+  overflow: auto;
+  padding: 28px 40px;
+}
+.section {
+  max-width: 760px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.section h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.lead {
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.link {
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: var(--r-s);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--layer-solid);
+  border: 1px solid var(--line);
+  text-align: left;
+  transition: background var(--motion);
+}
+.link:hover {
+  background: var(--layer);
+}
+.link > svg:first-child {
+  color: var(--accent);
+}
+.arrow {
+  margin-left: auto;
+  color: var(--ink-3);
+}
+.hotkeys {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.hotkeys kbd {
+  white-space: nowrap;
+}
+.text {
+  color: var(--ink-2);
+  margin: 0;
+  line-height: 1.5;
+  user-select: text;
+}

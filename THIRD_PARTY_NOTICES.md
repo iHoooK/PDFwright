@@ -4,10 +4,11 @@
 
 Таблица ниже перечисляет компоненты, попадающие в поставку пользователю. Инструменты сборки (Vite, TypeScript, ESLint, Prettier, Vitest, electron-builder) в программу не включаются. Перед каждым релизом таблица сверяется с `package-lock.json`.
 
-| Компонент                             | Назначение                  | Лицензия / источник                                                                                                |
-| ------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Electron (включая Chromium и Node.js) | Среда выполнения приложения | MIT; Chromium — BSD-3-Clause и лицензии его компонентов; [electron/electron](https://github.com/electron/electron) |
-| React, React DOM                      | Интерфейс                   | MIT; [facebook/react](https://github.com/facebook/react)                                                           |
+| Компонент                                        | Назначение                  | Лицензия / источник                                                                                                |
+| ------------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Electron (включая Chromium и Node.js)            | Среда выполнения приложения | MIT; Chromium — BSD-3-Clause и лицензии его компонентов; [electron/electron](https://github.com/electron/electron) |
+| React, React DOM                                 | Интерфейс                   | MIT; [facebook/react](https://github.com/facebook/react)                                                           |
+| Fluent UI System Icons (`@fluentui/react-icons`) | Иконки интерфейса           | MIT; [microsoft/fluentui-system-icons](https://github.com/microsoft/fluentui-system-icons)                         |
 
 Планируется добавить при реализации соответствующих фаз:
 
