@@ -67,7 +67,7 @@ export function AppShell(): React.JSX.Element {
               }}
             >
               <IconDocument />
-              <span className={s.tabName}>{d.name}</span>
+              <span className={s.tabName}>{d.dirty ? `${d.name} •` : d.name}</span>
               <span
                 role="button"
                 tabIndex={0}
@@ -75,13 +75,13 @@ export function AppShell(): React.JSX.Element {
                 aria-label={`${t.app.closeTab}: ${d.name}`}
                 onClick={(event) => {
                   event.stopPropagation()
-                  actions.closeDoc(d.id)
+                  actions.requestCloseDoc(d.id)
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
                     event.stopPropagation()
-                    actions.closeDoc(d.id)
+                    actions.requestCloseDoc(d.id)
                   }
                 }}
               >
@@ -136,7 +136,12 @@ export function AppShell(): React.JSX.Element {
         <span>
           <kbd>Ctrl</kbd> + <kbd>F</kbd> {t.viewer.searchHint}
         </span>
-        {doc?.status === 'ready' && <span className={s.ok}>{t.viewer.saved}</span>}
+        {doc?.status === 'ready' &&
+          (doc.dirty ? (
+            <span className={s.warn}>{t.viewer.unsaved}</span>
+          ) : (
+            <span className={s.ok}>{t.viewer.saved}</span>
+          ))}
       </footer>
 
       <Toast message={state.toast} />

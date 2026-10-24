@@ -3,6 +3,8 @@ import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
 import { IconButton } from '@renderer/components/controls'
 import { useStore } from '@renderer/app/store'
+import { MergeDialog } from '@renderer/features/tools/MergeDialog'
+import { SplitDialog } from '@renderer/features/tools/SplitDialog'
 import s from './start.module.css'
 
 function formatOpened(ms: number): string {
@@ -41,12 +43,24 @@ export function StartScreen(): React.JSX.Element {
             <b>{t.start.open}</b>
             <small>{t.start.openHint}</small>
           </button>
-          <button type="button" className={s.tile} onClick={soon}>
+          <button
+            type="button"
+            className={s.tile}
+            onClick={() => {
+              actions.openTool('merge')
+            }}
+          >
             <IconMerge />
             <b>{t.start.merge}</b>
             <small>{t.start.mergeHint}</small>
           </button>
-          <button type="button" className={s.tile} onClick={soon}>
+          <button
+            type="button"
+            className={s.tile}
+            onClick={() => {
+              actions.openTool('split')
+            }}
+          >
             <IconSplit />
             <b>{t.start.split}</b>
             <small>{t.start.splitHint}</small>
@@ -96,6 +110,8 @@ export function StartScreen(): React.JSX.Element {
           </div>
         </section>
       </div>
+      <MergeDialog />
+      <SplitDialog />
     </div>
   )
 }

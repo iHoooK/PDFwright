@@ -12,6 +12,12 @@ export const HOTKEYS: readonly { keys: string; action: string }[] = [
   { keys: 'Ctrl + Shift + S', action: 'Сохранить как' },
   { keys: 'Ctrl + P', action: 'Печать' },
   { keys: 'Ctrl + W', action: 'Закрыть документ' },
+  { keys: 'Ctrl + Z / Ctrl + Y', action: 'Отменить / повторить операцию' },
+  { keys: 'Ctrl + G', action: 'Режим «Страницы»' },
+  {
+    keys: 'Delete, Ctrl + A, Esc',
+    action: 'В режиме «Страницы»: удалить, выбрать все, снять выбор'
+  },
   { keys: 'Ctrl + F', action: 'Поиск в документе' },
   { keys: 'Ctrl + «+» / «−» / 0', action: 'Масштаб больше / меньше / 100%' },
   { keys: 'Ctrl + 1 / 2', action: 'По ширине / страница целиком' },
@@ -40,6 +46,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export function useHotkeys(): void {
   const { state, actions } = useStore()
   const inViewer = state.screen === 'viewer'
+  const pagesMode = state.pagesMode
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -71,7 +78,24 @@ export function useHotkeys(): void {
           actions.openSettings()
         } else if (lower === 'w') {
           event.preventDefault()
-          actions.closeDoc()
+          actions.requestCloseDoc()
+        } else if (lower === 's' && inViewer) {
+          event.preventDefault()
+          if (event.shiftKey) void actions.saveAs()
+          else void actions.save()
+        } else if (lower === 'z' && inViewer && !isTypingTarget(event.target)) {
+          event.preventDefault()
+          if (event.shiftKey) actions.redo()
+          else actions.undo()
+        } else if (lower === 'y' && inViewer && !isTypingTarget(event.target)) {
+          event.preventDefault()
+          actions.redo()
+        } else if (lower === 'g' && inViewer) {
+          event.preventDefault()
+          actions.togglePagesMode()
+        } else if (lower === 'a' && inViewer && pagesMode && !isTypingTarget(event.target)) {
+          event.preventDefault()
+          actions.selectAll()
         } else if (lower === 'p' && inViewer) {
           event.preventDefault()
           actions.print()
@@ -88,6 +112,15 @@ export function useHotkeys(): void {
         return
       }
       if (isTypingTarget(event.target) || !inViewer || event.altKey) return
+      if (pagesMode && key === 'Delete') {
+        event.preventDefault()
+        actions.deleteSelected()
+        return
+      }
+      if (pagesMode && key === 'Escape') {
+        actions.selectNone()
+        return
+      }
       if (key === 'PageDown') {
         event.preventDefault()
         actions.setPage(state.page + 1)
@@ -103,5 +136,5 @@ export function useHotkeys(): void {
     return () => {
       window.removeEventListener('keydown', onKey)
     }
-  }, [actions, inViewer, state.page])
+  }, [actions, inViewer, pagesMode, state.page])
 }

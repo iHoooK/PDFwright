@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  IconCopy,
   IconDelete,
   IconHand,
   IconInfo,
@@ -34,6 +35,7 @@ import {
   Swatches,
   Tabs
 } from '@renderer/components/controls'
+import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import {
   activeDoc,
   MARK_COLORS,
@@ -42,8 +44,10 @@ import {
   type SidebarTab,
   type Tool
 } from '@renderer/app/store'
+import { MergeDialog } from '@renderer/features/tools/MergeDialog'
+import { SplitDialog } from '@renderer/features/tools/SplitDialog'
 import { DocumentView } from './DocumentView'
-import { PageThumbnail } from './PageThumbnail'
+import { PagesGrid } from './PagesGrid'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { OutlinePanel, SearchPanel, ThumbsPanel } from './SidebarPanels'
@@ -71,11 +75,19 @@ export function ViewerScreen(): React.JSX.Element {
   const doc = tab?.doc ?? null
   const readyDoc = tab && doc && tab.status === 'ready' ? { tab, doc } : null
   const ready = readyDoc !== null
+  const busy = tab?.busy ?? false
+  const canEdit = ready && !busy
+  const dirty = readyDoc?.tab.dirty ?? false
+  const canUndo = (readyDoc?.tab.history.length ?? 0) > 0
+  const canRedo = (readyDoc?.tab.future.length ?? 0) > 0
+  const selectedCount = state.selectedPages.size
   const soon = (): void => {
     actions.toast(t.toast.soon)
   }
   const toolLabel = TOOL_META.find((m) => m.tool === state.tool)?.label ?? ''
   const zoomLabel = `${state.resolvedZoom}%`
+  const closing =
+    state.closeConfirm !== null ? state.docs.find((d) => d.id === state.closeConfirm) : null
 
   return (
     <div
@@ -91,8 +103,8 @@ export function ViewerScreen(): React.JSX.Element {
           icon={<IconSave />}
           label={t.cmd.save}
           hotkey="Ctrl+S"
-          onClick={soon}
-          disabled={!ready}
+          onClick={() => void actions.save()}
+          disabled={!canEdit || !dirty}
         />
         <Command
           icon={<IconPrint />}
@@ -101,8 +113,20 @@ export function ViewerScreen(): React.JSX.Element {
           onClick={actions.print}
           disabled={!ready}
         />
-        <Command icon={<IconUndo />} label={t.cmd.undo} hotkey="Ctrl+Z" onClick={soon} disabled />
-        <Command icon={<IconRedo />} label={t.cmd.redo} hotkey="Ctrl+Y" onClick={soon} disabled />
+        <Command
+          icon={<IconUndo />}
+          label={t.cmd.undo}
+          hotkey="Ctrl+Z"
+          onClick={actions.undo}
+          disabled={!canEdit || !canUndo}
+        />
+        <Command
+          icon={<IconRedo />}
+          label={t.cmd.redo}
+          hotkey="Ctrl+Y"
+          onClick={actions.redo}
+          disabled={!canEdit || !canRedo}
+        />
         <span className={s.sep} />
         {TOOL_META.map((m) => (
           <Command
@@ -120,6 +144,7 @@ export function ViewerScreen(): React.JSX.Element {
         <Command
           icon={<IconPages />}
           label={t.cmd.pages}
+          hotkey="Ctrl+G"
           pressed={state.pagesMode}
           disabled={!ready}
           onClick={() => {
@@ -197,42 +222,67 @@ export function ViewerScreen(): React.JSX.Element {
       {state.pagesMode && readyDoc ? (
         <>
           <div className={s.pagesActions} role="toolbar" aria-label={t.cmd.pages}>
-            <span className={s.count}>{t.pages.selected(state.selectedPages.size)}</span>
+            <span className={s.count} title={t.pages.hint}>
+              {t.pages.selected(selectedCount)}
+            </span>
+            <Button
+              variant="subtle"
+              onClick={
+                selectedCount === readyDoc.tab.pages ? actions.selectNone : actions.selectAll
+              }
+            >
+              {selectedCount === readyDoc.tab.pages ? t.pages.selectNone : t.pages.selectAll}
+            </Button>
             <span className={s.spacer} />
             <Command
               icon={<IconRotate />}
-              label={t.pages.rotate}
-              onClick={soon}
-              disabled={state.selectedPages.size === 0}
+              label={t.pages.rotateCw}
+              onClick={() => {
+                actions.rotateSelected(90)
+              }}
+              disabled={!canEdit || selectedCount === 0}
+            />
+            <Command
+              icon={<IconRotate style={{ transform: 'scaleX(-1)' }} />}
+              label={t.pages.rotateCcw}
+              onClick={() => {
+                actions.rotateSelected(270)
+              }}
+              disabled={!canEdit || selectedCount === 0}
+            />
+            <Command
+              icon={<IconCopy />}
+              label={t.pages.duplicate}
+              onClick={actions.duplicateSelected}
+              disabled={!canEdit || selectedCount === 0}
             />
             <Command
               icon={<IconSplit />}
               label={t.pages.extract}
-              onClick={soon}
-              disabled={state.selectedPages.size === 0}
+              onClick={actions.extractSelected}
+              disabled={!canEdit || selectedCount === 0}
             />
-            <Command icon={<IconInsert />} label={t.pages.insert} onClick={soon} />
+            <Command
+              icon={<IconInsert />}
+              label={t.pages.insert}
+              onClick={actions.insertFromFile}
+              disabled={!canEdit}
+            />
+            <Command
+              icon={<IconPages />}
+              label={t.pages.blank}
+              onClick={actions.insertBlank}
+              disabled={!canEdit}
+            />
             <Command
               icon={<IconDelete />}
               label={t.pages.remove}
-              onClick={soon}
-              disabled={state.selectedPages.size === 0}
+              hotkey="Delete"
+              onClick={actions.deleteSelected}
+              disabled={!canEdit || selectedCount === 0 || selectedCount >= readyDoc.tab.pages}
             />
           </div>
-          <div className={s.pagesGrid}>
-            {Array.from({ length: readyDoc.tab.pages }, (_, i) => (
-              <PageThumbnail
-                key={i}
-                doc={readyDoc.doc}
-                pageNumber={i + 1}
-                rotation={state.rotation}
-                selected={state.selectedPages.has(i + 1)}
-                onClick={() => {
-                  actions.togglePage(i + 1)
-                }}
-              />
-            ))}
-          </div>
+          <PagesGrid tab={readyDoc.tab} doc={readyDoc.doc} />
         </>
       ) : (
         <>
@@ -277,7 +327,7 @@ export function ViewerScreen(): React.JSX.Element {
                     </Button>
                     <Button
                       onClick={() => {
-                        actions.closeDoc(tab.id)
+                        actions.requestCloseDoc(tab.id)
                       }}
                     >
                       {t.viewer.closeTab}
@@ -341,16 +391,57 @@ export function ViewerScreen(): React.JSX.Element {
                   <br />
                   {tab.path}
                 </p>
-                <Button icon={<IconInfo />} onClick={actions.openProperties} disabled={!ready}>
-                  {t.props.properties}
-                </Button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button icon={<IconInfo />} onClick={actions.openProperties} disabled={!ready}>
+                    {t.props.properties}
+                  </Button>
+                  <Button onClick={() => void actions.saveAs()} disabled={!canEdit}>
+                    {t.cmd.saveAs}
+                  </Button>
+                </div>
               </div>
             )}
           </aside>
         </>
       )}
+      {busy && (
+        <div className={s.busy} role="status">
+          {t.viewer.busy}
+        </div>
+      )}
       <PasswordDialog />
       <PropertiesDialog />
+      <MergeDialog />
+      <SplitDialog />
+      <ConfirmDialog
+        open={closing !== null && closing !== undefined}
+        title={t.confirm.closeTitle}
+        message={t.confirm.closeText(closing?.name ?? '')}
+        onCancel={() => {
+          actions.confirmClose('cancel')
+        }}
+        actions={[
+          {
+            label: t.confirm.cancel,
+            onClick: () => {
+              actions.confirmClose('cancel')
+            }
+          },
+          {
+            label: t.confirm.discard,
+            onClick: () => {
+              actions.confirmClose('discard')
+            }
+          },
+          {
+            label: t.confirm.save,
+            variant: 'primary',
+            onClick: () => {
+              actions.confirmClose('save')
+            }
+          }
+        ]}
+      />
     </div>
   )
 }

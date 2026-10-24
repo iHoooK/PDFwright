@@ -213,11 +213,12 @@ export interface LoadOptions {
 }
 
 export async function loadPdfDocument(
-  bytes: ArrayBuffer,
+  bytes: ArrayBuffer | Uint8Array,
   options: LoadOptions
 ): Promise<PdfDocument> {
+  // pdf.js передаёт буфер в worker и отсоединяет его, поэтому отдаём копию.
   const task = pdfjs.getDocument({
-    data: new Uint8Array(bytes),
+    data: new Uint8Array(bytes).slice(),
     cMapUrl: `${ASSETS}cmaps/`,
     cMapPacked: true,
     standardFontDataUrl: `${ASSETS}standard_fonts/`,

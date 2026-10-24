@@ -40,13 +40,24 @@ export function installApplicationMenu(): void {
     {
       label: 'Правка',
       submenu: [
-        { label: 'Отменить', role: 'undo' },
-        { label: 'Повторить', role: 'redo' },
+        // Без ускорителей: Ctrl+Z/Y обрабатывает renderer, чтобы в полях ввода
+        // работала обычная отмена текста, а в документе — отмена операций.
+        item('Отменить', 'edit.undo'),
+        item('Повторить', 'edit.redo'),
         { type: 'separator' },
         { label: 'Копировать', role: 'copy' },
         { label: 'Выделить всё', role: 'selectAll' },
         { type: 'separator' },
         item('Найти…', 'edit.find', 'CmdOrCtrl+F')
+      ]
+    },
+    {
+      label: 'Инструменты',
+      submenu: [
+        item('Объединить файлы…', 'tools.merge'),
+        item('Разделить документ…', 'tools.split'),
+        { type: 'separator' },
+        item('Режим «Страницы»', 'view.pages', 'CmdOrCtrl+G')
       ]
     },
     {

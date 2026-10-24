@@ -125,3 +125,7 @@
 .ok {
   color: var(--success);
 }
+
+.warn {
+  color: var(--danger);
+}

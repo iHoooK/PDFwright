@@ -20,13 +20,26 @@ import {
   type ZoomMode as DefaultZoomMode
 } from '@shared/settings-schema'
 import {
+  computeMoveOrder,
+  deletePages,
+  duplicatePages,
+  extractPages,
+  formatPageList,
+  insertBlankPage,
+  insertPagesFrom,
+  isIdentityOrder,
+  reorderPages,
+  rotatePages
+} from '@shared/pdf-ops'
+import { findMatches, type TextMatch } from '@shared/pdf-search'
+import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
+import {
   loadPdfDocument,
   PdfLoadError,
   type PasswordReason,
   type PdfDocument,
   type Rotation
 } from '@renderer/pdf-engine/engine'
-import { findMatches, type TextMatch } from '@shared/pdf-search'
 import { t } from '@renderer/i18n'
 import { getApi } from './api'
 import { applyTheme, resolvedTheme } from './theme'
@@ -36,6 +49,8 @@ export type Tool = 'select' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 's
 export type SidebarTab = 'thumbs' | 'outline' | 'search'
 export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author'
 export type ZoomMode = 'fit-width' | 'fit-page' | 'custom'
+export type ToolDialog = 'merge' | 'split' | null
+export type SelectMode = 'single' | 'toggle' | 'range'
 
 export interface DocTab {
   id: string
@@ -48,11 +63,16 @@ export interface DocTab {
   error: string | null
   /** Растёт по мере чтения размеров страниц, чтобы раскладка обновлялась. */
   sizesVersion: number
+  /** Текущие байты документа со всеми применёнными правками. */
+  bytes: Uint8Array | null
+  dirty: boolean
+  history: Uint8Array[]
+  future: Uint8Array[]
+  busy: boolean
 }
 
 export interface ZoomState {
   mode: ZoomMode
-  /** Проценты для режима custom; в fit-режимах фактическое значение считает DocumentView. */
   percent: number
 }
 
@@ -86,6 +106,8 @@ export const TOOL_KEYS: Record<Tool, string> = {
   sign: 'S'
 }
 export const MARK_COLORS = ['#ffd86b', '#9be39b', '#9fd3ff', '#ffb0c8', '#d7bfff'] as const
+/** Сколько шагов отмены хранить на документ (каждый шаг — полная копия байтов). */
+const HISTORY_LIMIT = 12
 
 export interface State {
   ready: boolean
@@ -108,9 +130,12 @@ export interface State {
   page: number
   scrollRequest: { page: number; token: number } | null
   selectedPages: ReadonlySet<number>
+  selectionAnchor: number | null
   search: SearchState
   passwordRequest: PasswordRequest | null
   propertiesOpen: boolean
+  closeConfirm: string | null
+  toolDialog: ToolDialog
   settingsSection: SettingsSection
 }
 
@@ -121,9 +146,21 @@ type Action =
   | { type: 'screen'; screen: Screen }
   | { type: 'settingsSection'; section: SettingsSection }
   | { type: 'docOpen'; doc: DocTab }
-  | { type: 'docReady'; id: string; doc: PdfDocument; pages: number; fileSize: number }
+  | { type: 'docReady'; id: string; doc: PdfDocument; bytes: Uint8Array; fileSize: number }
   | { type: 'docError'; id: string; error: string }
   | { type: 'docSizes'; id: string }
+  | { type: 'docBusy'; id: string; busy: boolean }
+  | {
+      type: 'docReplace'
+      id: string
+      doc: PdfDocument
+      bytes: Uint8Array
+      history: Uint8Array[]
+      future: Uint8Array[]
+      dirty: boolean
+      selectedPages: ReadonlySet<number>
+    }
+  | { type: 'docSaved'; id: string; path: string }
   | { type: 'closeDoc'; id: string }
   | { type: 'activateDoc'; id: string }
   | { type: 'toast'; message: string | null }
@@ -137,10 +174,12 @@ type Action =
   | { type: 'markColor'; color: string }
   | { type: 'pagesMode'; on?: boolean }
   | { type: 'page'; page: number; scroll: boolean }
-  | { type: 'togglePage'; page: number }
+  | { type: 'selection'; pages: ReadonlySet<number>; anchor: number | null }
   | { type: 'search'; search: SearchState }
   | { type: 'password'; request: PasswordRequest | null }
   | { type: 'properties'; open: boolean }
+  | { type: 'closeConfirm'; id: string | null }
+  | { type: 'toolDialog'; dialog: ToolDialog }
 
 const EMPTY_SEARCH: SearchState = { query: '', matches: [], active: 0, running: false }
 
@@ -169,9 +208,12 @@ const initial: State = {
   page: 1,
   scrollRequest: null,
   selectedPages: new Set(),
+  selectionAnchor: null,
   search: EMPTY_SEARCH,
   passwordRequest: null,
   propertiesOpen: false,
+  closeConfirm: null,
+  toolDialog: null,
   settingsSection: 'general'
 }
 
@@ -183,11 +225,16 @@ function resetView(state: State): State {
     page: 1,
     scrollRequest: null,
     selectedPages: new Set(),
+    selectionAnchor: null,
     search: EMPTY_SEARCH,
     rotation: 0,
     pagesMode: false,
     zoom: zoomFromSetting(state.settings.viewer.defaultZoom)
   }
+}
+
+function updateDoc(state: State, id: string, patch: (d: DocTab) => DocTab): State {
+  return { ...state, docs: state.docs.map((d) => (d.id === id ? patch(d) : d)) }
 }
 
 function reducer(state: State, action: Action): State {
@@ -217,35 +264,49 @@ function reducer(state: State, action: Action): State {
         screen: 'viewer'
       }
     case 'docReady':
-      return {
-        ...state,
-        docs: state.docs.map((d) =>
-          d.id === action.id
-            ? {
-                ...d,
-                status: 'ready',
-                doc: action.doc,
-                pages: action.pages,
-                fileSize: action.fileSize,
-                error: null
-              }
-            : d
-        )
-      }
+      return updateDoc(state, action.id, (d) => ({
+        ...d,
+        status: 'ready',
+        doc: action.doc,
+        pages: action.doc.numPages,
+        bytes: action.bytes,
+        fileSize: action.fileSize,
+        error: null
+      }))
     case 'docError':
-      return {
-        ...state,
-        docs: state.docs.map((d) =>
-          d.id === action.id ? { ...d, status: 'error', error: action.error } : d
-        )
-      }
+      return updateDoc(state, action.id, (d) => ({ ...d, status: 'error', error: action.error }))
     case 'docSizes':
+      return updateDoc(state, action.id, (d) => ({ ...d, sizesVersion: d.sizesVersion + 1 }))
+    case 'docBusy':
+      return updateDoc(state, action.id, (d) => ({ ...d, busy: action.busy }))
+    case 'docReplace': {
+      const next = updateDoc(state, action.id, (d) => ({
+        ...d,
+        doc: action.doc,
+        pages: action.doc.numPages,
+        bytes: action.bytes,
+        history: action.history,
+        future: action.future,
+        dirty: action.dirty,
+        busy: false,
+        sizesVersion: d.sizesVersion + 1
+      }))
+      const page = Math.min(state.page, action.doc.numPages)
       return {
-        ...state,
-        docs: state.docs.map((d) =>
-          d.id === action.id ? { ...d, sizesVersion: d.sizesVersion + 1 } : d
-        )
+        ...next,
+        page,
+        selectedPages: action.selectedPages,
+        selectionAnchor: null,
+        search: EMPTY_SEARCH
       }
+    }
+    case 'docSaved':
+      return updateDoc(state, action.id, (d) => ({
+        ...d,
+        dirty: false,
+        path: action.path,
+        name: basenameOf(action.path)
+      }))
     case 'closeDoc': {
       const index = state.docs.findIndex((d) => d.id === action.id)
       const closing = state.docs[index]
@@ -258,6 +319,7 @@ function reducer(state: State, action: Action): State {
         ...next,
         docs,
         activeId,
+        closeConfirm: state.closeConfirm === action.id ? null : state.closeConfirm,
         screen: activeId === null && state.screen === 'viewer' ? 'start' : state.screen
       }
     }
@@ -297,18 +359,18 @@ function reducer(state: State, action: Action): State {
           ? { page: action.page, token: ++scrollToken }
           : state.scrollRequest
       }
-    case 'togglePage': {
-      const selectedPages = new Set(state.selectedPages)
-      if (selectedPages.has(action.page)) selectedPages.delete(action.page)
-      else selectedPages.add(action.page)
-      return { ...state, selectedPages }
-    }
+    case 'selection':
+      return { ...state, selectedPages: action.pages, selectionAnchor: action.anchor }
     case 'search':
       return { ...state, search: action.search }
     case 'password':
       return { ...state, passwordRequest: action.request }
     case 'properties':
       return { ...state, propertiesOpen: action.open }
+    case 'closeConfirm':
+      return { ...state, closeConfirm: action.id }
+    case 'toolDialog':
+      return { ...state, toolDialog: action.dialog }
   }
 }
 
@@ -318,7 +380,8 @@ export interface Actions {
   openDialog: () => Promise<void>
   openPath: (path: string) => void
   openFiles: (files: FileList | File[]) => void
-  closeDoc: (id?: string) => void
+  requestCloseDoc: (id?: string) => void
+  confirmClose: (choice: 'save' | 'discard' | 'cancel') => void
   activateDoc: (id: string) => void
   removeRecent: (path: string) => void
   updateSettings: (patch: SettingsPatch) => Promise<void>
@@ -338,7 +401,9 @@ export interface Actions {
   toggleProps: (on?: boolean) => void
   setPage: (page: number) => void
   pageFromScroll: (page: number) => void
-  togglePage: (page: number) => void
+  selectPage: (page: number, mode: SelectMode) => void
+  selectAll: () => void
+  selectNone: () => void
   search: (query: string) => void
   searchStep: (delta: 1 | -1) => void
   searchGo: (index: number) => void
@@ -347,6 +412,19 @@ export interface Actions {
   print: () => void
   openExternal: (url: string) => void
   focusSearch: () => void
+  // Правка страниц
+  rotateSelected: (delta: 90 | 270) => void
+  deleteSelected: () => void
+  duplicateSelected: () => void
+  insertBlank: () => void
+  insertFromFile: () => void
+  extractSelected: () => void
+  movePages: (target: number) => void
+  undo: () => void
+  redo: () => void
+  save: () => Promise<boolean>
+  saveAs: () => Promise<boolean>
+  openTool: (dialog: ToolDialog) => void
 }
 
 interface Store {
@@ -362,7 +440,15 @@ export function activeDoc(state: State): DocTab | null {
   return state.docs.find((d) => d.id === state.activeId) ?? null
 }
 
+export function selectedList(state: State): number[] {
+  return [...state.selectedPages].sort((a, b) => a - b)
+}
+
 let docCounter = 0
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+}
 
 export function StoreProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const api = useMemo(() => getApi(), [])
@@ -380,7 +466,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => {
       dispatch({ type: 'toast', message: null })
-    }, 2200)
+    }, 2600)
   }, [])
 
   const refreshRecent = useCallback(() => {
@@ -402,7 +488,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       if (existing) dispatch({ type: 'closeDoc', id: existing.id })
       docCounter += 1
       const id = `doc-${docCounter}`
-      const name = path.split(/[\\/]/).pop() ?? path
+      const name = basenameOf(path)
       dispatch({
         type: 'docOpen',
         doc: {
@@ -414,7 +500,12 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           pages: 0,
           fileSize: 0,
           error: null,
-          sizesVersion: 0
+          sizesVersion: 0,
+          bytes: null,
+          dirty: false,
+          history: [],
+          future: [],
+          busy: false
         }
       })
       const askPassword = (reason: PasswordReason): Promise<string | null> =>
@@ -434,12 +525,13 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       void (async () => {
         try {
           const file = await api.readFile(path)
-          const doc = await loadPdfDocument(file.bytes, { askPassword })
+          const bytes = new Uint8Array(file.bytes)
+          const doc = await loadPdfDocument(bytes, { askPassword })
           if (!stateRef.current.docs.some((d) => d.id === id)) {
             doc.destroy()
             return
           }
-          dispatch({ type: 'docReady', id, doc, pages: doc.numPages, fileSize: file.size })
+          dispatch({ type: 'docReady', id, doc, bytes, fileSize: file.size })
           console.info(`[pdfwright] документ открыт: ${name}, страниц: ${doc.numPages}`)
           void doc.loadSizes(() => {
             dispatch({ type: 'docSizes', id })
@@ -474,6 +566,12 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     return api.onOpenFile(openPath)
   }, [api, openPath])
 
+  // main спрашивает подтверждение при закрытии окна, если есть несохранённые документы.
+  const dirtyCount = state.docs.filter((d) => d.dirty).length
+  useEffect(() => {
+    api.setDirtyCount(dirtyCount).catch(() => undefined)
+  }, [api, dirtyCount])
+
   const updateSettings = useCallback(
     async (patch: SettingsPatch) => {
       const settings = await api.updateSettings(patch)
@@ -487,6 +585,124 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     const file = await api.openPdfDialog()
     if (file) openPath(file.path)
   }, [api, openPath])
+
+  /**
+   * Применяет операцию pdf-lib к активному документу: новые байты, перезагрузка
+   * просмотра, запись в историю отмены. Селекция после операции задаётся явно.
+   */
+  const applyOperation = useCallback(
+    async (
+      run: (bytes: Uint8Array) => Promise<Uint8Array>,
+      options: {
+        message?: string
+        select?: (order: number[] | null) => ReadonlySet<number>
+        order?: number[]
+      } = {}
+    ): Promise<boolean> => {
+      const tab = activeDoc(stateRef.current)
+      if (tab?.status !== 'ready' || !tab.bytes || tab.busy) return false
+      dispatch({ type: 'docBusy', id: tab.id, busy: true })
+      try {
+        const bytes = await run(tab.bytes)
+        const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
+        const previous = tab.doc
+        const history = [...tab.history, tab.bytes].slice(-HISTORY_LIMIT)
+        dispatch({
+          type: 'docReplace',
+          id: tab.id,
+          doc,
+          bytes,
+          history,
+          future: [],
+          dirty: true,
+          selectedPages: options.select ? options.select(options.order ?? null) : new Set()
+        })
+        previous?.destroy()
+        void doc.loadSizes(() => {
+          dispatch({ type: 'docSizes', id: tab.id })
+        })
+        if (options.message !== undefined) toast(options.message)
+        return true
+      } catch (error) {
+        dispatch({ type: 'docBusy', id: tab.id, busy: false })
+        toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+        return false
+      }
+    },
+    [toast]
+  )
+
+  const restoreBytes = useCallback(
+    async (direction: 'undo' | 'redo') => {
+      const tab = activeDoc(stateRef.current)
+      if (tab?.status !== 'ready' || !tab.bytes || tab.busy) return
+      const source = direction === 'undo' ? tab.history : tab.future
+      const bytes = source[source.length - 1]
+      if (!bytes) return
+      dispatch({ type: 'docBusy', id: tab.id, busy: true })
+      try {
+        const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
+        const previous = tab.doc
+        const history =
+          direction === 'undo' ? tab.history.slice(0, -1) : [...tab.history, tab.bytes]
+        const future = direction === 'undo' ? [...tab.future, tab.bytes] : tab.future.slice(0, -1)
+        dispatch({
+          type: 'docReplace',
+          id: tab.id,
+          doc,
+          bytes,
+          history,
+          future,
+          dirty: true,
+          selectedPages: new Set()
+        })
+        previous?.destroy()
+        void doc.loadSizes(() => {
+          dispatch({ type: 'docSizes', id: tab.id })
+        })
+        toast(direction === 'undo' ? t.ops.undone : t.ops.redone)
+      } catch (error) {
+        dispatch({ type: 'docBusy', id: tab.id, busy: false })
+        toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    },
+    [toast]
+  )
+
+  const writeTab = useCallback(
+    async (tab: DocTab, path: string): Promise<boolean> => {
+      if (!tab.bytes) return false
+      try {
+        await api.writeFile({
+          path,
+          bytes: toArrayBuffer(tab.bytes),
+          backup: stateRef.current.settings.files.backupOnSave
+        })
+        dispatch({ type: 'docSaved', id: tab.id, path })
+        toast(t.ops.saved(basenameOf(path)))
+        refreshRecent()
+        return true
+      } catch (error) {
+        toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+        return false
+      }
+    },
+    [api, refreshRecent, toast]
+  )
+
+  const save = useCallback(async (): Promise<boolean> => {
+    const tab = activeDoc(stateRef.current)
+    if (tab?.status !== 'ready' || tab.busy) return false
+    return writeTab(tab, tab.path)
+  }, [writeTab])
+
+  const saveAs = useCallback(async (): Promise<boolean> => {
+    const tab = activeDoc(stateRef.current)
+    if (tab?.status !== 'ready' || tab.busy) return false
+    const path = await api.savePdfDialog({ title: t.ops.saveAsTitle, defaultPath: tab.path })
+    if (path === null) return false
+    return writeTab(tab, path)
+  }, [api, writeTab])
 
   const runSearch = useCallback((query: string) => {
     const run = ++searchRun.current
@@ -526,8 +742,17 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     })()
   }, [])
 
-  const actions = useMemo<Actions>(
-    () => ({
+  const actions = useMemo<Actions>(() => {
+    const selectedOf = (): number[] => selectedList(stateRef.current)
+    const insertAfter = (): number => {
+      const sel = selectedOf()
+      const tab = activeDoc(stateRef.current)
+      return sel.length > 0 ? (sel[sel.length - 1] ?? 0) : (tab?.pages ?? 0)
+    }
+    const rangeSelect = (count: number, from: number): ReadonlySet<number> =>
+      new Set(Array.from({ length: count }, (_, i) => from + i))
+
+    return {
       go: (screen) => {
         dispatch({ type: 'screen', screen })
       },
@@ -546,9 +771,29 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           }
         }
       },
-      closeDoc: (id) => {
+      requestCloseDoc: (id) => {
         const target = id ?? stateRef.current.activeId
-        if (target !== null) dispatch({ type: 'closeDoc', id: target })
+        if (target === null) return
+        const tab = stateRef.current.docs.find((d) => d.id === target)
+        if (tab?.dirty) dispatch({ type: 'closeConfirm', id: target })
+        else dispatch({ type: 'closeDoc', id: target })
+      },
+      confirmClose: (choice) => {
+        const id = stateRef.current.closeConfirm
+        if (id === null) return
+        if (choice === 'cancel') {
+          dispatch({ type: 'closeConfirm', id: null })
+          return
+        }
+        if (choice === 'discard') {
+          dispatch({ type: 'closeDoc', id })
+          return
+        }
+        dispatch({ type: 'activateDoc', id })
+        void save().then((ok) => {
+          if (ok) dispatch({ type: 'closeDoc', id })
+          else dispatch({ type: 'closeConfirm', id: null })
+        })
       },
       activateDoc: (id) => {
         dispatch({ type: 'activateDoc', id })
@@ -627,8 +872,31 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       pageFromScroll: (page) => {
         dispatch({ type: 'page', page, scroll: false })
       },
-      togglePage: (page) => {
-        dispatch({ type: 'togglePage', page })
+      selectPage: (page, mode) => {
+        const { selectedPages, selectionAnchor } = stateRef.current
+        if (mode === 'toggle') {
+          const next = new Set(selectedPages)
+          if (next.has(page)) next.delete(page)
+          else next.add(page)
+          dispatch({ type: 'selection', pages: next, anchor: page })
+        } else if (mode === 'range' && selectionAnchor !== null) {
+          const [from, to] =
+            selectionAnchor < page ? [selectionAnchor, page] : [page, selectionAnchor]
+          dispatch({
+            type: 'selection',
+            pages: rangeSelect(to - from + 1, from),
+            anchor: selectionAnchor
+          })
+        } else {
+          dispatch({ type: 'selection', pages: new Set([page]), anchor: page })
+        }
+      },
+      selectAll: () => {
+        const tab = activeDoc(stateRef.current)
+        if (tab) dispatch({ type: 'selection', pages: rangeSelect(tab.pages, 1), anchor: 1 })
+      },
+      selectNone: () => {
+        dispatch({ type: 'selection', pages: new Set(), anchor: null })
       },
       search: runSearch,
       searchStep: (delta) => {
@@ -655,6 +923,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       print: () => {
         const tab = activeDoc(stateRef.current)
         if (tab?.status !== 'ready') return
+        if (tab.dirty) {
+          toast(t.viewer.unsaved)
+          return
+        }
         api.printFile(tab.path).catch((error: unknown) => {
           toast(
             `${t.viewer.printFailed}: ${error instanceof Error ? error.message : String(error)}`
@@ -675,10 +947,117 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
             input.select()
           }
         }, 0)
+      },
+
+      rotateSelected: (delta) => {
+        const sel = selectedOf()
+        if (sel.length === 0) return
+        void applyOperation((bytes) => rotatePages(bytes, sel, delta), {
+          message: t.ops.rotated(sel.length),
+          select: () => new Set(sel)
+        })
+      },
+      deleteSelected: () => {
+        const sel = selectedOf()
+        if (sel.length === 0) return
+        void applyOperation((bytes) => deletePages(bytes, sel), {
+          message: t.ops.deleted(sel.length)
+        })
+      },
+      duplicateSelected: () => {
+        const sel = selectedOf()
+        if (sel.length === 0) return
+        void applyOperation((bytes) => duplicatePages(bytes, sel), {
+          message: t.ops.duplicated(sel.length)
+        })
+      },
+      insertBlank: () => {
+        const after = insertAfter()
+        void applyOperation((bytes) => insertBlankPage(bytes, after), {
+          message: t.ops.blankInserted,
+          select: () => new Set([after + 1])
+        })
+      },
+      insertFromFile: () => {
+        void (async () => {
+          const file = await api.openPdfDialog()
+          if (!file) return
+          const source = new Uint8Array((await api.readFile(file.path)).bytes)
+          const after = insertAfter()
+          const before = activeDoc(stateRef.current)?.pages ?? 0
+          await applyOperation((bytes) => insertPagesFrom(bytes, source, after), {
+            select: (): ReadonlySet<number> => {
+              const now = activeDoc(stateRef.current)?.pages ?? before
+              return rangeSelect(Math.max(0, now - before), after + 1)
+            }
+          })
+          const added = (activeDoc(stateRef.current)?.pages ?? before) - before
+          if (added > 0) toast(t.ops.inserted(added))
+        })()
+      },
+      extractSelected: () => {
+        const tab = activeDoc(stateRef.current)
+        const sel = selectedOf()
+        if (!tab?.bytes || sel.length === 0) return
+        void (async () => {
+          try {
+            const bytes = await extractPages(tab.bytes ?? new Uint8Array(), sel)
+            const defaultName = safeFileName(
+              `${stripExtension(tab.name)}_стр${formatPageList(sel).replace(/,\s*/g, '_')}.pdf`
+            )
+            const path = await api.savePdfDialog({
+              title: t.ops.extractTitle,
+              defaultPath: joinPath(dirnameOf(tab.path), defaultName)
+            })
+            if (path === null) return
+            await api.writeFile({ path, bytes: toArrayBuffer(bytes), backup: false })
+            toast(t.ops.extracted(basenameOf(path)))
+            openPath(path)
+          } catch (error) {
+            toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        })()
+      },
+      movePages: (target) => {
+        const tab = activeDoc(stateRef.current)
+        const sel = selectedOf()
+        if (!tab || sel.length === 0) return
+        const order = computeMoveOrder(tab.pages, sel, target)
+        if (isIdentityOrder(order)) return
+        const moved = new Set(sel)
+        const selected = new Set<number>()
+        order.forEach((p, i) => {
+          if (moved.has(p)) selected.add(i + 1)
+        })
+        void applyOperation((bytes) => reorderPages(bytes, order), {
+          message: t.ops.moved,
+          select: () => selected
+        })
+      },
+      undo: () => {
+        void restoreBytes('undo')
+      },
+      redo: () => {
+        void restoreBytes('redo')
+      },
+      save,
+      saveAs,
+      openTool: (dialog) => {
+        dispatch({ type: 'toolDialog', dialog })
       }
-    }),
-    [api, openDialog, openPath, runSearch, toast, updateSettings]
-  )
+    }
+  }, [
+    api,
+    applyOperation,
+    openDialog,
+    openPath,
+    restoreBytes,
+    runSearch,
+    save,
+    saveAs,
+    toast,
+    updateSettings
+  ])
 
   // Команды меню приложения приходят из main и выполняются теми же действиями.
   useEffect(() => {
@@ -688,17 +1067,34 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           void actions.openDialog()
           break
         case 'file.save':
+          void actions.save()
+          break
         case 'file.saveAs':
-          actions.toast(t.toast.soon)
+          void actions.saveAs()
           break
         case 'file.print':
           actions.print()
           break
         case 'file.close':
-          actions.closeDoc()
+          actions.requestCloseDoc()
           break
         case 'file.properties':
           actions.openProperties()
+          break
+        case 'edit.undo':
+          actions.undo()
+          break
+        case 'edit.redo':
+          actions.redo()
+          break
+        case 'edit.find':
+          actions.focusSearch()
+          break
+        case 'tools.merge':
+          actions.openTool('merge')
+          break
+        case 'tools.split':
+          actions.openTool('split')
           break
         case 'app.settings':
           actions.openSettings()
@@ -724,6 +1120,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         case 'view.rotate':
           actions.rotate()
           break
+        case 'view.pages':
+          actions.togglePagesMode()
+          break
         case 'view.sidebar':
           actions.toggleSidebar()
           break
@@ -732,9 +1131,6 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           break
         case 'view.theme':
           actions.cycleTheme()
-          break
-        case 'edit.find':
-          actions.focusSearch()
           break
         case 'help.releases':
           actions.openExternal(RELEASES_PAGE)

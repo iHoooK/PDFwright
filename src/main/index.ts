@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import { join } from 'node:path'
 import { APP_OPEN_FILE_CHANNEL } from '@shared/ipc-contract'
 import { isAllowedExternalUrl } from '@shared/external-links'
@@ -19,6 +19,7 @@ const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
 
 let mainWindow: BrowserWindow | null = null
 let pendingFile: string | null = null
+let dirtyCount = 0
 
 // Один экземпляр: второй запуск передаёт аргументы первому и завершается.
 if (!app.requestSingleInstanceLock()) {
@@ -51,6 +52,9 @@ async function bootstrap(): Promise<void> {
       const file = pendingFile
       pendingFile = null
       return file
+    },
+    setDirtyCount: (count) => {
+      dirtyCount = count
     }
   })
   installApplicationMenu()
@@ -122,6 +126,25 @@ function createMainWindow(settings: SettingsStore): BrowserWindow {
   })
   window.webContents.on('will-navigate', (event, url) => {
     if (url !== window.webContents.getURL()) event.preventDefault()
+  })
+
+  // Несохранённые изменения: спрашиваем подтверждение до закрытия окна.
+  window.on('close', (event) => {
+    if (dirtyCount === 0) return
+    const choice = dialog.showMessageBoxSync(window, {
+      type: 'warning',
+      title: 'PDFwright',
+      message:
+        dirtyCount === 1
+          ? 'В документе есть несохранённые изменения.'
+          : `Несохранённые изменения в документах: ${dirtyCount}.`,
+      detail: 'Закрыть программу без сохранения? Изменения будут потеряны.',
+      buttons: ['Закрыть без сохранения', 'Отмена'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true
+    })
+    if (choice !== 0) event.preventDefault()
   })
 
   // Размер окна запоминаем при закрытии, чтобы не писать файл на каждый пиксель.

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { IconCheck } from '@renderer/icons'
 import {
   createCancelToken,
@@ -15,7 +15,8 @@ interface Props {
   rotation: Rotation
   current?: boolean
   selected?: boolean
-  onClick: () => void
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void
+  onDoubleClick?: () => void
 }
 
 const THUMB_WIDTH = 160
@@ -30,7 +31,8 @@ export const PageThumbnail = memo(function PageThumbnail({
   rotation,
   current,
   selected,
-  onClick
+  onClick,
+  onDoubleClick
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLButtonElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -91,6 +93,7 @@ export const PageThumbnail = memo(function PageThumbnail({
       type="button"
       className={s.thumb}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       {...(current === undefined ? {} : { 'aria-current': current })}
       {...(selectable ? { 'aria-selected': selected } : {})}
     >

@@ -11,6 +11,7 @@ import {
   normalizeSettings,
   type AppSettings
 } from '@shared/settings-schema'
+import { basenameOf } from '@shared/paths'
 
 /**
  * Доступ к API preload. В обычном браузере (dev-сервер Vite без Electron)
@@ -114,6 +115,53 @@ function createBrowserMock(): PdfwrightApi {
       recent = recent.filter((r) => r.path !== path)
       return Promise.resolve(recent)
     },
+    openPdfsDialog: () =>
+      new Promise((resolve) => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'application/pdf,.pdf'
+        input.multiple = true
+        input.onchange = () => {
+          const list = Array.from(input.files ?? []).map((file) => {
+            const path = pathFor(file)
+            files.set(path, file)
+            return { path, name: file.name }
+          })
+          resolve(list)
+        }
+        input.oncancel = () => {
+          resolve([])
+        }
+        input.click()
+      }),
+    savePdfDialog: (options) => {
+      const name = options.defaultPath ? basenameOf(options.defaultPath) : 'document.pdf'
+      return Promise.resolve(`C:\\Браузер\\${name}`)
+    },
+    chooseFolderDialog: () => Promise.resolve('C:\\Браузер'),
+    writeFile: (request) => {
+      // В браузере «сохранение» — скачивание файла.
+      const blob = new Blob([request.bytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = basenameOf(request.path)
+      a.click()
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+      }, 1000)
+      files.set(request.path, new File([blob], a.download, { type: 'application/pdf' }))
+      return Promise.resolve()
+    },
+    writeFiles: (items) => {
+      for (const item of items) {
+        const blob = new Blob([item.bytes], { type: 'application/pdf' })
+        files.set(item.path, new File([blob], basenameOf(item.path), { type: 'application/pdf' }))
+      }
+      return Promise.resolve()
+    },
+    showItemInFolder: () => Promise.resolve(),
+    setDirtyCount: () => Promise.resolve(),
     takePendingOpenFile: () => Promise.resolve(null),
     getPathForFile: (file) => {
       const path = pathFor(file)

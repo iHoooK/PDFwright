@@ -276,3 +276,45 @@
   color: var(--ink-2);
   font-size: 13px;
 }
+
+.gridCell {
+  position: relative;
+  border-radius: var(--r);
+}
+.gridCell::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  left: -9px;
+}
+.dropBefore::before {
+  opacity: 1;
+}
+.dropAfter::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: -9px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.busy {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 8px 14px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  z-index: 3;
+}
