@@ -43,7 +43,8 @@ PDFwright/
 ├── .github/workflows/
 │   ├── build.yml                 # сборка и тесты на push/PR
 │   └── release.yml               # draft-релиз на тег v*
-├── build/                        # иконки, лицензия для NSIS, installer.nsh
+├── installer/                    # иконки, лицензия для NSIS, installer.nsh
+├── build/                        # результат сборки (не в git): установщик, portable, суммы
 ├── docs/
 │   ├── IMPLEMENTATION_PLAN.md    # этот документ
 │   └── DESIGN.md                 # дизайн-направление (impeccable shape)
@@ -103,13 +104,13 @@ PDFwright/
 Результат: `npm run dev` открывает окно с заглушкой, `npm test` зелёный, CI зелёный на `main`.
 
 ✅ 0.1 Инициализировать git в `D:\Projects\Utils\PDFwright`, ветка `main`, добавить `origin git@github.com:iHoooK/PDFwright.git`, отправить первый коммит — проверка: коммит `02ef7f6` в `origin/main`.  
-✅ 0.2 Создать скелет `electron-vite` (main/preload/renderer), включить `contextIsolation`, `sandbox`, отключить `nodeIntegration`, задать CSP — проверка: окно открывается, renderer под строгой CSP загружается без ошибок (smoke-запуск `out/` и `release/win-unpacked`).  
+✅ 0.2 Создать скелет `electron-vite` (main/preload/renderer), включить `contextIsolation`, `sandbox`, отключить `nodeIntegration`, задать CSP — проверка: окно открывается, renderer под строгой CSP загружается без ошибок (smoke-запуск `out/` и `build/win-unpacked`).  
 ✅ 0.3 Настроить TypeScript strict, ESLint, Prettier, `vitest`, скрипты `lint`, `test`, `typecheck` — проверка: `npm run check` зелёный (12 unit-тестов).  
 ✅ 0.4 Описать `src/shared/ipc-contract.ts` и `preload/index.ts` с узким API (`getAppInfo`, `getSettings`, `updateSettings`, `openExternal`, `openPdfDialog`; чтение/запись файлов и `checkUpdate` добавляются в фазах 2 и 8) — проверка: unit-тесты контракта, схемы настроек, allowlist внешних ссылок и атомарного `SettingsStore`; IPC-запрос из renderer подтверждён в smoke-запуске.
 ✅ 0.5 Добавить `.github/workflows/build.yml` (`windows-latest`: `npm ci`, `lint`, `typecheck`, `test`, `build`, `electron-builder --dir`, проверка наличия `PDFwright.exe`) — проверка: [первый прогон](https://github.com/iHoooK/PDFwright/actions/runs/40082871028) зелёный.  
 ✅ 0.6 Написать `README.md` (назначение, установка, сборка «две команды»), `PRIVACY.md`, `LICENSE`, начальный `THIRD_PARTY_NOTICES.md` — проверка: стиль согласован с ЛовиКадром.
 
-Сводка выполнения (2026-10-24): создан скелет на electron-vite 6 (rolldown), Electron 45, React 19, TypeScript 6.0 (TypeScript 7 пока не поддерживается typescript-eslint), ESLint 10 с type-checked правилами, Prettier, vitest 5. Main — ESM, preload собирается в CommonJS (`out/preload/index.cjs`), потому что sandbox-preload в Electron не исполняет ESM. CSP задаётся заголовком в main: строгая в сборке, мягкая в dev для Vite HMR. Внешние ссылки открываются только из allowlist (`src/shared/external-links.ts`). Настройки — `%APPDATA%\PDFwright\settings.json` с атомарной записью и терпимой к мусору валидацией. electron-builder 26 упаковывает в `release/win-unpacked` (ключ `win.publisherName` в 26-й версии удалён). npm 11 блокирует install-скрипты зависимостей, поэтому в `package.json` добавлен `allowScripts` с разрешением для `electron`. Первый push и зелёный CI подтверждены; фаза 0 завершена, разблокирована фаза 1 (дизайн-прототипы).
+Сводка выполнения (2026-10-24): создан скелет на electron-vite 6 (rolldown), Electron 45, React 19, TypeScript 6.0 (TypeScript 7 пока не поддерживается typescript-eslint), ESLint 10 с type-checked правилами, Prettier, vitest 5. Main — ESM, preload собирается в CommonJS (`out/preload/index.cjs`), потому что sandbox-preload в Electron не исполняет ESM. CSP задаётся заголовком в main: строгая в сборке, мягкая в dev для Vite HMR. Внешние ссылки открываются только из allowlist (`src/shared/external-links.ts`). Настройки — `%APPDATA%\PDFwright\settings.json` с атомарной записью и терпимой к мусору валидацией. electron-builder 26 упаковывает в `build/win-unpacked` (ключ `win.publisherName` в 26-й версии удалён). npm 11 блокирует install-скрипты зависимостей, поэтому в `package.json` добавлен `allowScripts` с разрешением для `electron`. Первый push и зелёный CI подтверждены; фаза 0 завершена, разблокирована фаза 1 (дизайн-прототипы).
 
 ## Фаза 1. Дизайн-система и app shell
 
@@ -128,7 +129,7 @@ PDFwright/
 
 ✅ 1.1 Провести `impeccable shape`: 3 направления в виде кликабельных HTML-прототипов app shell, показать пользователю, выбрать одно и зафиксировать `docs/DESIGN.md` — проверка: автор выбрал C «Лента» 2026-10-24; прототипы в `docs/design/prototypes/`, токены и правила в `docs/DESIGN.md`.
 
-✅ 1.1.1 Нарисовать SVG-логотип PDFwright — `resources/icon.svg` (буква P на синем квадрате с листом); `npm run icons` рендерит через Electron `build/icon.ico` (16–256), `build/icon.png` 512 и PNG для окна. Проверка: иконка читается на 32 px, ICO содержит 9 PNG-кадров.  
+✅ 1.1.1 Нарисовать SVG-логотип PDFwright — `resources/icon.svg` (буква P на синем квадрате с листом); `npm run icons` рендерит через Electron `installer/icon.ico` (16–256), `installer/icon.png` 512 и PNG для окна. Проверка: иконка читается на 32 px, ICO содержит 9 PNG-кадров.  
 ✅ 1.2 Реализовать CSS-токены, светлую/тёмную/системную тему, базовые компоненты (Button, IconButton, Command, Toggle, SelectField, RadioGroup, Tabs, SettingCard, Swatches, Range, Toast, PageThumb) — проверка: dev-страница `?kit` (экран `KitScreen`, только в dev-сборке).  
 ✅ 1.3 Собрать app shell, стартовый экран и каркас настроек с разделами — проверка: переходы работают в браузере (1366×820) и в Electron; панель свойств по умолчанию скрыта при ширине < 1100.  
 ✅ 1.4 Горячие клавиши и меню приложения — `src/main/menu.ts` (Файл/Правка/Вид/Справка с ускорителями, команды идут в renderer по каналу `app:command`) и `useHotkeys` (Ctrl+O/F/B/,/W, Ctrl+±/0, PageUp/PageDown, буквы инструментов V H M P U T S); таблица клавиш показана в Параметры → Общие.
@@ -266,10 +267,10 @@ PDFwright/
 - Разделы настроек: Общие (тема, язык, недавние, резервная копия при сохранении), Просмотр (режим, zoom по умолчанию, сглаживание), О программе (версия, лицензии, «Скопировать диагностику», ссылка на релизы), О разработчике (текст и ссылки Promptix: сайт, YouTube, два Telegram-канала, DonationAlerts, Boosty).
 - Хранение настроек в `%APPDATA%\PDFwright`, подписи и недавние — там же; удаление программы не трогает пользовательские PDF.
 
-Результат: `bash scripts/build-release.sh` создаёт `release/PDFwright-Setup-x64.exe`, `release/PDFwright-Portable-x64.zip`, `release/SHA256SUMS.txt`; установщик ставится и удаляется чисто на свежей Windows 10/11.
+Результат: `bash scripts/build-release.sh` создаёт `build/PDFwright-Setup-x64.exe`, `build/PDFwright-Portable-x64.zip`, `build/SHA256SUMS.txt`; установщик ставится и удаляется чисто на свежей Windows 10/11.
 
 - [ ] 7.1 Собрать `.ico` (16–256) и `.png` 512 из SVG-логотипа, нарисованного в фазе 1 — проверка: иконка видна в Проводнике, панели задач и установщике.
-      ✅ 7.2 Настроить `electron-builder.yml`: NSIS perMachine с выбором папки, лицензия на двух языках (`build/license_ru.txt`, `build/license_en.txt`), страница дополнительных задач в `build/installer.nsh` (значок на рабочем столе и регистрация для .pdf через ProgID и «Программы по умолчанию», обе выключены), иконки, `extraFiles` с LICENSE/PRIVACY/THIRD_PARTY_NOTICES рядом с программой — проверка: `PDFwright-Setup-x64.exe` собирается локально и в CI; установка на чистой машине — ручная проверка автора.  
+      ✅ 7.2 Настроить `electron-builder.yml`: NSIS perMachine с выбором папки, лицензия на двух языках (`installer/license_ru.txt`, `installer/license_en.txt`), страница дополнительных задач в `installer/installer.nsh` (значок на рабочем столе и регистрация для .pdf через ProgID и «Программы по умолчанию», обе выключены), иконки, `extraFiles` с LICENSE/PRIVACY/THIRD_PARTY_NOTICES рядом с программой — проверка: `PDFwright-Setup-x64.exe` собирается локально и в CI; установка на чистой машине — ручная проверка автора.  
       ✅ 7.3 Portable-сборка: `scripts/package-release.ps1` копирует `win-unpacked` в `PDFwright-Portable` с файлом-маркером `PDFwright.portable` (по нему `isPortableBuild` отключает установку обновлений), пакует в `PDFwright-Portable-x64.zip` и пишет `SHA256SUMS.txt` — проверка: суммы в файле совпадают с `certutil -hashfile`; unit-тест `app-paths.test.ts`.  
       ✅ 7.4 `scripts/build-release.sh` (проверки → сборка → NSIS → portable → суммы), `scripts/run-local.sh`, раздел «Две команды» в README — проверка: CI запускает тот же `build-release.sh` на `windows-latest` и выкладывает три файла артефактом.  
       ✅ 7.5 Экран настроек: Общие, Просмотр, О программе (версия, «Скопировать диагностику», диалог «Лицензии и приватность» с вкладками MIT / компоненты / приватность, папка данных), О разработчике — проверка: ссылки открываются через allowlist, диалог лицензий показывает тексты из корня репозитория.
@@ -277,7 +278,7 @@ PDFwright/
     ✅ 7.5.2 Ссылки: promptix.ru, youtube.com/@promptix, t.me/promptix_ru, t.me/codeartel, donationalerts.com/r/promptix, boosty.to/promptix — совпадают с ЛовиКадром (`src/shared/external-links.ts`).  
     ✅ 7.6 Автозапуск не нужен (не фоновая утилита) — зафиксировано в README.
 
-Сводка выполнения (2026-10-25): установщик NSIS собирается electron-builder 26 без Inno Setup; дополнительные задачи реализованы собственной страницей nsDialogs в `build/installer.nsh` (UTF-8 с BOM). Регистрация для .pdf не назначает программу по умолчанию — Windows 10/11 позволяет это только пользователю через «Параметры», поэтому установщик регистрирует ProgID и приложение в «Программах по умолчанию». Portable — не однофайловый exe electron-builder (он распаковывается при каждом запуске), а zip с папкой и маркером. CI теперь собирает полный релиз той же командой, что и автор. Не проверено: установка и удаление на чистой машине, работа страницы задач в реальном мастере.
+Сводка выполнения (2026-10-25): установщик NSIS собирается electron-builder 26 без Inno Setup; дополнительные задачи реализованы собственной страницей nsDialogs в `installer/installer.nsh` (UTF-8 с BOM). Регистрация для .pdf не назначает программу по умолчанию — Windows 10/11 позволяет это только пользователю через «Параметры», поэтому установщик регистрирует ProgID и приложение в «Программах по умолчанию». Portable — не однофайловый exe electron-builder (он распаковывается при каждом запуске), а zip с папкой и маркером. CI теперь собирает полный релиз той же командой, что и автор. Не проверено: установка и удаление на чистой машине, работа страницы задач в реальном мастере.
 
 ## Фаза 8. Проверка обновлений через GitHub Releases
 

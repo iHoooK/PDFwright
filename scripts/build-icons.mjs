@@ -62,15 +62,15 @@ app.whenReady().then(async () => {
   })
   try {
     await window.loadURL('data:text/html;charset=utf-8,<!doctype html><title>icons</title>')
-    await mkdir(join(root, 'build'), { recursive: true })
+    await mkdir(join(root, 'installer'), { recursive: true })
     const frames = []
     for (const size of ICO_SIZES) frames.push({ size, png: await renderPng(window, svg, size) })
-    await writeFile(join(root, 'build', 'icon.ico'), buildIco(frames))
+    await writeFile(join(root, 'installer', 'icon.ico'), buildIco(frames))
     for (const size of PNG_SIZES) {
       const png = await renderPng(window, svg, size)
-      await writeFile(join(root, size === 512 ? 'build' : 'resources', size === 512 ? 'icon.png' : `icon-${size}.png`), png)
+      await writeFile(join(root, size === 512 ? 'installer' : 'resources', size === 512 ? 'icon.png' : `icon-${size}.png`), png)
     }
-    console.log(`icons: build/icon.ico (${ICO_SIZES.join(',')}), build/icon.png 512, resources/icon-256.png, resources/icon-32.png`)
+    console.log(`icons: installer/icon.ico (${ICO_SIZES.join(',')}), installer/icon.png 512, resources/icon-256.png, resources/icon-32.png`)
   } finally {
     window.destroy()
     app.quit()

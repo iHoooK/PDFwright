@@ -11,7 +11,7 @@ export default defineConfig(
       'node_modules/**',
       'out/**',
       'dist/**',
-      'release/**',
+      'build/**',
       'coverage/**',
       'scripts/**',
       'docs/**',

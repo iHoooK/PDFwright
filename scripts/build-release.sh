@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Выпускная сборка одной командой из Git Bash на Windows.
-# Создаёт в release/: PDFwright-Setup-x64.exe, PDFwright-Portable-x64.zip и SHA256SUMS.txt.
+# Создаёт в build/: PDFwright-Setup-x64.exe, PDFwright-Portable-x64.zip и SHA256SUMS.txt.
 set -euo pipefail
 
 script_directory="${BASH_SOURCE[0]%/*}"
@@ -15,9 +15,9 @@ for tool in npm cygpath powershell.exe; do
   fi
 done
 
-release_dir="$project_root/release"
+release_dir="$project_root/build"
 if [[ -L "$release_dir" ]]; then
-  echo "ERROR: release — символическая ссылка, отказываемся её удалять." >&2
+  echo "ERROR: build — символическая ссылка, отказываемся её удалять." >&2
   exit 1
 fi
 rm -rf "$release_dir"
@@ -42,6 +42,6 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$project_
 
 echo
 echo "Готово. Файлы для публикации:"
-echo "  release/PDFwright-Setup-x64.exe     установщик (имя нельзя менять: его ищет обновлятор)"
-echo "  release/PDFwright-Portable-x64.zip  переносная версия, распаковывать целиком"
-echo "  release/SHA256SUMS.txt              контрольные суммы обоих файлов"
+echo "  build/PDFwright-Setup-x64.exe       установщик (имя нельзя менять: его ищет обновлятор)"
+echo "  build/PDFwright-Portable-x64.zip    переносная версия, распаковывать целиком"
+echo "  build/SHA256SUMS.txt                контрольные суммы обоих файлов"

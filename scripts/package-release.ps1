@@ -1,15 +1,15 @@
-﻿# Собирает portable-архив из release/win-unpacked и считает SHA-256 обоих артефактов.
+﻿# Собирает portable-архив из build/win-unpacked и считает SHA-256 обоих артефактов.
 # Запускается из scripts/build-release.sh после electron-builder.
 $ErrorActionPreference = 'Stop'
 $projectDirectory = Split-Path -Parent $PSScriptRoot
-$releaseDirectory = Join-Path $projectDirectory 'release'
+$releaseDirectory = Join-Path $projectDirectory 'build'
 $unpackedDirectory = Join-Path $releaseDirectory 'win-unpacked'
 $portableDirectory = Join-Path $releaseDirectory 'PDFwright-Portable'
 $archivePath = Join-Path $releaseDirectory 'PDFwright-Portable-x64.zip'
 $setupPath = Join-Path $releaseDirectory 'PDFwright-Setup-x64.exe'
 
 if (!(Test-Path -LiteralPath $setupPath -PathType Leaf)) { throw 'Сначала соберите установщик (electron-builder --win nsis).' }
-if (!(Test-Path -LiteralPath $unpackedDirectory -PathType Container)) { throw 'Папка release/win-unpacked не найдена.' }
+if (!(Test-Path -LiteralPath $unpackedDirectory -PathType Container)) { throw 'Папка build/win-unpacked не найдена.' }
 
 # Portable — та же распакованная программа плюс файл-маркер, по которому она
 # понимает, что не установлена через установщик (обновления только ссылкой).

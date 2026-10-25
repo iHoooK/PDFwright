@@ -1,6 +1,6 @@
 node_modules
 out
 dist
-release
+build
 coverage
 package-lock.json

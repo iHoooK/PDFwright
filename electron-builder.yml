@@ -1,5 +1,5 @@
 # Конфигурация упаковки electron-builder (фаза 7).
-# Установщик NSIS с выбором папки и дополнительными задачами (build/installer.nsh),
+# Установщик NSIS с выбором папки и дополнительными задачами (installer/installer.nsh),
 # portable-архив собирается скриптом scripts/package-release.ps1 из win-unpacked.
 appId: ru.promptix.pdfwright
 productName: PDFwright
@@ -8,8 +8,8 @@ executableName: PDFwright
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
 directories:
-  buildResources: build
-  output: release
+  buildResources: installer
+  output: build
 
 files:
   - out/**
@@ -28,7 +28,7 @@ extraFiles:
 asar: true
 
 win:
-  icon: build/icon.ico
+  icon: installer/icon.ico
   target:
     - target: nsis
       arch: [x64]
@@ -48,10 +48,10 @@ nsis:
   installerLanguages:
     - ru_RU
     - en_US
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
-  include: build/installer.nsh
+  installerIcon: installer/icon.ico
+  uninstallerIcon: installer/icon.ico
+  installerHeaderIcon: installer/icon.ico
+  include: installer/installer.nsh
   artifactName: ${productName}-Setup-x64.${ext}
   shortcutName: PDFwright
   uninstallDisplayName: PDFwright

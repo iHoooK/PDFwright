@@ -41,18 +41,18 @@ jobs:
         shell: pwsh
         run: |
           foreach ($name in 'PDFwright-Setup-x64.exe', 'PDFwright-Portable-x64.zip', 'SHA256SUMS.txt') {
-            $path = Join-Path $env:GITHUB_WORKSPACE "release/$name"
+            $path = Join-Path $env:GITHUB_WORKSPACE "build/$name"
             if (-not (Test-Path $path)) { throw "Release file not found: $path" }
             Get-Item $path | Select-Object Name, Length
           }
-          Get-Content (Join-Path $env:GITHUB_WORKSPACE 'release/SHA256SUMS.txt')
+          Get-Content (Join-Path $env:GITHUB_WORKSPACE 'build/SHA256SUMS.txt')
 
       - name: Upload release files
         uses: actions/upload-artifact@v4
         with:
           name: PDFwright-win-x64
           path: |
-            release/PDFwright-Setup-x64.exe
-            release/PDFwright-Portable-x64.zip
-            release/SHA256SUMS.txt
+            build/PDFwright-Setup-x64.exe
+            build/PDFwright-Portable-x64.zip
+            build/SHA256SUMS.txt
           if-no-files-found: error

@@ -5,6 +5,8 @@ node_modules/
 src/renderer/public/pdfjs/
 out/
 dist/
+build/
+# старая папка вывода до перехода на build/
 release/
 *.tsbuildinfo
 

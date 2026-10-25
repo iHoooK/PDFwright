@@ -49,7 +49,7 @@ npm ci
 bash scripts/build-release.sh
 ```
 
-Запускает линтер, проверку типов и тесты, собирает программу и создаёт `release/PDFwright-Setup-x64.exe` (установщик), `release/PDFwright-Portable-x64.zip` (переносная версия) и `release/SHA256SUMS.txt` (контрольные суммы). NSIS и прочие инструменты упаковки electron-builder скачивает сам при первом запуске. Папка `release` создаётся заново и не попадает в GitHub. Ту же команду выполняет GitHub Actions на каждый push.
+Запускает линтер, проверку типов и тесты, собирает программу и создаёт `build/PDFwright-Setup-x64.exe` (установщик), `build/PDFwright-Portable-x64.zip` (переносная версия) и `build/SHA256SUMS.txt` (контрольные суммы). NSIS и прочие инструменты упаковки electron-builder скачивает сам при первом запуске. Папка `build` создаётся заново и не попадает в GitHub. Ту же команду выполняет GitHub Actions на каждый push.
 
 ### Локальный запуск для проверки кода
 
