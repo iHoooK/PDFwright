@@ -1,5 +1,6 @@
 import type { Point } from '@shared/markup/geometry'
 import { hitTest, type MarkupObject } from '@shared/markup/model'
+import { pickPageObject } from '@shared/pdf-content/hit-test'
 import type { PageImage, PageTextLine } from '@shared/pdf-content/types'
 
 /** Строка текста или картинка самого документа (из MuPDF, `listPageObjects`). */
@@ -40,10 +41,7 @@ export function contentId(page: number, object: PageContentObject): string {
   return `${page}:${object.kind}:${object.index}`
 }
 
-/**
- * Объекты документа на странице: из всех рамок под точкой берётся самая
- * маленькая — строка поверх картинки выбирается раньше картинки.
- */
+/** Строки и картинки документа на странице (см. pickPageObject). */
 export function contentSource(
   page: number,
   objects: readonly PageContentObject[]
@@ -52,21 +50,7 @@ export function contentSource(
     id: 'content',
     hitTest: (at, point, tolerance) => {
       if (at !== page) return null
-      let best: PageContentObject | null = null
-      let bestArea = Number.POSITIVE_INFINITY
-      for (const object of objects) {
-        const r = object.rect
-        const inside =
-          point.x >= r.x - tolerance &&
-          point.x <= r.x + r.width + tolerance &&
-          point.y >= r.y - tolerance &&
-          point.y <= r.y + r.height + tolerance
-        const area = r.width * r.height
-        if (inside && area < bestArea) {
-          best = object
-          bestArea = area
-        }
-      }
+      const best = pickPageObject(objects, point, tolerance)
       return best ? { source: 'content', id: contentId(page, best), page, object: best } : null
     }
   }
