@@ -55,6 +55,11 @@ async function launch(pdfPath: string): Promise<Page> {
   })
   const page = await app.firstWindow()
   await page.waitForSelector('[data-page="1"] canvas', { timeout: 60_000 })
+  // Окно уже 1100 px (раннер CI) скрывает панель свойств; тестам разметки она нужна.
+  const props = page
+    .getByRole('toolbar', { name: 'Команды' })
+    .getByRole('button', { name: 'Свойства', exact: true })
+  if ((await props.getAttribute('aria-pressed')) === 'false') await props.click()
   return page
 }
 

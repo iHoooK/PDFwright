@@ -1144,6 +1144,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       },
       setTool: (tool) => {
         dispatch({ type: 'tool', tool })
+        // Библиотека подписей живёт в панели свойств: без неё инструмент бесполезен.
+        if (tool === 'sign') dispatch({ type: 'props', on: true })
       },
       setToolStyle: (tool, patch) => {
         dispatch({ type: 'toolStyle', tool, patch })
