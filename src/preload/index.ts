@@ -3,6 +3,7 @@ import {
   APP_COMMAND_CHANNEL,
   APP_OPEN_FILE_CHANNEL,
   IpcChannels,
+  UPDATE_PROGRESS_CHANNEL,
   isAppCommand,
   type PdfwrightApi
 } from '@shared/ipc-contract'
@@ -30,6 +31,28 @@ const api: PdfwrightApi = {
   removeRecentFile: (path) => ipcRenderer.invoke(IpcChannels.recentRemove, path),
   setDirtyCount: (count) => ipcRenderer.invoke(IpcChannels.appSetDirty, count),
   takePendingOpenFile: () => ipcRenderer.invoke(IpcChannels.appTakePendingFile),
+  checkForUpdates: () => ipcRenderer.invoke(IpcChannels.updateCheck),
+  downloadUpdate: () => ipcRenderer.invoke(IpcChannels.updateDownload),
+  cancelUpdateDownload: () => ipcRenderer.invoke(IpcChannels.updateCancel),
+  installUpdate: () => ipcRenderer.invoke(IpcChannels.updateInstall),
+  onUpdateProgress: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: unknown): void => {
+      if (typeof progress === 'object' && progress !== null && 'percent' in progress) {
+        listener(
+          progress as {
+            percent: number
+            transferred: number
+            total: number
+            bytesPerSecond: number
+          }
+        )
+      }
+    }
+    ipcRenderer.on(UPDATE_PROGRESS_CHANNEL, handler)
+    return () => {
+      ipcRenderer.off(UPDATE_PROGRESS_CHANNEL, handler)
+    }
+  },
   getPathForFile: (file) => webUtils.getPathForFile(file),
   onCommand: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, command: unknown): void => {

@@ -10,7 +10,14 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import type { AppCommand, AppInfo, PdfwrightApi, RecentFile } from '@shared/ipc-contract'
+import type {
+  AppCommand,
+  AppInfo,
+  PdfwrightApi,
+  RecentFile,
+  UpdateInfoSummary
+} from '@shared/ipc-contract'
+import { describeUpdateError } from '@shared/update-messages'
 import { RELEASES_PAGE } from '@shared/external-links'
 import {
   createDefaultSettings,
@@ -88,6 +95,18 @@ export interface SearchState {
   running: boolean
 }
 
+export type UpdatePhase =
+  'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'downloaded' | 'error'
+
+export interface UpdateState {
+  phase: UpdatePhase
+  info: UpdateInfoSummary | null
+  canInstall: boolean
+  percent: number
+  message: string | null
+  confirmInstall: boolean
+}
+
 export interface PasswordRequest {
   fileName: string
   reason: PasswordReason
@@ -137,6 +156,7 @@ export interface State {
   closeConfirm: string | null
   toolDialog: ToolDialog
   settingsSection: SettingsSection
+  update: UpdateState
 }
 
 type Action =
@@ -180,6 +200,7 @@ type Action =
   | { type: 'properties'; open: boolean }
   | { type: 'closeConfirm'; id: string | null }
   | { type: 'toolDialog'; dialog: ToolDialog }
+  | { type: 'update'; patch: Partial<UpdateState> }
 
 const EMPTY_SEARCH: SearchState = { query: '', matches: [], active: 0, running: false }
 
@@ -214,7 +235,15 @@ const initial: State = {
   propertiesOpen: false,
   closeConfirm: null,
   toolDialog: null,
-  settingsSection: 'general'
+  settingsSection: 'general',
+  update: {
+    phase: 'idle',
+    info: null,
+    canInstall: false,
+    percent: 0,
+    message: null,
+    confirmInstall: false
+  }
 }
 
 let scrollToken = 0
@@ -371,6 +400,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, closeConfirm: action.id }
     case 'toolDialog':
       return { ...state, toolDialog: action.dialog }
+    case 'update':
+      return { ...state, update: { ...state.update, ...action.patch } }
   }
 }
 
@@ -425,6 +456,10 @@ export interface Actions {
   save: () => Promise<boolean>
   saveAs: () => Promise<boolean>
   openTool: (dialog: ToolDialog) => void
+  checkUpdates: () => void
+  downloadUpdate: () => void
+  cancelUpdate: () => void
+  installUpdate: (confirmed: boolean) => void
 }
 
 interface Store {
@@ -563,7 +598,14 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         if (path !== null) openPath(path)
       })
     })
-    return api.onOpenFile(openPath)
+    const unsubscribeOpen = api.onOpenFile(openPath)
+    const unsubscribeProgress = api.onUpdateProgress((progress) => {
+      dispatch({ type: 'update', patch: { phase: 'downloading', percent: progress.percent } })
+    })
+    return () => {
+      unsubscribeOpen()
+      unsubscribeProgress()
+    }
   }, [api, openPath])
 
   // main спрашивает подтверждение при закрытии окна, если есть несохранённые документы.
@@ -1044,6 +1086,86 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       saveAs,
       openTool: (dialog) => {
         dispatch({ type: 'toolDialog', dialog })
+      },
+      checkUpdates: () => {
+        dispatch({
+          type: 'update',
+          patch: { phase: 'checking', message: null, info: null, percent: 0 }
+        })
+        api
+          .checkForUpdates()
+          .then((result) => {
+            if (result.status === 'none') {
+              dispatch({
+                type: 'update',
+                patch: { phase: 'none', message: t.settings.updatesNone(result.current) }
+              })
+            } else {
+              dispatch({
+                type: 'update',
+                patch: {
+                  phase: 'available',
+                  info: result.info,
+                  canInstall: result.canInstall,
+                  message: null
+                }
+              })
+            }
+          })
+          .catch((error: unknown) => {
+            dispatch({
+              type: 'update',
+              patch: { phase: 'error', message: describeUpdateError(error) }
+            })
+          })
+      },
+      downloadUpdate: () => {
+        dispatch({ type: 'update', patch: { phase: 'downloading', percent: 0, message: null } })
+        api
+          .downloadUpdate()
+          .then(() => {
+            dispatch({
+              type: 'update',
+              patch: { phase: 'downloaded', percent: 100, confirmInstall: true }
+            })
+          })
+          .catch((error: unknown) => {
+            const message = describeUpdateError(error)
+            dispatch({
+              type: 'update',
+              patch: {
+                phase: message === t.settings.updatesCancelled ? 'available' : 'error',
+                message,
+                percent: 0
+              }
+            })
+          })
+      },
+      cancelUpdate: () => {
+        api.cancelUpdateDownload().catch(() => undefined)
+      },
+      installUpdate: (confirmed) => {
+        if (!confirmed) {
+          dispatch({
+            type: 'update',
+            patch: { confirmInstall: false, message: t.settings.updatesDeferred }
+          })
+          return
+        }
+        if (stateRef.current.docs.some((d) => d.dirty)) {
+          dispatch({
+            type: 'update',
+            patch: { confirmInstall: false, message: t.settings.updatesInstallDirty }
+          })
+          return
+        }
+        dispatch({ type: 'update', patch: { confirmInstall: false } })
+        api.installUpdate().catch((error: unknown) => {
+          dispatch({
+            type: 'update',
+            patch: { phase: 'error', message: describeUpdateError(error) }
+          })
+        })
       }
     }
   }, [

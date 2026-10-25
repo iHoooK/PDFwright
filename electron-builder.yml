@@ -58,4 +58,9 @@ nsis:
   # Имя для «Установленных приложений» и пути обновления (фаза 8).
   guid: 6D5C0B6E-3B2A-4F3E-9C1E-5A4B7C8D9E01
 
-publish: null
+# Для latest.yml и app-update.yml; загрузку в релиз делает workflow, не electron-builder.
+publish:
+  provider: github
+  owner: iHoooK
+  repo: PDFwright
+  releaseType: release

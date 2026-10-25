@@ -1,0 +1,61 @@
+name: Release PDFwright
+
+# Запускается на тег вида v0.1.0: собирает релиз той же командой, что и автор,
+# и создаёт черновик релиза на GitHub с файлами для обновлятора.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Check that the tag matches package.json
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME does not match package.json version $version"
+          }
+          "Releasing PDFwright $version"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release build
+        shell: bash
+        run: bash scripts/build-release.sh
+
+      - name: Verify updater metadata
+        shell: pwsh
+        run: |
+          foreach ($name in 'PDFwright-Setup-x64.exe', 'PDFwright-Setup-x64.exe.blockmap', 'latest.yml', 'PDFwright-Portable-x64.zip', 'SHA256SUMS.txt') {
+            $path = Join-Path $env:GITHUB_WORKSPACE "release/$name"
+            if (-not (Test-Path $path)) { throw "Release file not found: $path" }
+          }
+          Get-Content (Join-Path $env:GITHUB_WORKSPACE 'release/latest.yml')
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          name: PDFwright ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            release/PDFwright-Setup-x64.exe
+            release/PDFwright-Setup-x64.exe.blockmap
+            release/latest.yml
+            release/PDFwright-Portable-x64.zip
+            release/SHA256SUMS.txt

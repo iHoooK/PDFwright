@@ -8,6 +8,7 @@ import { toBuffer, writeAtomicBytes } from '../services/fs-utils'
 import { printPdfFile } from '../services/print-service'
 import type { RecentFilesStore } from '../services/recent-files'
 import type { SettingsStore } from '../services/settings-store'
+import type { UpdateService } from '../services/update-service'
 
 export interface IpcDependencies {
   settings: SettingsStore
@@ -16,6 +17,7 @@ export interface IpcDependencies {
   takePendingFile: () => string | null
   /** Renderer сообщает число документов с несохранёнными изменениями. */
   setDirtyCount: (count: number) => void
+  updates: UpdateService
 }
 
 const PDF_FILTERS: Electron.FileFilter[] = [
@@ -32,7 +34,8 @@ export function registerIpcHandlers({
   settings,
   recent,
   takePendingFile,
-  setDirtyCount
+  setDirtyCount,
+  updates
 }: IpcDependencies): void {
   handle(IpcChannels.appGetInfo, () => getAppInfo())
   handle(IpcChannels.appTakePendingFile, () => takePendingFile())
@@ -145,6 +148,15 @@ export function registerIpcHandlers({
   handle(IpcChannels.filePrint, (path) => printPdfFile(requireAbsolutePath(path)))
   handle(IpcChannels.recentList, () => recent.list())
   handle(IpcChannels.recentRemove, (path) => recent.remove(requireAbsolutePath(path)))
+
+  handle(IpcChannels.updateCheck, () => updates.check())
+  handle(IpcChannels.updateDownload, () => updates.download())
+  handle(IpcChannels.updateCancel, () => {
+    updates.cancel()
+  })
+  handle(IpcChannels.updateInstall, () => {
+    updates.install()
+  })
 }
 
 async function showOpen(

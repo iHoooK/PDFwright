@@ -3,7 +3,8 @@ import type {
   FileReadResult,
   OpenedPdfFile,
   PdfwrightApi,
-  RecentFile
+  RecentFile,
+  UpdateProgress
 } from '@shared/ipc-contract'
 import {
   applySettingsPatch,
@@ -55,6 +56,7 @@ function createBrowserMock(): PdfwrightApi {
     packaged: false
   }
   const files = new Map<string, File>()
+  const progressListeners = new Set<(p: UpdateProgress) => void>()
   let recent: RecentFile[] = []
   const pathFor = (file: File): string => `C:\\Браузер\\${file.name}`
 
@@ -163,6 +165,45 @@ function createBrowserMock(): PdfwrightApi {
     showItemInFolder: () => Promise.resolve(),
     setDirtyCount: () => Promise.resolve(),
     takePendingOpenFile: () => Promise.resolve(null),
+    // Заглушка обновлений: имитирует найденную версию и скачивание с прогрессом.
+    checkForUpdates: () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            status: 'available',
+            canInstall: true,
+            info: {
+              version: '0.1.1',
+              releaseDate: new Date().toISOString(),
+              releaseNotes: null,
+              size: 123_236_147,
+              page: 'https://github.com/iHoooK/PDFwright/releases/tag/v0.1.1'
+            }
+          })
+        }, 600)
+      }),
+    downloadUpdate: () =>
+      new Promise((resolve) => {
+        let percent = 0
+        const timer = setInterval(() => {
+          percent += 20
+          for (const listener of progressListeners) {
+            listener({ percent, transferred: percent, total: 100, bytesPerSecond: 1 })
+          }
+          if (percent >= 100) {
+            clearInterval(timer)
+            resolve()
+          }
+        }, 300)
+      }),
+    cancelUpdateDownload: () => Promise.resolve(),
+    installUpdate: () => Promise.resolve(),
+    onUpdateProgress: (listener) => {
+      progressListeners.add(listener)
+      return () => {
+        progressListeners.delete(listener)
+      }
+    },
     getPathForFile: (file) => {
       const path = pathFor(file)
       files.set(path, file)

@@ -23,6 +23,8 @@ import { cx } from '@renderer/components/cx'
 import { useStore, type SettingsSection } from '@renderer/app/store'
 import { HOTKEYS } from '@renderer/app/hotkeys'
 import { LicensesDialog } from './LicensesDialog'
+import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { formatBytes } from '@shared/update-messages'
 import { DEVELOPER_LINKS, RELEASES_PAGE } from '@shared/external-links'
 import {
   SCROLL_MODES,
@@ -62,6 +64,19 @@ export function SettingsScreen(): React.JSX.Element {
   const { state, actions, api } = useStore()
   const { settings, info } = state
   const [licensesOpen, setLicensesOpen] = useState(false)
+  const update = state.update
+  const updateStatus =
+    update.phase === 'checking'
+      ? t.settings.updatesChecking
+      : update.phase === 'available' && update.info
+        ? update.canInstall
+          ? t.settings.updatesAvailable(update.info.version, formatBytes(update.info.size ?? 0))
+          : t.settings.updatesAvailablePortable(update.info.version)
+        : update.phase === 'downloading'
+          ? t.settings.updatesDownloading(update.percent)
+          : update.phase === 'downloaded'
+            ? (update.message ?? t.settings.updatesDownloaded)
+            : (update.message ?? t.settings.updatesHint)
   const section = state.settingsSection
   const version = info?.version ?? '…'
   const kind = info
@@ -207,28 +222,78 @@ export function SettingsScreen(): React.JSX.Element {
             <SettingCard
               icon={<IconUpdate />}
               title={t.settings.installed(version)}
-              hint={t.settings.updatesHint}
+              hint={updateStatus}
               column
             >
-              <div className={s.row}>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    actions.toast(t.settings.updatesSoon)
-                  }}
+              {update.phase === 'downloading' && (
+                <div
+                  className={s.progress}
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={update.percent}
                 >
-                  {t.settings.check}
-                </Button>
+                  <i style={{ width: `${update.percent}%` }} />
+                </div>
+              )}
+              <div className={s.row}>
+                {update.phase === 'downloading' ? (
+                  <Button onClick={actions.cancelUpdate}>{t.settings.cancelDownload}</Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={actions.checkUpdates}
+                    disabled={update.phase === 'checking'}
+                  >
+                    {t.settings.check}
+                  </Button>
+                )}
+                {update.phase === 'available' && update.canInstall && (
+                  <Button onClick={actions.downloadUpdate}>{t.settings.download}</Button>
+                )}
+                {update.phase === 'downloaded' && (
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      actions.installUpdate(true)
+                    }}
+                  >
+                    {t.settings.updatesInstall}
+                  </Button>
+                )}
                 <Button
                   icon={<IconExternal />}
                   onClick={() => {
-                    actions.openExternal(RELEASES_PAGE)
+                    actions.openExternal(update.info?.page ?? RELEASES_PAGE)
                   }}
                 >
                   {t.settings.releases}
                 </Button>
               </div>
             </SettingCard>
+            <ConfirmDialog
+              open={update.confirmInstall}
+              title={t.settings.updatesInstallTitle}
+              message={t.settings.updatesInstallText(update.info?.version ?? '')}
+              onCancel={() => {
+                actions.installUpdate(false)
+              }}
+              actions={[
+                {
+                  label: t.confirm.cancel,
+                  onClick: () => {
+                    actions.installUpdate(false)
+                  }
+                },
+                {
+                  label: t.settings.updatesInstall,
+                  variant: 'primary',
+                  onClick: () => {
+                    actions.installUpdate(true)
+                  }
+                }
+              ]}
+            />
           </section>
         )}
 

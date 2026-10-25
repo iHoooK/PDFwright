@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, session, shell } from 'electron'
 import { join } from 'node:path'
-import { APP_OPEN_FILE_CHANNEL } from '@shared/ipc-contract'
+import { APP_OPEN_FILE_CHANNEL, UPDATE_PROGRESS_CHANNEL } from '@shared/ipc-contract'
 import { isAllowedExternalUrl } from '@shared/external-links'
 import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH } from '@shared/settings-schema'
 import { registerIpcHandlers } from './ipc'
@@ -12,7 +12,9 @@ import {
   rendererDirFromMain,
   rendererIndexUrl
 } from './protocol'
+import { isPortableBuild } from './services/app-paths'
 import { RecentFilesStore } from './services/recent-files'
+import { UpdateService } from './services/update-service'
 import { SettingsStore } from './services/settings-store'
 
 const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
@@ -20,6 +22,7 @@ const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
 let mainWindow: BrowserWindow | null = null
 let pendingFile: string | null = null
 let dirtyCount = 0
+let installingUpdate = false
 
 // Один экземпляр: второй запуск передаёт аргументы первому и завершается.
 if (!app.requestSingleInstanceLock()) {
@@ -55,7 +58,11 @@ async function bootstrap(): Promise<void> {
     },
     setDirtyCount: (count) => {
       dirtyCount = count
-    }
+    },
+    updates: new UpdateService(isPortableBuild(), (progress) => {
+      installingUpdate = progress.percent >= 100
+      mainWindow?.webContents.send(UPDATE_PROGRESS_CHANNEL, progress)
+    })
   })
   installApplicationMenu()
 
@@ -130,7 +137,7 @@ function createMainWindow(settings: SettingsStore): BrowserWindow {
 
   // Несохранённые изменения: спрашиваем подтверждение до закрытия окна.
   window.on('close', (event) => {
-    if (dirtyCount === 0) return
+    if (dirtyCount === 0 || installingUpdate) return
     const choice = dialog.showMessageBoxSync(window, {
       type: 'warning',
       title: 'PDFwright',

@@ -22,13 +22,19 @@ export const IpcChannels = {
   fileWriteMany: 'file:write-many',
   filePrint: 'file:print',
   recentList: 'recent:list',
-  recentRemove: 'recent:remove'
+  recentRemove: 'recent:remove',
+  updateCheck: 'update:check',
+  updateDownload: 'update:download',
+  updateCancel: 'update:cancel',
+  updateInstall: 'update:install'
 } as const
 
 /** Канал main → renderer: команды меню приложения и системных ускорителей. */
 export const APP_COMMAND_CHANNEL = 'app:command'
 /** Канал main → renderer: открыть файл (второй экземпляр, ассоциация .pdf). */
 export const APP_OPEN_FILE_CHANNEL = 'app:open-file'
+/** Канал main → renderer: прогресс скачивания обновления. */
+export const UPDATE_PROGRESS_CHANNEL = 'update:progress'
 
 export const APP_COMMANDS = [
   'file.open',
@@ -115,6 +121,26 @@ export interface RecentFile {
   lastOpenedMs: number
 }
 
+export interface UpdateInfoSummary {
+  version: string
+  releaseDate: string | null
+  releaseNotes: string | null
+  size: number | null
+  /** Страница релиза на GitHub. */
+  page: string
+}
+
+export type UpdateCheckResult =
+  | { status: 'none'; current: string }
+  | { status: 'available'; info: UpdateInfoSummary; canInstall: boolean }
+
+export interface UpdateProgress {
+  percent: number
+  transferred: number
+  total: number
+  bytesPerSecond: number
+}
+
 /** Контракт, который preload публикует в renderer как `window.pdfwright`. */
 export interface PdfwrightApi {
   getAppInfo: () => Promise<AppInfo>
@@ -136,6 +162,12 @@ export interface PdfwrightApi {
   setDirtyCount: (count: number) => Promise<void>
   /** Файл из аргументов запуска, если был; отдаётся один раз. */
   takePendingOpenFile: () => Promise<string | null>
+  /** Обновления: только по явной команде пользователя. */
+  checkForUpdates: () => Promise<UpdateCheckResult>
+  downloadUpdate: () => Promise<void>
+  cancelUpdateDownload: () => Promise<void>
+  installUpdate: () => Promise<void>
+  onUpdateProgress: (listener: (progress: UpdateProgress) => void) => () => void
   /** Путь к файлу, брошенному в окно (sandbox не даёт File.path). */
   getPathForFile: (file: File) => string
   /** Подписка на команды меню; возвращает функцию отписки. */
@@ -163,4 +195,8 @@ export interface IpcHandlers {
   [IpcChannels.filePrint]: (path: string) => Promise<void>
   [IpcChannels.recentList]: () => RecentFile[] | Promise<RecentFile[]>
   [IpcChannels.recentRemove]: (path: string) => RecentFile[] | Promise<RecentFile[]>
+  [IpcChannels.updateCheck]: () => Promise<UpdateCheckResult>
+  [IpcChannels.updateDownload]: () => Promise<void>
+  [IpcChannels.updateCancel]: () => void
+  [IpcChannels.updateInstall]: () => void
 }
