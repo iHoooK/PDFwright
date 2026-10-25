@@ -60,6 +60,30 @@ export interface WindowSettings {
   maximized: boolean
 }
 
+export const SESSION_WINDOWS_MAX = 8
+export const SESSION_TABS_MAX = 50
+export const SESSION_PATH_MAX = 4096
+
+/** Окно прошлого сеанса: рамка и открытые вкладки. */
+export interface SessionWindow {
+  /** Положение окна; null — окно ставит система. */
+  x: number | null
+  y: number | null
+  width: number
+  height: number
+  maximized: boolean
+  /** Пути открытых документов по порядку вкладок. */
+  tabs: string[]
+  /** Номер активной вкладки в tabs. */
+  active: number
+}
+
+export interface SessionSettings {
+  /** Открывать окна и вкладки прошлого сеанса при запуске без файла. */
+  restore: boolean
+  windows: SessionWindow[]
+}
+
 export interface AppSettings {
   schemaVersion: typeof SETTINGS_SCHEMA_VERSION
   general: GeneralSettings
@@ -67,6 +91,7 @@ export interface AppSettings {
   files: FilesSettings
   markup: MarkupSettings
   window: WindowSettings
+  session: SessionSettings
 }
 
 /** Частичное обновление: любой раздел и любое поле можно опустить. */
@@ -85,7 +110,8 @@ export function createDefaultSettings(): AppSettings {
     viewer: { defaultZoom: 'fit-width', scrollMode: 'continuous' },
     files: { backupOnSave: false, recentLimit: 10 },
     markup: { saveMode: 'annotation', signatures: [] },
-    window: { width: 1280, height: 800, maximized: false }
+    window: { width: 1280, height: 800, maximized: false },
+    session: { restore: true, windows: [] }
   }
 }
 
@@ -125,6 +151,61 @@ function pickSignatures(value: unknown): SavedSignature[] {
   return result
 }
 
+function pickCoordinate(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 100_000
+    ? Math.round(value)
+    : null
+}
+
+function isSessionPath(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= SESSION_PATH_MAX &&
+    !value.includes('\0')
+  )
+}
+
+/**
+ * Окна прошлого сеанса из файла настроек: битые поля чинятся, окна без
+ * вкладок и повторы путей отбрасываются. Файл, открытый в одном окне, во
+ * втором уже не восстанавливается.
+ */
+export function normalizeSessionWindows(value: unknown): SessionWindow[] {
+  if (!Array.isArray(value)) return []
+  const defaults = createDefaultSettings().window
+  const seen = new Set<string>()
+  const result: SessionWindow[] = []
+  for (const item of value) {
+    if (!isRecord(item) || !Array.isArray(item.tabs)) continue
+    const rawTabs: unknown[] = item.tabs
+    const tabs: string[] = []
+    const rawActive = rawTabs[pickInteger(item.active, 0, 0, rawTabs.length - 1)]
+    let active = 0
+    for (const tab of rawTabs) {
+      if (!isSessionPath(tab) || seen.has(tab.toLowerCase())) continue
+      seen.add(tab.toLowerCase())
+      if (tab === rawActive) active = tabs.length
+      tabs.push(tab)
+      if (tabs.length === SESSION_TABS_MAX) break
+    }
+    if (tabs.length === 0) continue
+    const x = pickCoordinate(item.x)
+    const y = pickCoordinate(item.y)
+    result.push({
+      x: y === null ? null : x,
+      y: x === null ? null : y,
+      width: pickInteger(item.width, defaults.width, WINDOW_MIN_WIDTH, 16_384),
+      height: pickInteger(item.height, defaults.height, WINDOW_MIN_HEIGHT, 16_384),
+      maximized: pickBoolean(item.maximized, false),
+      tabs,
+      active
+    })
+    if (result.length === SESSION_WINDOWS_MAX) break
+  }
+  return result
+}
+
 /**
  * Приводит произвольное содержимое файла настроек к валидной схеме.
  * Никогда не бросает исключений.
@@ -138,6 +219,7 @@ export function normalizeSettings(input: unknown): AppSettings {
   const files = isRecord(input.files) ? input.files : {}
   const markup = isRecord(input.markup) ? input.markup : {}
   const window = isRecord(input.window) ? input.window : {}
+  const session = isRecord(input.session) ? input.session : {}
 
   return {
     schemaVersion: SETTINGS_SCHEMA_VERSION,
@@ -161,6 +243,10 @@ export function normalizeSettings(input: unknown): AppSettings {
       width: pickInteger(window.width, defaults.window.width, WINDOW_MIN_WIDTH, 16_384),
       height: pickInteger(window.height, defaults.window.height, WINDOW_MIN_HEIGHT, 16_384),
       maximized: pickBoolean(window.maximized, defaults.window.maximized)
+    },
+    session: {
+      restore: pickBoolean(session.restore, defaults.session.restore),
+      windows: normalizeSessionWindows(session.windows)
     }
   }
 }
@@ -168,7 +254,7 @@ export function normalizeSettings(input: unknown): AppSettings {
 /** Накладывает patch на текущие настройки и повторно валидирует результат. */
 export function applySettingsPatch(current: AppSettings, patch: SettingsPatch): AppSettings {
   const merged: Record<string, unknown> = { schemaVersion: current.schemaVersion }
-  for (const section of ['general', 'viewer', 'files', 'markup', 'window'] as const) {
+  for (const section of ['general', 'viewer', 'files', 'markup', 'window', 'session'] as const) {
     const sectionPatch: object = isRecord(patch[section]) ? patch[section] : {}
     merged[section] = { ...current[section], ...sectionPatch }
   }

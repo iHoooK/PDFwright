@@ -7,8 +7,10 @@ import type { AppSettings, SettingsPatch } from './settings-schema'
  */
 export const IpcChannels = {
   appGetInfo: 'app:get-info',
-  appTakePendingFile: 'app:take-pending-file',
+  appTakeStartup: 'app:take-startup',
   appSetDirty: 'app:set-dirty',
+  windowSetTabs: 'window:set-tabs',
+  windowOpenFile: 'window:open-file',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
   shellOpenExternal: 'shell:open-external',
@@ -110,6 +112,20 @@ export interface WriteManyItem {
   bytes: ArrayBuffer
 }
 
+/** Что открыть в новом окне: файлы вкладок, активная вкладка, пропавшие файлы сеанса. */
+export interface StartupFiles {
+  files: string[]
+  active: string | null
+  /** Файлы прошлого сеанса, которых нет на диске: окно сообщает о них. */
+  missing: string[]
+}
+
+/** Вкладки окна для сеанса и выбора окна под файл из Проводника. */
+export interface WindowTabs {
+  paths: string[]
+  active: string | null
+}
+
 export interface SaveDialogOptions {
   title?: string
   defaultPath?: string
@@ -160,8 +176,12 @@ export interface PdfwrightApi {
   removeRecentFile: (path: string) => Promise<RecentFile[]>
   /** Сколько документов с несохранёнными изменениями: main спрашивает подтверждение при закрытии окна. */
   setDirtyCount: (count: number) => Promise<void>
-  /** Файл из аргументов запуска, если был; отдаётся один раз. */
-  takePendingOpenFile: () => Promise<string | null>
+  /** Файлы, с которыми открыто окно (аргументы запуска, сеанс, «Открыть в новом окне»); отдаются один раз. */
+  takeStartupFiles: () => Promise<StartupFiles>
+  /** Вкладки окна: main запоминает их для сеанса и для выбора окна под файл. */
+  setWindowTabs: (tabs: WindowTabs) => Promise<void>
+  /** Открывает файл в новом окне программы. */
+  openInNewWindow: (path: string) => Promise<void>
   /** Обновления: только по явной команде пользователя. */
   checkForUpdates: () => Promise<UpdateCheckResult>
   downloadUpdate: () => Promise<void>
@@ -179,8 +199,10 @@ export interface PdfwrightApi {
 /** Сигнатуры обработчиков в main: ключ — канал, значение — (args) => result. */
 export interface IpcHandlers {
   [IpcChannels.appGetInfo]: () => AppInfo | Promise<AppInfo>
-  [IpcChannels.appTakePendingFile]: () => string | null
+  [IpcChannels.appTakeStartup]: () => StartupFiles
   [IpcChannels.appSetDirty]: (count: number) => void
+  [IpcChannels.windowSetTabs]: (tabs: WindowTabs) => void
+  [IpcChannels.windowOpenFile]: (path: string) => void
   [IpcChannels.settingsGet]: () => AppSettings | Promise<AppSettings>
   [IpcChannels.settingsUpdate]: (patch: SettingsPatch) => AppSettings | Promise<AppSettings>
   [IpcChannels.shellOpenExternal]: (url: string) => void | Promise<void>

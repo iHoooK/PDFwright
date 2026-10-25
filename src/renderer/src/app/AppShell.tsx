@@ -1,7 +1,9 @@
+import { useCallback, useState } from 'react'
 import {
   IconAdd,
   IconClose,
   IconDocument,
+  IconExternal,
   IconHome,
   IconMoon,
   IconSettings,
@@ -9,6 +11,7 @@ import {
 } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { IconButton, Toast } from '@renderer/components/controls'
+import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { StartScreen } from '@renderer/features/start/StartScreen'
 import { ViewerScreen } from '@renderer/features/viewer/ViewerScreen'
 import { SettingsScreen } from '@renderer/features/settings/SettingsScreen'
@@ -16,6 +19,7 @@ import { KitScreen } from '@renderer/features/kit/KitScreen'
 import logo from '../assets/logo.svg'
 import { activeDoc, useStore, type DocTab } from './store'
 import { useHotkeys } from './hotkeys'
+import { ContextMenu } from './ContextMenu'
 import { resolvedTheme } from './theme'
 import s from './app.module.css'
 
@@ -24,6 +28,11 @@ export function AppShell(): React.JSX.Element {
   useHotkeys()
   const doc = activeDoc(state)
   const dark = resolvedTheme() === 'dark'
+  const [tabMenu, setTabMenu] = useState<{ tab: DocTab; x: number; y: number } | null>(null)
+  const [moveConfirm, setMoveConfirm] = useState<DocTab | null>(null)
+  const closeTabMenu = useCallback(() => {
+    setTabMenu(null)
+  }, [])
 
   return (
     <div
@@ -64,6 +73,17 @@ export function AppShell(): React.JSX.Element {
               title={d.path}
               onClick={() => {
                 actions.activateDoc(d.id)
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault()
+                // Меню с клавиатуры (Shift+F10) приходит без координат курсора.
+                const rect = event.currentTarget.getBoundingClientRect()
+                const fromKeyboard = event.clientX === 0 && event.clientY === 0
+                setTabMenu({
+                  tab: d,
+                  x: fromKeyboard ? rect.left : event.clientX,
+                  y: fromKeyboard ? rect.bottom : event.clientY
+                })
               }}
             >
               <IconDocument />
@@ -143,6 +163,62 @@ export function AppShell(): React.JSX.Element {
             <span className={s.ok}>{t.viewer.saved}</span>
           ))}
       </footer>
+
+      {tabMenu && (
+        <ContextMenu
+          x={tabMenu.x}
+          y={tabMenu.y}
+          label={t.windows.tabMenu(tabMenu.tab.name)}
+          onClose={closeTabMenu}
+          items={[
+            ...(tabMenu.tab.status === 'error'
+              ? []
+              : [
+                  {
+                    label: t.windows.openInNewWindow,
+                    icon: <IconExternal />,
+                    onSelect: () => {
+                      const tab = state.docs.find((d) => d.id === tabMenu.tab.id)
+                      if (tab?.dirty) setMoveConfirm(tab)
+                      else actions.openInNewWindow(tabMenu.tab.id)
+                    }
+                  }
+                ]),
+            {
+              label: t.windows.closeTab,
+              icon: <IconClose />,
+              onSelect: () => {
+                actions.requestCloseDoc(tabMenu.tab.id)
+              }
+            }
+          ]}
+        />
+      )}
+
+      <ConfirmDialog
+        open={moveConfirm !== null}
+        title={t.windows.saveFirstTitle}
+        message={moveConfirm ? t.windows.saveFirstText(moveConfirm.name) : ''}
+        onCancel={() => {
+          setMoveConfirm(null)
+        }}
+        actions={[
+          {
+            label: t.windows.saveAndOpen,
+            variant: 'primary',
+            onClick: () => {
+              if (moveConfirm) actions.openInNewWindow(moveConfirm.id, true)
+              setMoveConfirm(null)
+            }
+          },
+          {
+            label: t.windows.cancel,
+            onClick: () => {
+              setMoveConfirm(null)
+            }
+          }
+        ]}
+      />
 
       <Toast message={state.toast} />
     </div>

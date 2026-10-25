@@ -57,6 +57,11 @@ export class SettingsStore {
     return this.settings
   }
 
+  /** Ждёт окончания начатых записей: перед выходом из программы. */
+  flush(): Promise<void> {
+    return this.writeQueue.catch(() => undefined)
+  }
+
   private persist(): Promise<void> {
     const snapshot = JSON.stringify(this.settings, null, 2) + '\n'
     this.writeQueue = this.writeQueue

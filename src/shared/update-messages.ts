@@ -2,8 +2,14 @@
  * Переводит ошибки electron-updater и сети в понятные пользователю фразы.
  * Текст исходной ошибки не показывается целиком: в нём бывают адреса и пути.
  */
+/** Код ошибки main: установку обновления запрещают несохранённые документы в каком-то окне. */
+export const UPDATE_DIRTY_ERROR = 'PDFWRIGHT_UPDATE_DIRTY'
+
 export function describeUpdateError(raw: unknown): string {
   const message = raw instanceof Error ? `${raw.name}: ${raw.message}` : String(raw)
+  if (message.includes(UPDATE_DIRTY_ERROR)) {
+    return 'Сначала сохраните или закройте документы с несохранёнными изменениями во всех окнах.'
+  }
   const lower = message.toLowerCase()
   if (
     lower.includes('cancellationerror') ||

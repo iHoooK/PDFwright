@@ -1,7 +1,13 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron'
 import { readFile, stat } from 'node:fs/promises'
 import { basename, isAbsolute } from 'node:path'
-import { IpcChannels, type AppInfo, type IpcHandlers } from '@shared/ipc-contract'
+import {
+  IpcChannels,
+  type AppInfo,
+  type IpcHandlers,
+  type StartupFiles,
+  type WindowTabs
+} from '@shared/ipc-contract'
 import { isAllowedExternalUrl } from '@shared/external-links'
 import { isPortableBuild } from '../services/app-paths'
 import { toBuffer, writeAtomicBytes } from '../services/fs-utils'
@@ -10,13 +16,22 @@ import type { RecentFilesStore } from '../services/recent-files'
 import type { SettingsStore } from '../services/settings-store'
 import type { UpdateService } from '../services/update-service'
 
+/** Окна программы глазами IPC: каждый вызов относится к окну отправителя. */
+export interface WindowsBridge {
+  /** Файлы, с которыми открыто окно; renderer забирает их один раз. */
+  takeStartup: (sender: WebContents) => StartupFiles
+  /** Renderer сообщает число документов с несохранёнными изменениями. */
+  setDirty: (sender: WebContents, count: number) => void
+  setTabs: (sender: WebContents, tabs: WindowTabs) => void
+  openInNewWindow: (sender: WebContents, path: string) => void
+  setUpdateOwner: (sender: WebContents) => void
+  runUpdateInstall: (install: () => void) => void
+}
+
 export interface IpcDependencies {
   settings: SettingsStore
   recent: RecentFilesStore
-  /** Файл из аргументов запуска; renderer забирает его один раз. */
-  takePendingFile: () => string | null
-  /** Renderer сообщает число документов с несохранёнными изменениями. */
-  setDirtyCount: (count: number) => void
+  windows: WindowsBridge
   updates: UpdateService
 }
 
@@ -30,17 +45,17 @@ const PDF_FILTERS: Electron.FileFilter[] = [
  * данные сам: renderer — отдельный процесс, и его аргументам нельзя
  * доверять только потому, что типы в preload совпадают.
  */
-export function registerIpcHandlers({
-  settings,
-  recent,
-  takePendingFile,
-  setDirtyCount,
-  updates
-}: IpcDependencies): void {
+export function registerIpcHandlers({ settings, recent, windows, updates }: IpcDependencies): void {
   handle(IpcChannels.appGetInfo, () => getAppInfo())
-  handle(IpcChannels.appTakePendingFile, () => takePendingFile())
-  handle(IpcChannels.appSetDirty, (count) => {
-    setDirtyCount(typeof count === 'number' && count > 0 ? Math.floor(count) : 0)
+  handleFrom(IpcChannels.appTakeStartup, (sender) => windows.takeStartup(sender))
+  handleFrom(IpcChannels.appSetDirty, (sender, count) => {
+    windows.setDirty(sender, typeof count === 'number' && count > 0 ? Math.floor(count) : 0)
+  })
+  handleFrom(IpcChannels.windowSetTabs, (sender, tabs) => {
+    windows.setTabs(sender, requireWindowTabs(tabs))
+  })
+  handleFrom(IpcChannels.windowOpenFile, (sender, path) => {
+    windows.openInNewWindow(sender, requireAbsolutePath(path))
   })
   handle(IpcChannels.settingsGet, () => settings.get())
 
@@ -150,12 +165,17 @@ export function registerIpcHandlers({
   handle(IpcChannels.recentRemove, (path) => recent.remove(requireAbsolutePath(path)))
 
   handle(IpcChannels.updateCheck, () => updates.check())
-  handle(IpcChannels.updateDownload, () => updates.download())
+  handleFrom(IpcChannels.updateDownload, (sender) => {
+    windows.setUpdateOwner(sender)
+    return updates.download()
+  })
   handle(IpcChannels.updateCancel, () => {
     updates.cancel()
   })
   handle(IpcChannels.updateInstall, () => {
-    updates.install()
+    windows.runUpdateInstall(() => {
+      updates.install()
+    })
   })
 }
 
@@ -173,9 +193,31 @@ function requireAbsolutePath(path: unknown): string {
   return path
 }
 
+/** Вкладки окна от renderer: только абсолютные пути, не больше разумного числа. */
+function requireWindowTabs(tabs: unknown): WindowTabs {
+  if (typeof tabs !== 'object' || tabs === null) throw new TypeError('Ожидаются вкладки окна')
+  const { paths, active } = tabs as { paths?: unknown; active?: unknown }
+  if (!Array.isArray(paths) || paths.length > 500) throw new TypeError('Ожидаются вкладки окна')
+  const safe = paths.map(requireAbsolutePath)
+  return {
+    paths: safe,
+    active: typeof active === 'string' && safe.includes(active) ? active : null
+  }
+}
+
 function handle<C extends keyof IpcHandlers>(channel: C, handler: IpcHandlers[C]): void {
   ipcMain.handle(channel, (_event, ...args: unknown[]) =>
     (handler as (...a: unknown[]) => unknown)(...args)
+  )
+}
+
+/** Обработчик, которому нужно окно отправителя. */
+function handleFrom<C extends keyof IpcHandlers>(
+  channel: C,
+  handler: (sender: WebContents, ...args: Parameters<IpcHandlers[C]>) => ReturnType<IpcHandlers[C]>
+): void {
+  ipcMain.handle(channel, (event, ...args: unknown[]) =>
+    (handler as (sender: WebContents, ...a: unknown[]) => unknown)(event.sender, ...args)
   )
 }
 
