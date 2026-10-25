@@ -15,6 +15,8 @@ const RUNTIME_ROOTS = [
   '@fluentui/react-icons',
   'pdfjs-dist',
   'pdf-lib',
+  '@pdf-lib/fontkit',
+  'mupdf',
   'electron-updater'
 ]
 const START = '<!-- deps:start -->'
@@ -87,8 +89,10 @@ if (notices.includes(START) && notices.includes(END)) {
   next = `${notices.trimEnd()}\n\n## Полный перечень пакетов в поставке\n\n${table}\n`
 }
 
-const disallowed = unique.filter(
-  (r) => /GPL|AGPL|SSPL/i.test(r.license) && !/LGPL/i.test(r.license)
+// PDFwright под AGPL-3.0-or-later: GPLv3/AGPLv3 совместимы, а GPL-2.0-only,
+// SSPL и проприетарные лицензии — нет.
+const disallowed = unique.filter((r) =>
+  /GPL-2\.0(-only)?$|GPL-2\.0-only|SSPL|UNLICENSED|Commercial|Proprietary/i.test(r.license)
 )
 if (disallowed.length > 0) {
   console.error('Несовместимые лицензии:', disallowed)

@@ -314,6 +314,14 @@ export function SettingsScreen(): React.JSX.Element {
                 >
                   {t.settings.licenses}
                 </Button>
+                <Button
+                  icon={<IconExternal />}
+                  onClick={() => {
+                    actions.openExternal(`https://github.com/iHoooK/PDFwright/tree/v${version}`)
+                  }}
+                >
+                  {t.settings.sourceCode}
+                </Button>
               </div>
             </SettingCard>
             {info && (
