@@ -355,6 +355,13 @@ export function ViewerScreen(): React.JSX.Element {
                   <Button onClick={() => void actions.saveAs()} disabled={!canEdit}>
                     {t.cmd.saveAs}
                   </Button>
+                  <Button
+                    title={t.compare.commandHint}
+                    onClick={actions.compareWith}
+                    disabled={!ready || busy}
+                  >
+                    {t.compare.command}
+                  </Button>
                 </div>
               </div>
             )}

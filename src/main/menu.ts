@@ -56,6 +56,7 @@ export function installApplicationMenu(): void {
       submenu: [
         item('Объединить файлы…', 'tools.merge'),
         item('Разделить документ…', 'tools.split'),
+        item('Сравнить с…', 'tools.compare'),
         { type: 'separator' },
         item('Режим «Страницы»', 'view.pages', 'CmdOrCtrl+G')
       ]
