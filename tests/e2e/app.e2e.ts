@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
@@ -26,6 +26,12 @@ let app: ElectronApplication | null = null
 
 beforeEach(async () => {
   work = await mkdtemp(join(tmpdir(), 'pdfwright-e2e-'))
+  // Окно как на раннере CI (экран 1024×768): масштаб и раскладка не зависят от машины.
+  await mkdir(join(work, 'userData'), { recursive: true })
+  await writeFile(
+    join(work, 'userData', 'settings.json'),
+    JSON.stringify({ window: { width: 1024, height: 768, maximized: false } })
+  )
 })
 
 afterEach(async () => {
@@ -233,7 +239,8 @@ describe('PDFwright (собранное приложение)', () => {
     const before = await rect.boundingBox()
     await drag(page, 1, [0.2, 0.47], [0.3, 0.5])
     const moved = await rect.boundingBox()
-    expect((moved?.x ?? 0) - (before?.x ?? 0)).toBeGreaterThan(50)
+    const pageWidth = (await page.locator('[data-page="1"]').boundingBox())?.width ?? 0
+    expect((moved?.x ?? 0) - (before?.x ?? 0)).toBeGreaterThan(pageWidth * 0.08)
     expect(Math.round(moved?.width ?? 0)).toBe(Math.round(before?.width ?? 0))
     const corner = await page.locator('[data-markup-handle="2"]').boundingBox()
     if (!corner) throw new Error('нет угла рамки')
