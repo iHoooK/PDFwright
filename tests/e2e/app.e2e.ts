@@ -1,7 +1,6 @@
 /// <reference lib="dom" />
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import {
   PDFArray,
   PDFDict,
@@ -11,146 +10,29 @@ import {
   StandardFonts,
   type PDFRawStream
 } from 'pdf-lib'
-import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { listPageObjects } from '../../src/shared/pdf-content'
+import {
+  annotations,
+  clickPage,
+  ctx,
+  drag,
+  launch,
+  pagePoint,
+  ROOT,
+  shot,
+  statusText,
+  subtypes,
+  tool,
+  useElectronApp
+} from './helpers'
 
-/**
- * Сквозные проверки собранного приложения (out/): запуск Electron с файлом
- * в аргументах, как при двойном клике в Проводнике. Перед запуском нужен
- * `npm run build`. Данные приложения — во временной папке (PDFWRIGHT_USER_DATA).
- */
-
-const ROOT = resolve(import.meta.dirname, '../..')
-let work: string
-let app: ElectronApplication | null = null
-
-beforeEach(async () => {
-  work = await mkdtemp(join(tmpdir(), 'pdfwright-e2e-'))
-  // Окно как на раннере CI (экран 1024×768): масштаб и раскладка не зависят от машины.
-  await mkdir(join(work, 'userData'), { recursive: true })
-  await writeFile(
-    join(work, 'userData', 'settings.json'),
-    JSON.stringify({ window: { width: 1024, height: 768, maximized: false } })
-  )
-})
-
-afterEach(async () => {
-  if (app) {
-    const child = app.process()
-    const exited = new Promise((r) => child.once('exit', r))
-    // app.exit не спрашивает про несохранённые документы, в отличие от закрытия окна.
-    await app
-      .evaluate(({ app: electronApp }) => {
-        setTimeout(() => {
-          electronApp.exit(0)
-        }, 0)
-      })
-      .catch(() => undefined)
-    await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))])
-    if (child.exitCode === null) child.kill()
-    app = null
-  }
-  await rm(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
-})
-
-async function launch(pdfPath: string): Promise<Page> {
-  app = await electron.launch({
-    cwd: ROOT,
-    args: ['.', pdfPath],
-    env: { ...process.env, PDFWRIGHT_USER_DATA: join(work, 'userData'), ELECTRON_RENDERER_URL: '' }
-  })
-  const page = await app.firstWindow()
-  await page.waitForSelector('[data-page="1"] canvas', { timeout: 60_000 })
-  // Окно уже 1100 px (раннер CI) скрывает панель свойств; тестам разметки она нужна.
-  const props = page
-    .getByRole('toolbar', { name: 'Команды' })
-    .getByRole('button', { name: 'Свойства', exact: true })
-  if ((await props.getAttribute('aria-pressed')) === 'false') await props.click()
-  return page
-}
-
-async function statusText(page: Page): Promise<string> {
-  return (await page.locator('footer').textContent()) ?? ''
-}
-
-/** Снимки экрана для ручной проверки: PDFWRIGHT_SHOTS=<папка>. */
-async function shot(page: Page, name: string): Promise<void> {
-  const dir = process.env.PDFWRIGHT_SHOTS
-  if (dir) await page.screenshot({ path: join(dir, `${name}.png`) })
-}
-
-/**
- * Точка на странице в долях её ширины и высоты, в координатах окна. Страница
- * выше экрана, поэтому документ прокручивается так, чтобы точка была видна.
- */
-async function pagePoint(
-  page: Page,
-  pageNumber: number,
-  fx: number,
-  fy: number,
-  scroll = true
-): Promise<{ x: number; y: number }> {
-  const target = page.locator(`[data-page="${pageNumber}"]`).first()
-  if (scroll) await scrollToShare(page, pageNumber, fy)
-  const box = await target.boundingBox()
-  if (!box) throw new Error(`страница ${pageNumber} не на экране`)
-  return { x: box.x + box.width * fx, y: box.y + box.height * fy }
-}
-
-async function scrollToShare(page: Page, pageNumber: number, fy: number): Promise<void> {
-  const target = page.locator(`[data-page="${pageNumber}"]`).first()
-  await target.evaluate((element, share) => {
-    const scroller = element.closest('[aria-label="Документ"]')
-    if (!scroller) return
-    const rect = element.getBoundingClientRect()
-    const view = scroller.getBoundingClientRect()
-    const y = rect.top + rect.height * share
-    if (y < view.top + 60 || y > view.bottom - 60) {
-      scroller.scrollTop += y - (view.top + view.height / 2)
-    }
-  }, fy)
-  await page.waitForTimeout(100)
-}
-
-async function drag(
-  page: Page,
-  pageNumber: number,
-  from: [number, number],
-  to: [number, number]
-): Promise<void> {
-  await scrollToShare(page, pageNumber, (from[1] + to[1]) / 2)
-  const a = await pagePoint(page, pageNumber, from[0], from[1], false)
-  const b = await pagePoint(page, pageNumber, to[0], to[1], false)
-  await page.mouse.move(a.x, a.y)
-  await page.mouse.down()
-  await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, { steps: 4 })
-  await page.mouse.move(b.x, b.y, { steps: 4 })
-  await page.mouse.up()
-}
-
-async function clickPage(page: Page, pageNumber: number, fx: number, fy: number): Promise<void> {
-  const p = await pagePoint(page, pageNumber, fx, fy)
-  await page.mouse.click(p.x, p.y)
-}
-
-/** Подтипы аннотаций страницы и словари для проверок. */
-function annotations(doc: PDFDocument, index: number): PDFDict[] {
-  const annots = doc.getPage(index).node.Annots()
-  return annots ? annots.asArray().map((ref) => doc.context.lookup(ref, PDFDict)) : []
-}
-
-function subtypes(doc: PDFDocument, index: number): string[] {
-  return annotations(doc, index).map((a) => a.get(PDFName.of('Subtype'))?.toString() ?? '?')
-}
-
-function tool(page: Page, name: string): ReturnType<Page['getByRole']> {
-  return page.getByRole('toolbar', { name: 'Команды' }).getByRole('button', { name, exact: true })
-}
+/** Основные сценарии: просмотр, страницы, разметка, подпись, правка содержимого. */
+useElectronApp()
 
 describe('PDFwright (собранное приложение)', () => {
   it('открывает файл из аргументов, поворачивает страницу и сохраняет её на диск', async () => {
-    const target = join(work, 'документ.pdf')
+    const target = join(ctx.work, 'документ.pdf')
     await copyFile(join(ROOT, 'tests/fixtures/simple.pdf'), target)
     const page = await launch(target)
 
@@ -183,7 +65,7 @@ describe('PDFwright (собранное приложение)', () => {
     for (let i = 1; i <= 400; i += 1) {
       big.addPage([595, 842]).drawText(`Big document page ${i}`, { x: 72, y: 760, size: 24, font })
     }
-    const target = join(work, 'big.pdf')
+    const target = join(ctx.work, 'big.pdf')
     await writeFile(target, await big.save())
     const page = await launch(target)
 
@@ -206,7 +88,7 @@ describe('PDFwright (собранное приложение)', () => {
   })
 
   it('рисует фигуру, пишет текст по-русски и сохраняет их PDF-аннотациями', async () => {
-    const target = join(work, 'разметка.pdf')
+    const target = join(ctx.work, 'разметка.pdf')
     await copyFile(join(ROOT, 'tests/fixtures/simple.pdf'), target)
     const page = await launch(target)
 
@@ -276,7 +158,7 @@ describe('PDFwright (собранное приложение)', () => {
   })
 
   it('маркер по тексту и перо, отмена и повтор, сохранение в содержимое страницы', async () => {
-    const target = join(work, 'flatten.pdf')
+    const target = join(ctx.work, 'flatten.pdf')
     await copyFile(join(ROOT, 'tests/fixtures/simple.pdf'), target)
     const page = await launch(target)
     await expect
@@ -337,7 +219,7 @@ describe('PDFwright (собранное приложение)', () => {
   })
 
   it('рисует подпись, ставит её на две страницы и вставляет картинку', async () => {
-    const target = join(work, 'подпись.pdf')
+    const target = join(ctx.work, 'подпись.pdf')
     await copyFile(join(ROOT, 'tests/fixtures/simple.pdf'), target)
     const page = await launch(target)
 
@@ -379,7 +261,7 @@ describe('PDFwright (собранное приложение)', () => {
     expect(stamps[0]).toBeGreaterThanOrEqual(1)
     expect(stamps[1]).toBeGreaterThanOrEqual(1)
     const settings = JSON.parse(
-      await readFile(join(work, 'userData', 'settings.json'), 'utf8')
+      await readFile(join(ctx.work, 'userData', 'settings.json'), 'utf8')
     ) as { markup: { signatures: { src: string }[] } }
     expect(settings.markup.signatures).toHaveLength(1)
     expect(settings.markup.signatures[0]?.src).toMatch(/^data:image\/png;base64,/)
@@ -395,7 +277,7 @@ describe('PDFwright (собранное приложение)', () => {
     sheet.drawText('Fix tpyo here', { x: 72, y: 700, size: 20, font })
     sheet.drawText('Keep this line', { x: 72, y: 640, size: 20, font })
     sheet.drawImage(png, { x: 72, y: 300, width: 200, height: 200 })
-    const target = join(work, 'содержимое.pdf')
+    const target = join(ctx.work, 'содержимое.pdf')
     await writeFile(target, await source.save())
     const page = await launch(target)
 
