@@ -27,6 +27,22 @@
   border-bottom: 1px solid var(--line);
   background: var(--layer-solid);
   overflow: hidden;
+  container-type: inline-size;
+}
+/* На узком окне команды показывают только иконки (подпись остаётся в title и
+   доступном имени), чтобы масштаб, поиск и переключатели панелей не обрезались. */
+@container (max-width: 1240px) {
+  .cmdbar button > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .cmdbar button:has(> span) {
+    min-width: 40px;
+  }
 }
 .sep {
   width: 1px;
@@ -254,6 +270,7 @@
   grid-column: 1 / -1;
   grid-row: 2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
   padding: 4px 8px;

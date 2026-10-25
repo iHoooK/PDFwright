@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: bash scripts/build-release.sh
 
+      # Сквозные тесты на собранном Electron: открытие, правка, сохранение, большой документ.
+      - name: E2E tests
+        run: npm run test:e2e
+
       - name: Verify release files
         shell: pwsh
         run: |

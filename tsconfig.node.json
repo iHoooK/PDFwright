@@ -8,9 +8,11 @@
   "include": [
     "electron.vite.config.ts",
     "vitest.config.ts",
+    "vitest.e2e.config.ts",
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
-    "tests/unit/**/*.ts"
+    "tests/unit/**/*.ts",
+    "tests/e2e/**/*.ts"
   ]
 }

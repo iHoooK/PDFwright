@@ -27,8 +27,9 @@ if [[ ! -d node_modules ]]; then
   npm ci
 fi
 
-echo "1/4 Проверки: линтер, типы, тесты"
+echo "1/4 Проверки: линтер, типы, тесты, перечень лицензий"
 npm run check
+node scripts/third-party.mjs --check
 
 echo "2/4 Сборка renderer, preload и main"
 npm run build

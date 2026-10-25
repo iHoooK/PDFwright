@@ -24,6 +24,13 @@ let pendingFile: string | null = null
 let dirtyCount = 0
 let installingUpdate = false
 
+// E2E-тесты запускают несобранное приложение со своей папкой данных, чтобы не
+// трогать настройки и недавние файлы пользователя. В установленной программе
+// переменная игнорируется. Должно идти до блокировки единственного экземпляра:
+// блокировка хранится в папке данных.
+const testUserData = process.env.PDFWRIGHT_USER_DATA
+if (!app.isPackaged && testUserData) app.setPath('userData', testUserData)
+
 // Один экземпляр: второй запуск передаёт аргументы первому и завершается.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
