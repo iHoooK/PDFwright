@@ -35,6 +35,25 @@ export interface FilesSettings {
   recentLimit: number
 }
 
+export const MARKUP_SAVE_MODES = ['annotation', 'content'] as const
+/** annotation — PDF-аннотации, content — впечатать разметку в содержимое страницы. */
+export type MarkupSaveMode = (typeof MARKUP_SAVE_MODES)[number]
+
+export const SIGNATURES_MAX = 8
+/** Предел длины data URL одной подписи (около 1 МБ картинки). */
+export const SIGNATURE_MAX_LENGTH = 1_500_000
+
+export interface SavedSignature {
+  id: string
+  /** PNG как data URL: нарисованная подпись или загруженный файл. */
+  src: string
+}
+
+export interface MarkupSettings {
+  saveMode: MarkupSaveMode
+  signatures: SavedSignature[]
+}
+
 export interface WindowSettings {
   width: number
   height: number
@@ -46,6 +65,7 @@ export interface AppSettings {
   general: GeneralSettings
   viewer: ViewerSettings
   files: FilesSettings
+  markup: MarkupSettings
   window: WindowSettings
 }
 
@@ -64,6 +84,7 @@ export function createDefaultSettings(): AppSettings {
     general: { theme: 'system', language: 'ru' },
     viewer: { defaultZoom: 'fit-width', scrollMode: 'continuous' },
     files: { backupOnSave: false, recentLimit: 10 },
+    markup: { saveMode: 'annotation', signatures: [] },
     window: { width: 1280, height: 800, maximized: false }
   }
 }
@@ -88,6 +109,22 @@ function pickInteger(value: unknown, fallback: number, min: number, max: number)
   return rounded < min || rounded > max ? fallback : rounded
 }
 
+function pickSignatures(value: unknown): SavedSignature[] {
+  if (!Array.isArray(value)) return []
+  const result: SavedSignature[] = []
+  for (const item of value) {
+    if (!isRecord(item)) continue
+    const { id, src } = item
+    if (typeof id !== 'string' || id.length === 0 || id.length > 64) continue
+    if (typeof src !== 'string' || src.length > SIGNATURE_MAX_LENGTH) continue
+    if (!src.startsWith('data:image/png;base64,')) continue
+    if (result.some((s) => s.id === id)) continue
+    result.push({ id, src })
+    if (result.length === SIGNATURES_MAX) break
+  }
+  return result
+}
+
 /**
  * Приводит произвольное содержимое файла настроек к валидной схеме.
  * Никогда не бросает исключений.
@@ -99,6 +136,7 @@ export function normalizeSettings(input: unknown): AppSettings {
   const general = isRecord(input.general) ? input.general : {}
   const viewer = isRecord(input.viewer) ? input.viewer : {}
   const files = isRecord(input.files) ? input.files : {}
+  const markup = isRecord(input.markup) ? input.markup : {}
   const window = isRecord(input.window) ? input.window : {}
 
   return {
@@ -115,6 +153,10 @@ export function normalizeSettings(input: unknown): AppSettings {
       backupOnSave: pickBoolean(files.backupOnSave, defaults.files.backupOnSave),
       recentLimit: pickInteger(files.recentLimit, defaults.files.recentLimit, 0, RECENT_LIMIT_MAX)
     },
+    markup: {
+      saveMode: pickEnum(markup.saveMode, MARKUP_SAVE_MODES, defaults.markup.saveMode),
+      signatures: pickSignatures(markup.signatures)
+    },
     window: {
       width: pickInteger(window.width, defaults.window.width, WINDOW_MIN_WIDTH, 16_384),
       height: pickInteger(window.height, defaults.window.height, WINDOW_MIN_HEIGHT, 16_384),
@@ -126,7 +168,7 @@ export function normalizeSettings(input: unknown): AppSettings {
 /** Накладывает patch на текущие настройки и повторно валидирует результат. */
 export function applySettingsPatch(current: AppSettings, patch: SettingsPatch): AppSettings {
   const merged: Record<string, unknown> = { schemaVersion: current.schemaVersion }
-  for (const section of ['general', 'viewer', 'files', 'window'] as const) {
+  for (const section of ['general', 'viewer', 'files', 'markup', 'window'] as const) {
     const sectionPatch: object = isRecord(patch[section]) ? patch[section] : {}
     merged[section] = { ...current[section], ...sectionPatch }
   }

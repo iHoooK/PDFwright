@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, type ReactNode } from 'react'
 import {
   createCancelToken,
   CSS_UNITS,
@@ -20,6 +20,8 @@ interface Props {
   /** Страница рядом с видимой областью: рисуем; иначе держим пустой холст нужного размера. */
   visible: boolean
   highlights: readonly PageHighlight[]
+  /** Слой разметки поверх текстового слоя (только у страниц рядом с экраном). */
+  overlay?: ReactNode
   onRendered?: (pageNumber: number) => void
 }
 
@@ -35,6 +37,7 @@ export const PdfPageView = memo(function PdfPageView({
   rotation,
   visible,
   highlights,
+  overlay,
   onRendered
 }: Props): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -111,6 +114,7 @@ export const PdfPageView = memo(function PdfPageView({
     >
       <canvas ref={canvasRef} className={s.canvas} />
       <div ref={textRef} className="textLayer" />
+      {overlay}
     </div>
   )
 })

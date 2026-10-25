@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { newMarkupId, type MarkupObject } from '@shared/markup/model'
 import { CSS_UNITS, type PdfDocument } from '@renderer/pdf-engine/engine'
 import type { PageHighlight } from '@renderer/pdf-engine/highlight'
-import { useStore, type DocTab } from '@renderer/app/store'
+import { useStore, type DocTab, type StyledTool, type Tool } from '@renderer/app/store'
 import { cx } from '@renderer/components/cx'
+import { loadMarkupFont } from '@renderer/features/markup/font'
+import { MarkupLayer } from '@renderer/features/markup/MarkupLayer'
+import { selectionToPageRects } from '@renderer/features/markup/text-selection'
 import { PdfPageView } from './PdfPageView'
 import s from './viewer.module.css'
+
+const NO_MARKUP: readonly MarkupObject[] = []
+
+/** Стиль какого инструмента применяется к новым объектам. */
+function styledTool(tool: Tool): StyledTool {
+  return tool === 'marker' || tool === 'pen' || tool === 'shapes' || tool === 'text' ? tool : 'pen'
+}
 
 const PAD = 24
 const GAP = 20
@@ -143,6 +154,52 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
   const pageNumbers =
     scrollMode === 'single' ? [state.page] : Array.from({ length: tab.pages }, (_, i) => i + 1)
 
+  // Шрифт текстовых блоков грузится заранее, чтобы размеры блоков сразу были точными.
+  useEffect(() => {
+    loadMarkupFont().catch((error: unknown) => {
+      console.error('[markup] шрифт не загружен:', error)
+    })
+  }, [])
+
+  const markupByPage = useMemo(() => {
+    const map = new Map<number, MarkupObject[]>()
+    for (const o of tab.markup) {
+      const list = map.get(o.page) ?? []
+      list.push(o)
+      map.set(o.page, list)
+    }
+    return map
+  }, [tab.markup])
+  const selectedId = state.selection?.id ?? null
+  const selectedPage = tab.markup.find((o) => o.id === selectedId)?.page ?? null
+  const scale = (resolvedZoom / 100) * CSS_UNITS
+  const tool = state.tool
+  const style = state.toolStyles[styledTool(tool)]
+
+  // «Маркер»: отпускание кнопки после выделения текста превращает выделение в пометку.
+  const onPointerUp = useCallback(() => {
+    if (state.tool !== 'marker') return
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    const rectsByPage = selectionToPageRects(scroller, doc, scale, rotation)
+    if (rectsByPage.size === 0) return
+    const marker = state.toolStyles.marker
+    for (const [page, rects] of rectsByPage) {
+      actions.addMarkup(
+        {
+          id: newMarkupId(),
+          page,
+          kind: state.markKind,
+          color: marker.color,
+          opacity: marker.opacity,
+          rects
+        },
+        false
+      )
+    }
+    window.getSelection()?.removeAllRanges()
+  }, [actions, doc, rotation, scale, state.markKind, state.tool, state.toolStyles.marker])
+
   return (
     <div
       ref={scrollerRef}
@@ -152,7 +209,9 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
         state.tool === 'hand' && s.handCursor
       )}
       onScroll={onScroll}
+      onPointerUp={onPointerUp}
       aria-label="Документ"
+      data-tool={tool}
     >
       {pageNumbers.map((n) => (
         <PdfPageView
@@ -163,6 +222,22 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
           rotation={rotation}
           visible={visiblePages.has(n) || scrollMode === 'single'}
           highlights={highlightsByPage.get(n) ?? none}
+          overlay={
+            visiblePages.has(n) || scrollMode === 'single' ? (
+              <MarkupLayer
+                geometry={doc.geometryOf(n)}
+                pageNumber={n}
+                scale={scale}
+                rotation={rotation}
+                objects={markupByPage.get(n) ?? NO_MARKUP}
+                selectedId={selectedPage === n ? selectedId : null}
+                tool={tool}
+                style={style}
+                shapeKind={state.shapeKind}
+                actions={actions}
+              />
+            ) : undefined
+          }
         />
       ))}
     </div>

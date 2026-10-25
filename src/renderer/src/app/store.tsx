@@ -21,12 +21,15 @@ import { describeUpdateError } from '@shared/update-messages'
 import { RELEASES_PAGE } from '@shared/external-links'
 import {
   createDefaultSettings,
+  SIGNATURES_MAX,
   type AppSettings,
+  type MarkupSaveMode,
   type SettingsPatch,
   type Theme,
   type ZoomMode as DefaultZoomMode
 } from '@shared/settings-schema'
 import {
+  applyMarkup,
   computeMoveOrder,
   deletePages,
   duplicatePages,
@@ -39,6 +42,14 @@ import {
   rotatePages
 } from '@shared/pdf-ops'
 import { findMatches, type TextMatch } from '@shared/pdf-search'
+import { pushSnapshot, type Snapshot } from '@shared/markup/history'
+import { boxRectCentered, normalizeTurn, type Point } from '@shared/markup/geometry'
+import {
+  newMarkupId,
+  type MarkupObject,
+  type ShapeKind,
+  type TextMarkKind
+} from '@shared/markup/model'
 import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
 import {
   loadPdfDocument,
@@ -48,6 +59,9 @@ import {
   type Rotation
 } from '@renderer/pdf-engine/engine'
 import { t } from '@renderer/i18n'
+import { loadMarkupFont } from '@renderer/features/markup/font'
+import { imageSize, readImageFile } from '@renderer/features/markup/images'
+import { sameTarget, type SelectionTarget } from '@renderer/features/markup/selection'
 import { getApi } from './api'
 import { applyTheme, resolvedTheme } from './theme'
 
@@ -58,6 +72,25 @@ export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author
 export type ZoomMode = 'fit-width' | 'fit-page' | 'custom'
 export type ToolDialog = 'merge' | 'split' | null
 export type SelectMode = 'single' | 'toggle' | 'range'
+/** Инструменты со своим цветом, непрозрачностью и толщиной в панели свойств. */
+export type StyledTool = 'marker' | 'pen' | 'shapes' | 'text'
+
+export interface ToolStyle {
+  color: string
+  /** 0..1 */
+  opacity: number
+  /** Толщина линии, пт. */
+  width: number
+  /** Кегль текста, пт. */
+  fontSize: number
+}
+
+/**
+ * Шаг истории вкладки: байты документа и несохранённая разметка. Правки
+ * разметки делят байты с соседними шагами, поэтому отмена работает одним
+ * стеком и для операций со страницами, и для объектов (см. markup/history).
+ */
+export type TabSnapshot = Snapshot<Uint8Array, readonly MarkupObject[]>
 
 export interface DocTab {
   id: string
@@ -73,8 +106,12 @@ export interface DocTab {
   /** Текущие байты документа со всеми применёнными правками. */
   bytes: Uint8Array | null
   dirty: boolean
-  history: Uint8Array[]
-  future: Uint8Array[]
+  /** Объекты разметки, ещё не записанные в байты документа. */
+  markup: readonly MarkupObject[]
+  history: TabSnapshot[]
+  future: TabSnapshot[]
+  /** Ключ последней правки: подряд идущие правки с тем же ключом (ползунок) — один шаг отмены. */
+  coalesce: string | null
   busy: boolean
 }
 
@@ -125,8 +162,13 @@ export const TOOL_KEYS: Record<Tool, string> = {
   sign: 'S'
 }
 export const MARK_COLORS = ['#ffd86b', '#9be39b', '#9fd3ff', '#ffb0c8', '#d7bfff'] as const
-/** Сколько шагов отмены хранить на документ (каждый шаг — полная копия байтов). */
-const HISTORY_LIMIT = 12
+/** Палитра маркера: пастельные цвета выделения и два тёмных для подчёркивания. */
+export const MARKER_COLORS = [...MARK_COLORS, '#c42b1c', '#0067c0'] as const
+/** Палитра пера, фигур и текста (docs/DESIGN.md §1). */
+export const INK_COLORS = ['#1b1b1b', '#c42b1c', '#0067c0', '#0f7b0f', '#ffd86b'] as const
+/** Ширина вставленной подписи и наибольшая ширина картинки, пт. */
+const SIGNATURE_WIDTH = 150
+const IMAGE_MAX_WIDTH = 220
 
 export interface State {
   ready: boolean
@@ -144,7 +186,11 @@ export interface State {
   resolvedZoom: number
   rotation: Rotation
   tool: Tool
-  markColor: string
+  toolStyles: Record<StyledTool, ToolStyle>
+  markKind: TextMarkKind
+  shapeKind: ShapeKind
+  activeSignature: string | null
+  selection: SelectionTarget | null
   pagesMode: boolean
   page: number
   scrollRequest: { page: number; token: number } | null
@@ -175,10 +221,26 @@ type Action =
       id: string
       doc: PdfDocument
       bytes: Uint8Array
-      history: Uint8Array[]
-      future: Uint8Array[]
+      markup: readonly MarkupObject[]
+      history: TabSnapshot[]
+      future: TabSnapshot[]
       dirty: boolean
       selectedPages: ReadonlySet<number>
+    }
+  | {
+      type: 'markup'
+      id: string
+      /** Чистая функция над текущим списком: правки подряд не теряют друг друга. */
+      change: (markup: readonly MarkupObject[]) => readonly MarkupObject[]
+      coalesce?: string
+      select?: SelectionTarget | null
+    }
+  | {
+      type: 'markupRestore'
+      id: string
+      markup: readonly MarkupObject[]
+      history: TabSnapshot[]
+      future: TabSnapshot[]
     }
   | { type: 'docSaved'; id: string; path: string }
   | { type: 'closeDoc'; id: string }
@@ -191,7 +253,11 @@ type Action =
   | { type: 'resolvedZoom'; percent: number }
   | { type: 'rotation'; rotation: Rotation }
   | { type: 'tool'; tool: Tool }
-  | { type: 'markColor'; color: string }
+  | { type: 'toolStyle'; tool: StyledTool; patch: Partial<ToolStyle> }
+  | { type: 'markKind'; kind: TextMarkKind }
+  | { type: 'shapeKind'; kind: ShapeKind }
+  | { type: 'activeSignature'; id: string | null }
+  | { type: 'select'; target: SelectionTarget | null }
   | { type: 'pagesMode'; on?: boolean }
   | { type: 'page'; page: number; scroll: boolean }
   | { type: 'selection'; pages: ReadonlySet<number>; anchor: number | null }
@@ -224,7 +290,16 @@ const initial: State = {
   resolvedZoom: 100,
   rotation: 0,
   tool: 'select',
-  markColor: MARK_COLORS[0],
+  toolStyles: {
+    marker: { color: MARK_COLORS[0], opacity: 1, width: 1, fontSize: 14 },
+    pen: { color: INK_COLORS[0], opacity: 1, width: 2, fontSize: 14 },
+    shapes: { color: INK_COLORS[1], opacity: 1, width: 2, fontSize: 14 },
+    text: { color: INK_COLORS[0], opacity: 1, width: 1, fontSize: 14 }
+  },
+  markKind: 'highlight',
+  shapeKind: 'rect',
+  activeSignature: null,
+  selection: null,
   pagesMode: false,
   page: 1,
   scrollRequest: null,
@@ -256,6 +331,7 @@ function resetView(state: State): State {
     selectedPages: new Set(),
     selectionAnchor: null,
     search: EMPTY_SEARCH,
+    selection: null,
     rotation: 0,
     pagesMode: false,
     zoom: zoomFromSetting(state.settings.viewer.defaultZoom)
@@ -264,6 +340,14 @@ function resetView(state: State): State {
 
 function updateDoc(state: State, id: string, patch: (d: DocTab) => DocTab): State {
   return { ...state, docs: state.docs.map((d) => (d.id === id ? patch(d) : d)) }
+}
+
+/** Выбор остаётся, только если выбранный объект ещё есть в разметке. */
+function keepSelection(
+  target: SelectionTarget | null,
+  markup: readonly MarkupObject[]
+): SelectionTarget | null {
+  return target && markup.some((o) => o.id === target.id) ? target : null
 }
 
 function reducer(state: State, action: Action): State {
@@ -314,8 +398,10 @@ function reducer(state: State, action: Action): State {
         doc: action.doc,
         pages: action.doc.numPages,
         bytes: action.bytes,
+        markup: action.markup,
         history: action.history,
         future: action.future,
+        coalesce: null,
         dirty: action.dirty,
         busy: false,
         sizesVersion: d.sizesVersion + 1
@@ -326,8 +412,38 @@ function reducer(state: State, action: Action): State {
         page,
         selectedPages: action.selectedPages,
         selectionAnchor: null,
+        selection: keepSelection(state.selection, action.markup),
         search: EMPTY_SEARCH
       }
+    }
+    case 'markup': {
+      const tab = state.docs.find((d) => d.id === action.id)
+      const bytes = tab?.bytes
+      if (!tab || !bytes || tab.busy) return state
+      const markup = action.change(tab.markup)
+      if (markup === tab.markup) return state
+      const merge = action.coalesce !== undefined && action.coalesce === tab.coalesce
+      const next = updateDoc(state, action.id, (d) => ({
+        ...d,
+        markup,
+        history: merge ? d.history : pushSnapshot(d.history, { bytes, markup: d.markup }),
+        future: merge ? d.future : [],
+        coalesce: action.coalesce ?? null,
+        dirty: true
+      }))
+      const target = action.select === undefined ? state.selection : action.select
+      return { ...next, selection: keepSelection(target, markup) }
+    }
+    case 'markupRestore': {
+      const next = updateDoc(state, action.id, (d) => ({
+        ...d,
+        markup: action.markup,
+        history: action.history,
+        future: action.future,
+        coalesce: null,
+        dirty: true
+      }))
+      return { ...next, selection: keepSelection(state.selection, action.markup) }
     }
     case 'docSaved':
       return updateDoc(state, action.id, (d) => ({
@@ -375,9 +491,29 @@ function reducer(state: State, action: Action): State {
     case 'rotation':
       return { ...state, rotation: action.rotation }
     case 'tool':
-      return { ...state, tool: action.tool }
-    case 'markColor':
-      return { ...state, markColor: action.color }
+      return {
+        ...state,
+        tool: action.tool,
+        selection: action.tool === 'select' ? state.selection : null
+      }
+    case 'toolStyle':
+      return {
+        ...state,
+        toolStyles: {
+          ...state.toolStyles,
+          [action.tool]: { ...state.toolStyles[action.tool], ...action.patch }
+        }
+      }
+    case 'markKind':
+      return { ...state, markKind: action.kind }
+    case 'shapeKind':
+      return { ...state, shapeKind: action.kind }
+    case 'activeSignature':
+      return { ...state, activeSignature: action.id }
+    case 'select':
+      return sameTarget(state.selection, action.target)
+        ? state
+        : { ...state, selection: action.target }
     case 'pagesMode':
       return { ...state, pagesMode: action.on ?? !state.pagesMode }
     case 'page':
@@ -425,7 +561,22 @@ export interface Actions {
   setResolvedZoom: (percent: number) => void
   rotate: () => void
   setTool: (tool: Tool) => void
-  setMarkColor: (color: string) => void
+  setToolStyle: (tool: StyledTool, patch: Partial<ToolStyle>) => void
+  setMarkKind: (kind: TextMarkKind) => void
+  setShapeKind: (kind: ShapeKind) => void
+  // Разметка
+  addMarkup: (object: MarkupObject, select?: boolean) => void
+  /** Заменяет объект с тем же id; coalesce склеивает серию правок в один шаг отмены. */
+  updateMarkup: (object: MarkupObject, coalesce?: string) => void
+  removeMarkup: (id?: string) => void
+  select: (target: SelectionTarget | null) => void
+  setSaveMode: (mode: MarkupSaveMode) => void
+  addSignature: (src: string) => void
+  removeSignature: (id: string) => void
+  setActiveSignature: (id: string) => void
+  /** Ставит выбранную подпись на страницу: в точку center или в центр страницы. */
+  placeSignature: (page: number, center: Point | null) => void
+  insertImage: (file: File) => void
   togglePagesMode: (on?: boolean) => void
   setSidebarTab: (tab: SidebarTab) => void
   toggleSidebar: (on?: boolean) => void
@@ -538,8 +689,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           sizesVersion: 0,
           bytes: null,
           dirty: false,
+          markup: [],
           history: [],
           future: [],
+          coalesce: null,
           busy: false
         }
       })
@@ -628,9 +781,22 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     if (file) openPath(file.path)
   }, [api, openPath])
 
+  /** Байты документа с записанной в них несохранённой разметкой (режим из настроек). */
+  const bakeMarkup = useCallback(async (tab: DocTab): Promise<Uint8Array> => {
+    const bytes = tab.bytes ?? new Uint8Array()
+    if (tab.markup.length === 0) return bytes
+    const font = tab.markup.some((o) => o.kind === 'text') ? (await loadMarkupFont()).bytes : null
+    return applyMarkup(bytes, tab.markup, {
+      mode: stateRef.current.settings.markup.saveMode,
+      font
+    })
+  }, [])
+
   /**
    * Применяет операцию pdf-lib к активному документу: новые байты, перезагрузка
    * просмотра, запись в историю отмены. Селекция после операции задаётся явно.
+   * Несохранённая разметка сначала записывается в документ: номера страниц
+   * после операции меняются, а записанные аннотации переезжают вместе со страницами.
    */
   const applyOperation = useCallback(
     async (
@@ -645,15 +811,16 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       if (tab?.status !== 'ready' || !tab.bytes || tab.busy) return false
       dispatch({ type: 'docBusy', id: tab.id, busy: true })
       try {
-        const bytes = await run(tab.bytes)
+        const bytes = await run(await bakeMarkup(tab))
         const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
         const previous = tab.doc
-        const history = [...tab.history, tab.bytes].slice(-HISTORY_LIMIT)
+        const history = pushSnapshot(tab.history, { bytes: tab.bytes, markup: tab.markup })
         dispatch({
           type: 'docReplace',
           id: tab.id,
           doc,
           bytes,
+          markup: [],
           history,
           future: [],
           dirty: true,
@@ -671,28 +838,35 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         return false
       }
     },
-    [toast]
+    [bakeMarkup, toast]
   )
 
-  const restoreBytes = useCallback(
+  const restoreSnapshot = useCallback(
     async (direction: 'undo' | 'redo') => {
       const tab = activeDoc(stateRef.current)
       if (tab?.status !== 'ready' || !tab.bytes || tab.busy) return
       const source = direction === 'undo' ? tab.history : tab.future
-      const bytes = source[source.length - 1]
-      if (!bytes) return
+      const snapshot = source[source.length - 1]
+      if (!snapshot) return
+      const current: TabSnapshot = { bytes: tab.bytes, markup: tab.markup }
+      const history = direction === 'undo' ? tab.history.slice(0, -1) : [...tab.history, current]
+      const future = direction === 'undo' ? [...tab.future, current] : tab.future.slice(0, -1)
+      // Шаг разметки: байты те же, документ не перезагружаем.
+      if (snapshot.bytes === tab.bytes) {
+        dispatch({ type: 'markupRestore', id: tab.id, markup: snapshot.markup, history, future })
+        return
+      }
+      const { bytes } = snapshot
       dispatch({ type: 'docBusy', id: tab.id, busy: true })
       try {
         const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
         const previous = tab.doc
-        const history =
-          direction === 'undo' ? tab.history.slice(0, -1) : [...tab.history, tab.bytes]
-        const future = direction === 'undo' ? [...tab.future, tab.bytes] : tab.future.slice(0, -1)
         dispatch({
           type: 'docReplace',
           id: tab.id,
           doc,
           bytes,
+          markup: snapshot.markup,
           history,
           future,
           dirty: true,
@@ -715,9 +889,38 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     async (tab: DocTab, path: string): Promise<boolean> => {
       if (!tab.bytes) return false
       try {
+        let bytes = tab.bytes
+        if (tab.markup.length > 0) {
+          // Разметка записывается в документ отдельным шагом истории: Ctrl+Z
+          // после сохранения возвращает её в редактируемые объекты.
+          dispatch({ type: 'docBusy', id: tab.id, busy: true })
+          try {
+            bytes = await bakeMarkup(tab)
+            const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
+            const previous = tab.doc
+            dispatch({
+              type: 'docReplace',
+              id: tab.id,
+              doc,
+              bytes,
+              markup: [],
+              history: pushSnapshot(tab.history, { bytes: tab.bytes, markup: tab.markup }),
+              future: [],
+              dirty: true,
+              selectedPages: stateRef.current.selectedPages
+            })
+            previous?.destroy()
+            void doc.loadSizes(() => {
+              dispatch({ type: 'docSizes', id: tab.id })
+            })
+          } catch (error) {
+            dispatch({ type: 'docBusy', id: tab.id, busy: false })
+            throw error
+          }
+        }
         await api.writeFile({
           path,
-          bytes: toArrayBuffer(tab.bytes),
+          bytes: toArrayBuffer(bytes),
           backup: stateRef.current.settings.files.backupOnSave
         })
         dispatch({ type: 'docSaved', id: tab.id, path })
@@ -729,7 +932,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         return false
       }
     },
-    [api, refreshRecent, toast]
+    [api, bakeMarkup, refreshRecent, toast]
   )
 
   const save = useCallback(async (): Promise<boolean> => {
@@ -745,6 +948,57 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     if (path === null) return false
     return writeTab(tab, path)
   }, [api, writeTab])
+
+  const addMarkup = useCallback((object: MarkupObject, select = true) => {
+    const tab = activeDoc(stateRef.current)
+    if (tab?.status !== 'ready') return
+    dispatch({
+      type: 'markup',
+      id: tab.id,
+      change: (markup) => [...markup, object],
+      ...(select ? { select: { source: 'markup' as const, id: object.id } } : {})
+    })
+  }, [])
+
+  /**
+   * Ставит картинку на страницу с сохранением пропорций: ширина не больше
+   * maxWidth и половины страницы, содержимое выпрямлено под /Rotate страницы.
+   */
+  const placeImage = useCallback(
+    async (
+      src: string,
+      page: number,
+      center: Point | null,
+      maxWidth: number,
+      signature: boolean
+    ): Promise<boolean> => {
+      const tab = activeDoc(stateRef.current)
+      const doc = tab?.doc
+      if (tab?.status !== 'ready' || !doc) return false
+      const natural = await imageSize(src)
+      const { box, rotate: pageRotate } = doc.geometryOf(page)
+      // Картинка встаёт ровно на экране: с учётом /Rotate страницы и поворота вида.
+      const rotate = normalizeTurn(pageRotate + stateRef.current.rotation)
+      const sideways = rotate === 90 || rotate === 270
+      const pageWidth = sideways ? box[3] - box[1] : box[2] - box[0]
+      const width = Math.min(maxWidth, pageWidth / 2, natural.width)
+      const height = (width * natural.height) / natural.width
+      const at = center ?? { x: (box[0] + box[2]) / 2, y: (box[1] + box[3]) / 2 }
+      addMarkup({
+        id: newMarkupId(),
+        page,
+        kind: 'image',
+        color: '#000000',
+        opacity: 1,
+        rect: boxRectCentered(at, width, height, rotate),
+        rotate,
+        src,
+        signature
+      })
+      return true
+    },
+    [addMarkup]
+  )
 
   const runSearch = useCallback((query: string) => {
     const run = ++searchRun.current
@@ -891,8 +1145,90 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       setTool: (tool) => {
         dispatch({ type: 'tool', tool })
       },
-      setMarkColor: (color) => {
-        dispatch({ type: 'markColor', color })
+      setToolStyle: (tool, patch) => {
+        dispatch({ type: 'toolStyle', tool, patch })
+      },
+      setMarkKind: (kind) => {
+        dispatch({ type: 'markKind', kind })
+      },
+      setShapeKind: (kind) => {
+        dispatch({ type: 'shapeKind', kind })
+      },
+      addMarkup,
+      updateMarkup: (object, coalesce) => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready') return
+        const change = (markup: readonly MarkupObject[]): readonly MarkupObject[] =>
+          markup.some((o) => o.id === object.id)
+            ? markup.map((o) => (o.id === object.id ? object : o))
+            : markup
+        dispatch(
+          coalesce === undefined
+            ? { type: 'markup', id: tab.id, change }
+            : { type: 'markup', id: tab.id, change, coalesce: `${object.id}:${coalesce}` }
+        )
+      },
+      removeMarkup: (id) => {
+        const tab = activeDoc(stateRef.current)
+        const target = id ?? stateRef.current.selection?.id
+        if (tab?.status !== 'ready' || target === undefined) return
+        dispatch({
+          type: 'markup',
+          id: tab.id,
+          change: (markup) =>
+            markup.some((o) => o.id === target) ? markup.filter((o) => o.id !== target) : markup,
+          select: null
+        })
+      },
+      select: (target) => {
+        dispatch({ type: 'select', target })
+      },
+      setSaveMode: (mode) => {
+        void updateSettings({ markup: { saveMode: mode } })
+      },
+      addSignature: (src) => {
+        const current = stateRef.current.settings.markup.signatures
+        if (current.length >= SIGNATURES_MAX) {
+          toast(t.markup.signaturesFull(SIGNATURES_MAX))
+          return
+        }
+        const id = newMarkupId()
+        void updateSettings({ markup: { signatures: [...current, { id, src }] } }).then(() => {
+          dispatch({ type: 'activeSignature', id })
+          toast(t.markup.signatureSaved)
+        })
+      },
+      removeSignature: (id) => {
+        const current = stateRef.current.settings.markup.signatures
+        void updateSettings({ markup: { signatures: current.filter((sig) => sig.id !== id) } })
+        if (stateRef.current.activeSignature === id) dispatch({ type: 'activeSignature', id: null })
+      },
+      setActiveSignature: (id) => {
+        dispatch({ type: 'activeSignature', id })
+      },
+      placeSignature: (page, center) => {
+        const { settings, activeSignature } = stateRef.current
+        const signature =
+          settings.markup.signatures.find((sig) => sig.id === activeSignature) ??
+          settings.markup.signatures[0]
+        if (!signature) {
+          toast(t.markup.signatureNone)
+          return
+        }
+        void placeImage(signature.src, page, center, SIGNATURE_WIDTH, true)
+      },
+      insertImage: (file) => {
+        void (async () => {
+          try {
+            const src = await readImageFile(file)
+            const page = stateRef.current.page
+            if (await placeImage(src, page, null, IMAGE_MAX_WIDTH, false)) {
+              dispatch({ type: 'tool', tool: 'select' })
+            }
+          } catch (error) {
+            toast(error instanceof Error ? error.message : String(error))
+          }
+        })()
       },
       togglePagesMode: (on) => {
         dispatch(on === undefined ? { type: 'pagesMode' } : { type: 'pagesMode', on })
@@ -1043,7 +1379,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         if (!tab?.bytes || sel.length === 0) return
         void (async () => {
           try {
-            const bytes = await extractPages(tab.bytes ?? new Uint8Array(), sel)
+            const bytes = await extractPages(await bakeMarkup(tab), sel)
             const defaultName = safeFileName(
               `${stripExtension(tab.name)}_стр${formatPageList(sel).replace(/,\s*/g, '_')}.pdf`
             )
@@ -1077,10 +1413,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         })
       },
       undo: () => {
-        void restoreBytes('undo')
+        void restoreSnapshot('undo')
       },
       redo: () => {
-        void restoreBytes('redo')
+        void restoreSnapshot('redo')
       },
       save,
       saveAs,
@@ -1169,11 +1505,14 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       }
     }
   }, [
+    addMarkup,
     api,
     applyOperation,
+    bakeMarkup,
     openDialog,
     openPath,
-    restoreBytes,
+    placeImage,
+    restoreSnapshot,
     runSearch,
     save,
     saveAs,

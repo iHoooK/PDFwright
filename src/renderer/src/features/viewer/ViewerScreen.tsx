@@ -26,26 +26,12 @@ import {
 } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
-import {
-  Button,
-  Command,
-  IconButton,
-  RadioGroup,
-  Range,
-  Swatches,
-  Tabs
-} from '@renderer/components/controls'
+import { Button, Command, IconButton, Tabs } from '@renderer/components/controls'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
-import {
-  activeDoc,
-  MARK_COLORS,
-  TOOL_KEYS,
-  useStore,
-  type SidebarTab,
-  type Tool
-} from '@renderer/app/store'
+import { activeDoc, TOOL_KEYS, useStore, type SidebarTab, type Tool } from '@renderer/app/store'
 import { MergeDialog } from '@renderer/features/tools/MergeDialog'
 import { SplitDialog } from '@renderer/features/tools/SplitDialog'
+import { ImageCommand, MarkupPanel } from '@renderer/features/markup/MarkupPanel'
 import { DocumentView } from './DocumentView'
 import { PagesGrid } from './PagesGrid'
 import { PasswordDialog } from './PasswordDialog'
@@ -81,9 +67,6 @@ export function ViewerScreen(): React.JSX.Element {
   const canUndo = (readyDoc?.tab.history.length ?? 0) > 0
   const canRedo = (readyDoc?.tab.future.length ?? 0) > 0
   const selectedCount = state.selectedPages.size
-  const soon = (): void => {
-    actions.toast(t.toast.soon)
-  }
   const toolLabel = TOOL_META.find((m) => m.tool === state.tool)?.label ?? ''
   const zoomLabel = `${state.resolvedZoom}%`
   const closing =
@@ -140,6 +123,7 @@ export function ViewerScreen(): React.JSX.Element {
             }}
           />
         ))}
+        <ImageCommand disabled={!canEdit || state.pagesMode} />
         <span className={s.sep} />
         <Command
           icon={<IconPages />}
@@ -344,39 +328,7 @@ export function ViewerScreen(): React.JSX.Element {
           )}
 
           <aside className={s.props} aria-label={t.cmd.props} hidden={!state.props}>
-            <h3>{toolLabel}</h3>
-            {state.tool !== 'select' && state.tool !== 'hand' && (
-              <div className={s.pcard}>
-                <div className={s.field}>
-                  <span className={s.fieldLabel}>{t.props.color}</span>
-                  <Swatches
-                    colors={MARK_COLORS}
-                    value={state.markColor}
-                    onChange={actions.setMarkColor}
-                    label={t.props.color}
-                  />
-                </div>
-                <div className={s.field}>
-                  <label htmlFor="opacity">{t.props.opacity} · 55%</label>
-                  <Range id="opacity" min={10} max={100} defaultValue={55} />
-                </div>
-                <div className={s.field}>
-                  <span className={s.fieldLabel}>{t.props.saveAs}</span>
-                  <RadioGroup
-                    value="annotation"
-                    label={t.props.saveAs}
-                    options={[
-                      { value: 'annotation', label: t.props.asAnnotation },
-                      { value: 'content', label: t.props.asContent }
-                    ]}
-                    onChange={soon}
-                  />
-                </div>
-                <p className="muted" style={{ margin: 0 }}>
-                  {t.props.annotationsSoon}
-                </p>
-              </div>
-            )}
+            {readyDoc && <MarkupPanel toolLabel={toolLabel} />}
             {tab && (
               <div className={s.pcard}>
                 <b style={{ fontWeight: 600 }}>{t.props.document}</b>

@@ -1,0 +1,153 @@
+/*
+ * Слой разметки поверх страницы. Без z-index: так он не создаёт свой контекст
+ * наложения, и маркер (mix-blend-mode: multiply) смешивается с растром страницы.
+ * Слой стоит в DOM после текстового слоя pdf.js и рисуется поверх него.
+ */
+.layer {
+  position: absolute;
+  inset: 0 auto auto 0;
+  pointer-events: none;
+}
+.drawing {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+.textTool {
+  cursor: text;
+}
+.svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.multiply {
+  mix-blend-mode: multiply;
+}
+.box {
+  position: absolute;
+  pointer-events: none;
+}
+.boxInner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+.textSvg {
+  display: block;
+  overflow: visible;
+  white-space: pre;
+}
+.editor {
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px dashed var(--accent);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.6);
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  pointer-events: auto;
+}
+.frame {
+  position: absolute;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: #fff;
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: move;
+}
+/* Указатель над объектом в инструменте «Выделение» (класс ставится на страницу). */
+.hoverObject,
+.hoverObject :global(.textLayer) :global(span) {
+  cursor: move;
+}
+/* Во время перетаскивания текст под указателем не выделяется. */
+.dragging,
+.dragging * {
+  user-select: none !important;
+}
+
+/* Панель свойств разметки. */
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.textField {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--ink-3);
+  border-radius: var(--r-s);
+  resize: vertical;
+}
+.textField:focus-visible {
+  outline: none;
+  border-bottom: 2px solid var(--accent);
+}
+.signatures {
+  display: grid;
+  gap: 6px;
+}
+.signature {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.signatureButton {
+  flex: 1;
+  height: 56px;
+  padding: 4px 8px;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  border: 2px solid var(--line-2);
+  border-radius: var(--r-s);
+  transition: border-color var(--motion);
+}
+.signatureButton:hover {
+  border-color: var(--ink-3);
+}
+.signatureButton[aria-checked='true'] {
+  border-color: var(--accent);
+}
+.signatureButton img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.signaturePad {
+  display: block;
+  background: var(--paper);
+  border: 1px solid var(--line-2);
+  border-bottom: 2px solid var(--ink-3);
+  border-radius: var(--r-s);
+  touch-action: none;
+  cursor: crosshair;
+}

@@ -5,6 +5,8 @@ import {
   normalizeSettings,
   RECENT_LIMIT_MAX,
   SETTINGS_SCHEMA_VERSION,
+  SIGNATURE_MAX_LENGTH,
+  SIGNATURES_MAX,
   WINDOW_MIN_WIDTH
 } from '@shared/settings-schema'
 
@@ -30,6 +32,28 @@ describe('normalizeSettings', () => {
     expect(result.viewer).toEqual({ defaultZoom: 'fit-page', scrollMode: 'continuous' })
     expect(result.files).toEqual({ backupOnSave: true, recentLimit: 10 })
     expect(result.window).toEqual({ width: 1280, height: 1000, maximized: false })
+  })
+
+  it('оставляет только корректные подписи PNG и не больше лимита', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo='
+    const result = normalizeSettings({
+      markup: {
+        saveMode: 'content',
+        signatures: [
+          { id: 'a', src: png },
+          { id: 'a', src: png },
+          { id: 'b', src: 'data:image/jpeg;base64,/9j/' },
+          { id: 'c', src: 'data:image/png;base64,' + 'A'.repeat(SIGNATURE_MAX_LENGTH) },
+          'мусор',
+          ...Array.from({ length: SIGNATURES_MAX + 2 }, (_, i) => ({ id: `s${i}`, src: png }))
+        ]
+      }
+    })
+    expect(result.markup.saveMode).toBe('content')
+    expect(result.markup.signatures).toHaveLength(SIGNATURES_MAX)
+    expect(result.markup.signatures[0]).toEqual({ id: 'a', src: png })
+    expect(result.markup.signatures.some((s) => s.id === 'b' || s.id === 'c')).toBe(false)
+    expect(normalizeSettings({ markup: { saveMode: 'flat' } }).markup.saveMode).toBe('annotation')
   })
 
   it('не бросает исключений на NaN и Infinity', () => {

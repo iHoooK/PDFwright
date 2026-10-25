@@ -1,43 +1,15 @@
 import { degrees, PDFDocument, type PDFPage } from 'pdf-lib'
+import { load, PdfOpsError, PRODUCER, save } from './document'
 import { chunkEveryN, expandRange, parsePageRanges } from './ranges'
+
+export { PdfOpsError, PRODUCER } from './document'
+export { applyMarkup, type ApplyMarkupOptions, type MarkupSaveMode } from './markup'
 
 /**
  * Операции над PDF на pdf-lib. Все функции чистые: принимают байты, возвращают
  * новые байты и не зависят от Electron, поэтому тестируются в Node.
  * Нумерация страниц везде с 1, как в интерфейсе.
  */
-
-export const PRODUCER = 'PDFwright'
-
-export class PdfOpsError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'PdfOpsError'
-  }
-}
-
-async function load(bytes: Uint8Array): Promise<PDFDocument> {
-  let doc: PDFDocument
-  try {
-    doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false })
-  } catch (error) {
-    throw new PdfOpsError(
-      `Не удалось разобрать PDF: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
-  if (doc.isEncrypted) {
-    throw new PdfOpsError(
-      'Документ зашифрован. Правка защищённых паролем файлов появится в следующих версиях.'
-    )
-  }
-  return doc
-}
-
-async function save(doc: PDFDocument): Promise<Uint8Array> {
-  doc.setProducer(PRODUCER)
-  doc.setModificationDate(new Date())
-  return doc.save({ useObjectStreams: true, addDefaultPage: false })
-}
 
 function indices(doc: PDFDocument, pages: readonly number[]): number[] {
   const total = doc.getPageCount()

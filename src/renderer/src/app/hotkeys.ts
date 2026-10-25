@@ -12,7 +12,8 @@ export const HOTKEYS: readonly { keys: string; action: string }[] = [
   { keys: 'Ctrl + Shift + S', action: 'Сохранить как' },
   { keys: 'Ctrl + P', action: 'Печать' },
   { keys: 'Ctrl + W', action: 'Закрыть документ' },
-  { keys: 'Ctrl + Z / Ctrl + Y', action: 'Отменить / повторить операцию' },
+  { keys: 'Ctrl + Z / Ctrl + Y', action: 'Отменить / повторить операцию или правку разметки' },
+  { keys: 'Delete, Esc', action: 'Удалить выбранный объект разметки, снять выбор' },
   { keys: 'Ctrl + G', action: 'Режим «Страницы»' },
   {
     keys: 'Delete, Ctrl + A, Esc',
@@ -47,6 +48,7 @@ export function useHotkeys(): void {
   const { state, actions } = useStore()
   const inViewer = state.screen === 'viewer'
   const pagesMode = state.pagesMode
+  const selection = state.selection
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -121,6 +123,15 @@ export function useHotkeys(): void {
         actions.selectNone()
         return
       }
+      if (!pagesMode && selection !== null && (key === 'Delete' || key === 'Backspace')) {
+        event.preventDefault()
+        actions.removeMarkup()
+        return
+      }
+      if (!pagesMode && selection !== null && key === 'Escape') {
+        actions.select(null)
+        return
+      }
       if (key === 'PageDown') {
         event.preventDefault()
         actions.setPage(state.page + 1)
@@ -136,5 +147,5 @@ export function useHotkeys(): void {
     return () => {
       window.removeEventListener('keydown', onKey)
     }
-  }, [actions, inViewer, pagesMode, state.page])
+  }, [actions, inViewer, pagesMode, selection, state.page])
 }

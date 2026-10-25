@@ -8,6 +8,7 @@ import type {
 } from 'pdfjs-dist/types/src/display/api'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { parsePdfDate } from '@shared/pdf-date'
+import { normalizeTurn, type PageBox, type PageGeometry } from '@shared/markup/geometry'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -84,6 +85,8 @@ export class PdfDocument {
   readonly numPages: number
   /** Заполняется прогрессивно в loadSizes; до этого все страницы считаются равными первой. */
   readonly sizes: (PageSize | undefined)[]
+  /** Видимая область и /Rotate страниц для перевода разметки в координаты вида. */
+  private readonly geometries: (PageGeometry | undefined)[]
   private readonly pages = new Map<number, Promise<PDFPageProxy>>()
   private readonly texts = new Map<number, Promise<TextContent>>()
   private destroyed = false
@@ -91,11 +94,20 @@ export class PdfDocument {
   constructor(
     private readonly proxy: PDFDocumentProxy,
     private readonly task: PDFDocumentLoadingTask,
-    firstPage: PageSize
+    first: PDFPageProxy
   ) {
     this.numPages = proxy.numPages
     this.sizes = new Array<PageSize | undefined>(this.numPages)
-    this.sizes[0] = firstPage
+    this.geometries = new Array<PageGeometry | undefined>(this.numPages)
+    this.remember(1, first)
+  }
+
+  private remember(pageNumber: number, page: PDFPageProxy): void {
+    this.sizes[pageNumber - 1] = sizeFromPage(page)
+    this.geometries[pageNumber - 1] = {
+      box: [...page.view] as unknown as PageBox,
+      rotate: normalizeTurn(page.rotate)
+    }
   }
 
   get fingerprint(): string {
@@ -104,6 +116,14 @@ export class PdfDocument {
 
   sizeOf(pageNumber: number): PageSize {
     return this.sizes[pageNumber - 1] ?? this.sizes[0] ?? { width: 612, height: 792 }
+  }
+
+  /** Геометрия страницы; пока размеры не прочитаны — как у первой страницы. */
+  geometryOf(pageNumber: number): PageGeometry {
+    const known = this.geometries[pageNumber - 1] ?? this.geometries[0]
+    if (known) return known
+    const size = this.sizeOf(pageNumber)
+    return { box: [0, 0, size.width, size.height], rotate: 0 }
   }
 
   getPage(pageNumber: number): Promise<PDFPageProxy> {
@@ -121,7 +141,7 @@ export class PdfDocument {
     for (let n = 2; n <= this.numPages; n += 1) {
       if (this.destroyed) return
       const page = await this.getPage(n)
-      this.sizes[n - 1] = sizeFromPage(page)
+      this.remember(n, page)
       if (n % batch === 0) onProgress(n)
     }
     onProgress(this.numPages)
@@ -236,7 +256,7 @@ export async function loadPdfDocument(
   try {
     const proxy = await task.promise
     const first = await proxy.getPage(1)
-    return new PdfDocument(proxy, task, sizeFromPage(first))
+    return new PdfDocument(proxy, task, first)
   } catch (error) {
     throw toLoadError(error)
   }
