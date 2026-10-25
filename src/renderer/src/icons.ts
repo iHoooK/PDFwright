@@ -22,6 +22,7 @@ export {
   Dismiss16Regular as IconClose,
   Document20Regular as IconDocument,
   DocumentAdd20Regular as IconInsert,
+  DocumentEdit20Regular as IconEdit,
   DocumentPdf20Regular as IconPdf,
   Eye20Regular as IconView,
   FolderOpen20Regular as IconOpen,

@@ -13,7 +13,7 @@ export const HOTKEYS: readonly { keys: string; action: string }[] = [
   { keys: 'Ctrl + P', action: 'Печать' },
   { keys: 'Ctrl + W', action: 'Закрыть документ' },
   { keys: 'Ctrl + Z / Ctrl + Y', action: 'Отменить / повторить операцию или правку разметки' },
-  { keys: 'Delete, Esc', action: 'Удалить выбранный объект разметки, снять выбор' },
+  { keys: 'Delete, Esc', action: 'Удалить выбранный объект разметки или документа, снять выбор' },
   { keys: 'Ctrl + G', action: 'Режим «Страницы»' },
   {
     keys: 'Delete, Ctrl + A, Esc',
@@ -29,8 +29,8 @@ export const HOTKEYS: readonly { keys: string; action: string }[] = [
   { keys: 'Ctrl + ,', action: 'Параметры' },
   { keys: 'PageUp / PageDown', action: 'Предыдущая / следующая страница' },
   {
-    keys: 'V, H, M, P, U, T, S',
-    action: 'Инструменты: выделение, рука, маркер, перо, фигуры, текст, подпись'
+    keys: 'V, E, H, M, P, U, T, S',
+    action: 'Инструменты: выделение, правка, рука, маркер, перо, фигуры, текст, подпись'
   }
 ]
 
@@ -125,7 +125,7 @@ export function useHotkeys(): void {
       }
       if (!pagesMode && selection !== null && (key === 'Delete' || key === 'Backspace')) {
         event.preventDefault()
-        actions.removeMarkup()
+        actions.removeSelected()
         return
       }
       if (!pagesMode && selection !== null && key === 'Escape') {

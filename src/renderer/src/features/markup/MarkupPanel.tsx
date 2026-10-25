@@ -25,6 +25,8 @@ import {
 import v from '@renderer/features/viewer/viewer.module.css'
 import { measureText } from './font'
 import { readImageFile } from './images'
+import { ContentCard, EditToolCard } from '@renderer/features/content/ContentPanel'
+import { selectedMarkupId } from './selection'
 import { SignatureDialog } from './SignatureDialog'
 import s from './markup.module.css'
 
@@ -356,16 +358,28 @@ function isStyled(tool: Tool): tool is StyledTool {
 export function MarkupPanel({ toolLabel }: { toolLabel: string }): React.JSX.Element {
   const { state, actions } = useStore()
   const tab = activeDoc(state)
-  const selected = tab?.markup.find((o) => o.id === state.selection?.id) ?? null
+  const markupId = selectedMarkupId(state.selection)
+  const selected = tab?.markup.find((o) => o.id === markupId) ?? null
+  const content = state.selection?.source === 'content' ? state.selection : null
   const tool = state.tool
+  const hint =
+    tool === 'edit' && state.contentMode === 'erase' ? t.content.eraseHint : t.markup.hint[tool]
   const showSaveMode = isStyled(tool) || tool === 'sign' || (tab?.markup.length ?? 0) > 0
   return (
     <>
-      <h3>{selected ? objectName(selected) : toolLabel}</h3>
+      <h3>
+        {selected
+          ? objectName(selected)
+          : content
+            ? t.content.objects[content.object.kind]
+            : toolLabel}
+      </h3>
       {selected && <ObjectCard key={selected.id} object={selected} />}
+      {content && <ContentCard target={content} />}
+      {tool === 'edit' && <EditToolCard />}
       {!selected && isStyled(tool) && <ToolCard tool={tool} />}
       {tool === 'sign' && <SignaturesCard />}
-      <p className={s.hint}>{t.markup.hint[tool]}</p>
+      <p className={s.hint}>{hint}</p>
       {showSaveMode && (
         <div className={v.pcard}>
           <div className={v.field}>

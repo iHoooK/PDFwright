@@ -1,23 +1,24 @@
 import type { Point } from '@shared/markup/geometry'
 import { hitTest, type MarkupObject } from '@shared/markup/model'
+import type { PageImage, PageTextLine } from '@shared/pdf-content/types'
+
+/** Строка текста или картинка самого документа (из MuPDF, `listPageObjects`). */
+export type PageContentObject = PageTextLine | PageImage
 
 /**
- * Что выбрано инструментом «Выделение».
+ * Что выбрано.
  *
- * Сейчас источник один — `markup`: объекты разметки, добавленные до
- * сохранения. Точка расширения для фазы 10 (правка содержимого на MuPDF):
- * сделать `SelectionTarget` объединением с вариантом
- * `{ source: 'content'; page: number; id: string; object: PageContentObject }`
- * для строк текста и картинок самого документа (`listPageObjects`) и источник
- * `SelectionSource` с id `content`, который MarkupLayer получит в списке
- * источников после разметки. Выбор, рамка при наведении, Delete и панель
- * свойств работают через `SelectionTarget`, поэтому для нового источника
- * нужны только его hitTest, рамка (`bounds`) и редактор в панели свойств.
+ * - `markup` — объект разметки, добавленный до сохранения (инструмент «Выделение»);
+ * - `content` — строка текста или картинка самого документа (инструмент «Правка»,
+ *   фаза 10). Объект хранится целиком: по его тексту и рамке движок находит
+ *   строку или картинку повторно, а после любой правки байтов выбор снимается.
+ *
+ * Выбор, Delete и панель свойств работают через `SelectionTarget`, поэтому для
+ * нового источника нужны только его hitTest, рамка и редактор в панели свойств.
  */
-export interface SelectionTarget {
-  source: 'markup'
-  id: string
-}
+export type SelectionTarget =
+  | { source: 'markup'; id: string }
+  | { source: 'content'; id: string; page: number; object: PageContentObject }
 
 export interface SelectionSource {
   readonly id: SelectionTarget['source']
@@ -31,6 +32,42 @@ export function markupSource(objects: readonly MarkupObject[]): SelectionSource 
     hitTest: (page, point, tolerance) => {
       const hit = hitTest(objects, page, point, tolerance)
       return hit ? { source: 'markup', id: hit.id } : null
+    }
+  }
+}
+
+export function contentId(page: number, object: PageContentObject): string {
+  return `${page}:${object.kind}:${object.index}`
+}
+
+/**
+ * Объекты документа на странице: из всех рамок под точкой берётся самая
+ * маленькая — строка поверх картинки выбирается раньше картинки.
+ */
+export function contentSource(
+  page: number,
+  objects: readonly PageContentObject[]
+): SelectionSource {
+  return {
+    id: 'content',
+    hitTest: (at, point, tolerance) => {
+      if (at !== page) return null
+      let best: PageContentObject | null = null
+      let bestArea = Number.POSITIVE_INFINITY
+      for (const object of objects) {
+        const r = object.rect
+        const inside =
+          point.x >= r.x - tolerance &&
+          point.x <= r.x + r.width + tolerance &&
+          point.y >= r.y - tolerance &&
+          point.y <= r.y + r.height + tolerance
+        const area = r.width * r.height
+        if (inside && area < bestArea) {
+          best = object
+          bestArea = area
+        }
+      }
+      return best ? { source: 'content', id: contentId(page, best), page, object: best } : null
     }
   }
 }
@@ -51,4 +88,9 @@ export function hitSources(
 
 export function sameTarget(a: SelectionTarget | null, b: SelectionTarget | null): boolean {
   return a?.source === b?.source && a?.id === b?.id
+}
+
+/** id выбранного объекта разметки (или null, если выбрано другое). */
+export function selectedMarkupId(target: SelectionTarget | null): string | null {
+  return target?.source === 'markup' ? target.id : null
 }

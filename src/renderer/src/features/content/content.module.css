@@ -1,0 +1,107 @@
+/*
+ * Слой инструмента «Правка» поверх страницы: ловит указатель на всей странице
+ * (текст под ним в этом инструменте не выделяется) и рисует рамки строк и
+ * картинок документа, которые прочитал MuPDF.
+ */
+.layer {
+  position: absolute;
+  inset: 0 auto auto 0;
+  touch-action: none;
+  cursor: default;
+}
+.over {
+  cursor: pointer;
+}
+.overImage {
+  cursor: move;
+}
+.erase {
+  cursor: crosshair;
+}
+.outline,
+.frame,
+.preview,
+.eraseRect {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  border-radius: 2px;
+}
+.outline {
+  border: 1px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.frame {
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.preview {
+  border: 1.5px dashed var(--accent);
+}
+.eraseRect {
+  border: 1.5px dashed var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: #fff;
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  touch-action: none;
+}
+.editor {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 2px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: #fff;
+  color: #1b1b1b;
+  font-family: 'PT Sans', sans-serif;
+  line-height: 1;
+  outline: none;
+  box-shadow: var(--shadow);
+}
+/* Во время перетаскивания текст под указателем не выделяется. */
+.dragging,
+.dragging * {
+  user-select: none !important;
+}
+
+/* Панель свойств. */
+.info {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.warning {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lineField {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-2);
+  border-bottom-color: var(--ink-3);
+  border-radius: var(--r-s);
+}
+.lineField:focus-visible {
+  outline: none;
+  border-bottom: 2px solid var(--accent);
+}

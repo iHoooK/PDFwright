@@ -6,6 +6,8 @@ import { useStore, type DocTab, type StyledTool, type Tool } from '@renderer/app
 import { cx } from '@renderer/components/cx'
 import { loadMarkupFont } from '@renderer/features/markup/font'
 import { MarkupLayer } from '@renderer/features/markup/MarkupLayer'
+import { selectedMarkupId } from '@renderer/features/markup/selection'
+import { ContentLayer } from '@renderer/features/content/ContentLayer'
 import { selectionToPageRects } from '@renderer/features/markup/text-selection'
 import { PdfPageView } from './PdfPageView'
 import s from './viewer.module.css'
@@ -170,7 +172,8 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
     }
     return map
   }, [tab.markup])
-  const selectedId = state.selection?.id ?? null
+  const selectedId = selectedMarkupId(state.selection)
+  const selectedContent = state.selection?.source === 'content' ? state.selection : null
   const selectedPage = tab.markup.find((o) => o.id === selectedId)?.page ?? null
   const scale = (resolvedZoom / 100) * CSS_UNITS
   const tool = state.tool
@@ -224,18 +227,32 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
           highlights={highlightsByPage.get(n) ?? none}
           overlay={
             visiblePages.has(n) || scrollMode === 'single' ? (
-              <MarkupLayer
-                geometry={doc.geometryOf(n)}
-                pageNumber={n}
-                scale={scale}
-                rotation={rotation}
-                objects={markupByPage.get(n) ?? NO_MARKUP}
-                selectedId={selectedPage === n ? selectedId : null}
-                tool={tool}
-                style={style}
-                shapeKind={state.shapeKind}
-                actions={actions}
-              />
+              <>
+                <MarkupLayer
+                  geometry={doc.geometryOf(n)}
+                  pageNumber={n}
+                  scale={scale}
+                  rotation={rotation}
+                  objects={markupByPage.get(n) ?? NO_MARKUP}
+                  selectedId={selectedPage === n ? selectedId : null}
+                  tool={tool}
+                  style={style}
+                  shapeKind={state.shapeKind}
+                  actions={actions}
+                />
+                {tool === 'edit' && tab.bytes && (
+                  <ContentLayer
+                    geometry={doc.geometryOf(n)}
+                    pageNumber={n}
+                    scale={scale}
+                    rotation={rotation}
+                    bytes={tab.bytes}
+                    mode={state.contentMode}
+                    selected={selectedContent?.page === n ? selectedContent : null}
+                    actions={actions}
+                  />
+                )}
+              </>
             ) : undefined
           }
         />

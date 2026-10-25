@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import {
   IconCopy,
   IconDelete,
+  IconEdit,
   IconHand,
   IconInfo,
   IconInsert,
@@ -41,6 +42,7 @@ import s from './viewer.module.css'
 
 const TOOL_META: readonly { tool: Tool; label: string; icon: ReactNode }[] = [
   { tool: 'select', label: t.cmd.select, icon: <IconSelect /> },
+  { tool: 'edit', label: t.cmd.edit, icon: <IconEdit /> },
   { tool: 'hand', label: t.cmd.hand, icon: <IconHand /> },
   { tool: 'marker', label: t.cmd.marker, icon: <IconMarker /> },
   { tool: 'pen', label: t.cmd.pen, icon: <IconPen /> },
@@ -332,7 +334,10 @@ export function ViewerScreen(): React.JSX.Element {
             {tab && (
               <div className={s.pcard}>
                 <b style={{ fontWeight: 600 }}>{t.props.document}</b>
-                <p className="muted" style={{ margin: 0, userSelect: 'text' }}>
+                <p
+                  className="muted"
+                  style={{ margin: 0, userSelect: 'text', overflowWrap: 'anywhere' }}
+                >
                   {tab.name}
                   <br />
                   {ready

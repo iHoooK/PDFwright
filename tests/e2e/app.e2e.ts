@@ -13,6 +13,7 @@ import {
 } from 'pdf-lib'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { listPageObjects } from '../../src/shared/pdf-content'
 
 /**
  * Сквозные проверки собранного приложения (out/): запуск Electron с файлом
@@ -382,5 +383,77 @@ describe('PDFwright (собранное приложение)', () => {
     ) as { markup: { signatures: { src: string }[] } }
     expect(settings.markup.signatures).toHaveLength(1)
     expect(settings.markup.signatures[0]?.src).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it('правит содержимое: удаляет и заменяет строку, двигает и удаляет картинку, ластик', async () => {
+    // Страница 595×842 пт: три строки и картинка 200×200 с левым нижним углом в (72, 300).
+    const source = await PDFDocument.create()
+    const font = await source.embedFont(StandardFonts.Helvetica)
+    const png = await source.embedPng(await readFile(join(ROOT, 'resources/icon-256.png')))
+    const sheet = source.addPage([595, 842])
+    sheet.drawText('Delete this line', { x: 72, y: 760, size: 20, font })
+    sheet.drawText('Fix tpyo here', { x: 72, y: 700, size: 20, font })
+    sheet.drawText('Keep this line', { x: 72, y: 640, size: 20, font })
+    sheet.drawImage(png, { x: 72, y: 300, width: 200, height: 200 })
+    const target = join(work, 'содержимое.pdf')
+    await writeFile(target, await source.save())
+    const page = await launch(target)
+
+    /** Доля высоты страницы для точки с координатой y в пространстве PDF. */
+    const fy = (y: number): number => (842 - y) / 842
+    const fx = (x: number): number => x / 595
+    const layerText = (): Promise<string | null> =>
+      page.locator('[data-page="1"] .textLayer').textContent()
+
+    await tool(page, 'Правка').click()
+    await page.locator('[data-content-layer="1"][data-content-ready="4"]').waitFor()
+
+    // Щелчок выбирает строку, Delete вырезает её из документа.
+    await clickPage(page, 1, fx(110), fy(767))
+    await page.locator('[data-content-selected="text"]').waitFor()
+    await page.locator('[data-content-props="text"]').waitFor()
+    await page.keyboard.press('Delete')
+    await expect.poll(layerText, { timeout: 20_000 }).not.toContain('Delete this line')
+    expect(await statusText(page)).toContain('Не сохранено')
+
+    // Двойной щелчок открывает правку строки на месте.
+    await page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
+    const p = await pagePoint(page, 1, fx(110), fy(707))
+    await page.mouse.dblclick(p.x, p.y)
+    const editor = page.locator('[data-content-editor]')
+    await editor.waitFor()
+    await editor.fill('Fixed typo here')
+    await editor.press('Enter')
+    await expect.poll(layerText, { timeout: 20_000 }).toContain('Fixed typo here')
+    await shot(page, 'content-replaced')
+
+    // Ctrl+Z возвращает исходную строку, Ctrl+Y — исправленную.
+    await page.keyboard.press('Control+z')
+    await expect.poll(layerText, { timeout: 20_000 }).toContain('Fix tpyo here')
+    await page.keyboard.press('Control+y')
+    await expect.poll(layerText, { timeout: 20_000 }).toContain('Fixed typo here')
+
+    // Картинку перетаскиваем вправо на 100 пт, затем выбираем на новом месте и удаляем.
+    await page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
+    await drag(page, 1, [fx(172), fy(400)], [fx(272), fy(400)])
+    await expect.poll(() => page.locator('[data-content-selected]').count()).toBe(0)
+    await page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
+    await clickPage(page, 1, fx(340), fy(400))
+    await page.locator('[data-content-selected="image"]').waitFor()
+    await page.locator('[data-content-props="image"]').waitFor()
+    await page.keyboard.press('Delete')
+    await expect.poll(() => page.locator('[data-content-ready="2"]').count()).toBe(1)
+
+    // Ластик: рамка вокруг третьей строки вырезает её.
+    await page.getByRole('radio', { name: 'Ластик области' }).click()
+    await drag(page, 1, [fx(60), fy(668)], [fx(260), fy(632)])
+    await expect.poll(layerText, { timeout: 20_000 }).not.toContain('Keep this line')
+
+    await page.keyboard.press('Control+s')
+    await expect.poll(() => statusText(page), { timeout: 20_000 }).toContain('Сохранено')
+
+    const objects = await listPageObjects(new Uint8Array(await readFile(target)), 0)
+    expect(objects.lines.map((line) => line.text)).toEqual(['Fixed typo here'])
+    expect(objects.images).toHaveLength(0)
   })
 })

@@ -51,6 +51,7 @@ import {
   type TextMarkKind
 } from '@shared/markup/model'
 import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
+import type { PageImage, PageTextLine, PdfSpaceRect } from '@shared/pdf-content/types'
 import {
   loadPdfDocument,
   PdfLoadError,
@@ -60,13 +61,21 @@ import {
 } from '@renderer/pdf-engine/engine'
 import { t } from '@renderer/i18n'
 import { loadMarkupFont } from '@renderer/features/markup/font'
-import { imageSize, readImageFile } from '@renderer/features/markup/images'
-import { sameTarget, type SelectionTarget } from '@renderer/features/markup/selection'
+import { imageSize, readImageBytes, readImageFile } from '@renderer/features/markup/images'
+import {
+  sameTarget,
+  selectedMarkupId,
+  type SelectionTarget
+} from '@renderer/features/markup/selection'
+import { pdfContent } from '@renderer/pdf-content/client'
 import { getApi } from './api'
 import { applyTheme, resolvedTheme } from './theme'
 
 export type Screen = 'start' | 'viewer' | 'settings' | 'kit'
-export type Tool = 'select' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'sign'
+export type Tool = 'select' | 'edit' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'sign'
+/** Инструмент «Правка»: выбор строк и картинок документа или ластик области. */
+export type ContentMode = 'objects' | 'erase'
+type ContentEditKind = keyof typeof t.content.done
 export type SidebarTab = 'thumbs' | 'outline' | 'search'
 export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author'
 export type ZoomMode = 'fit-width' | 'fit-page' | 'custom'
@@ -151,9 +160,19 @@ export interface PasswordRequest {
 }
 
 export const ZOOM_STEPS = [25, 33, 50, 67, 80, 90, 100, 110, 125, 150, 175, 200, 300, 400] as const
-export const TOOLS: readonly Tool[] = ['select', 'hand', 'marker', 'pen', 'shapes', 'text', 'sign']
+export const TOOLS: readonly Tool[] = [
+  'select',
+  'edit',
+  'hand',
+  'marker',
+  'pen',
+  'shapes',
+  'text',
+  'sign'
+]
 export const TOOL_KEYS: Record<Tool, string> = {
   select: 'V',
+  edit: 'E',
   hand: 'H',
   marker: 'M',
   pen: 'P',
@@ -190,6 +209,7 @@ export interface State {
   markKind: TextMarkKind
   shapeKind: ShapeKind
   activeSignature: string | null
+  contentMode: ContentMode
   selection: SelectionTarget | null
   pagesMode: boolean
   page: number
@@ -257,6 +277,7 @@ type Action =
   | { type: 'markKind'; kind: TextMarkKind }
   | { type: 'shapeKind'; kind: ShapeKind }
   | { type: 'activeSignature'; id: string | null }
+  | { type: 'contentMode'; mode: ContentMode }
   | { type: 'select'; target: SelectionTarget | null }
   | { type: 'pagesMode'; on?: boolean }
   | { type: 'page'; page: number; scroll: boolean }
@@ -299,6 +320,7 @@ const initial: State = {
   markKind: 'highlight',
   shapeKind: 'rect',
   activeSignature: null,
+  contentMode: 'objects',
   selection: null,
   pagesMode: false,
   page: 1,
@@ -342,12 +364,23 @@ function updateDoc(state: State, id: string, patch: (d: DocTab) => DocTab): Stat
   return { ...state, docs: state.docs.map((d) => (d.id === id ? patch(d) : d)) }
 }
 
-/** Выбор остаётся, только если выбранный объект ещё есть в разметке. */
+/**
+ * Выбор остаётся, только если выбранный объект ещё есть в разметке. Объект
+ * документа от правок разметки не меняется; после новых байтов выбор снимает docReplace.
+ */
 function keepSelection(
   target: SelectionTarget | null,
   markup: readonly MarkupObject[]
 ): SelectionTarget | null {
+  if (target?.source === 'content') return target
   return target && markup.some((o) => o.id === target.id) ? target : null
+}
+
+/** Какой выбор имеет смысл в инструменте: разметка — в «Выделении», документ — в «Правке». */
+function selectionForTool(target: SelectionTarget | null, tool: Tool): SelectionTarget | null {
+  if (target?.source === 'markup' && tool === 'select') return target
+  if (target?.source === 'content' && tool === 'edit') return target
+  return null
 }
 
 function reducer(state: State, action: Action): State {
@@ -412,7 +445,11 @@ function reducer(state: State, action: Action): State {
         page,
         selectedPages: action.selectedPages,
         selectionAnchor: null,
-        selection: keepSelection(state.selection, action.markup),
+        // Строки и картинки документа после новых байтов читаются заново.
+        selection:
+          state.selection?.source === 'content'
+            ? null
+            : keepSelection(state.selection, action.markup),
         search: EMPTY_SEARCH
       }
     }
@@ -494,7 +531,7 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         tool: action.tool,
-        selection: action.tool === 'select' ? state.selection : null
+        selection: selectionForTool(state.selection, action.tool)
       }
     case 'toolStyle':
       return {
@@ -510,6 +547,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, shapeKind: action.kind }
     case 'activeSignature':
       return { ...state, activeSignature: action.id }
+    case 'contentMode':
+      return {
+        ...state,
+        contentMode: action.mode,
+        selection: action.mode === 'erase' ? null : state.selection
+      }
     case 'select':
       return sameTarget(state.selection, action.target)
         ? state
@@ -577,6 +620,15 @@ export interface Actions {
   /** Ставит выбранную подпись на страницу: в точку center или в центр страницы. */
   placeSignature: (page: number, center: Point | null) => void
   insertImage: (file: File) => void
+  // Правка содержимого документа (MuPDF)
+  setContentMode: (mode: ContentMode) => void
+  /** Delete: удаляет выбранный объект разметки или объект документа. */
+  removeSelected: () => void
+  replaceContentText: (page: number, line: PageTextLine, text: string) => void
+  removeContent: (page: number, object: PageTextLine | PageImage) => void
+  replaceContentImage: (page: number, image: PageImage, file: File) => void
+  moveContentImage: (page: number, image: PageImage, rect: PdfSpaceRect) => void
+  eraseContent: (page: number, rect: PdfSpaceRect) => void
   togglePagesMode: (on?: boolean) => void
   setSidebarTab: (tab: SidebarTab) => void
   toggleSidebar: (on?: boolean) => void
@@ -805,13 +857,18 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         message?: string
         select?: (order: number[] | null) => ReadonlySet<number>
         order?: number[]
+        /**
+         * Правка содержимого страницы: нумерация страниц не меняется, поэтому
+         * несохранённая разметка остаётся редактируемыми объектами поверх.
+         */
+        keepMarkup?: boolean
       } = {}
     ): Promise<boolean> => {
       const tab = activeDoc(stateRef.current)
       if (tab?.status !== 'ready' || !tab.bytes || tab.busy) return false
       dispatch({ type: 'docBusy', id: tab.id, busy: true })
       try {
-        const bytes = await run(await bakeMarkup(tab))
+        const bytes = await run(options.keepMarkup ? tab.bytes : await bakeMarkup(tab))
         const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
         const previous = tab.doc
         const history = pushSnapshot(tab.history, { bytes: tab.bytes, markup: tab.markup })
@@ -820,11 +877,15 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           id: tab.id,
           doc,
           bytes,
-          markup: [],
+          markup: options.keepMarkup ? tab.markup : [],
           history,
           future: [],
           dirty: true,
-          selectedPages: options.select ? options.select(options.order ?? null) : new Set()
+          selectedPages: options.select
+            ? options.select(options.order ?? null)
+            : options.keepMarkup
+              ? stateRef.current.selectedPages
+              : new Set()
         })
         previous?.destroy()
         void doc.loadSizes(() => {
@@ -949,6 +1010,13 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     return writeTab(tab, path)
   }, [api, writeTab])
 
+  /** Правка содержимого документа на MuPDF: новые байты, шаг истории, разметка остаётся. */
+  const editContent = useCallback(
+    (kind: ContentEditKind, run: (bytes: Uint8Array) => Promise<Uint8Array>): Promise<boolean> =>
+      applyOperation(run, { keepMarkup: true, message: t.content.done[kind] }),
+    [applyOperation]
+  )
+
   const addMarkup = useCallback((object: MarkupObject, select = true) => {
     const tab = activeDoc(stateRef.current)
     if (tab?.status !== 'ready') return
@@ -1047,6 +1115,24 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     }
     const rangeSelect = (count: number, from: number): ReadonlySet<number> =>
       new Set(Array.from({ length: count }, (_, i) => from + i))
+    const removeMarkupObject = (target: string): void => {
+      const tab = activeDoc(stateRef.current)
+      if (tab?.status !== 'ready') return
+      dispatch({
+        type: 'markup',
+        id: tab.id,
+        change: (markup) =>
+          markup.some((o) => o.id === target) ? markup.filter((o) => o.id !== target) : markup,
+        select: null
+      })
+    }
+    const removeContentObject = (page: number, object: PageTextLine | PageImage): void => {
+      void editContent(object.kind === 'text' ? 'removeLine' : 'removeImage', (bytes) =>
+        object.kind === 'text'
+          ? pdfContent.removeTextLine(bytes, page - 1, object)
+          : pdfContent.removeImage(bytes, page - 1, object)
+      )
+    }
 
     return {
       go: (screen) => {
@@ -1171,16 +1257,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         )
       },
       removeMarkup: (id) => {
-        const tab = activeDoc(stateRef.current)
-        const target = id ?? stateRef.current.selection?.id
-        if (tab?.status !== 'ready' || target === undefined) return
-        dispatch({
-          type: 'markup',
-          id: tab.id,
-          change: (markup) =>
-            markup.some((o) => o.id === target) ? markup.filter((o) => o.id !== target) : markup,
-          select: null
-        })
+        const target = id ?? selectedMarkupId(stateRef.current.selection)
+        if (target !== null) removeMarkupObject(target)
       },
       select: (target) => {
         dispatch({ type: 'select', target })
@@ -1231,6 +1309,42 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
             toast(error instanceof Error ? error.message : String(error))
           }
         })()
+      },
+      setContentMode: (mode) => {
+        dispatch({ type: 'contentMode', mode })
+      },
+      removeSelected: () => {
+        const target = stateRef.current.selection
+        if (target?.source === 'content') removeContentObject(target.page, target.object)
+        else if (target) removeMarkupObject(target.id)
+      },
+      replaceContentText: (page, line, text) => {
+        if (text === line.text) return
+        void editContent(text.trim().length === 0 ? 'removeLine' : 'replaceText', async (bytes) => {
+          const fallbackFont = (await loadMarkupFont()).bytes
+          return pdfContent.replaceText(bytes, page - 1, line, text, { fallbackFont })
+        })
+      },
+      removeContent: removeContentObject,
+      replaceContentImage: (page, image, file) => {
+        void (async () => {
+          let data: Uint8Array
+          try {
+            data = await readImageBytes(file)
+          } catch (error) {
+            toast(error instanceof Error ? error.message : String(error))
+            return
+          }
+          await editContent('replaceImage', (bytes) =>
+            pdfContent.replaceImage(bytes, page - 1, image, data)
+          )
+        })()
+      },
+      moveContentImage: (page, image, rect) => {
+        void editContent('moveImage', (bytes) => pdfContent.moveImage(bytes, page - 1, image, rect))
+      },
+      eraseContent: (page, rect) => {
+        void editContent('erase', (bytes) => pdfContent.eraseRegions(bytes, page - 1, [rect]))
       },
       togglePagesMode: (on) => {
         dispatch(on === undefined ? { type: 'pagesMode' } : { type: 'pagesMode', on })
@@ -1511,6 +1625,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     api,
     applyOperation,
     bakeMarkup,
+    editContent,
     openDialog,
     openPath,
     placeImage,

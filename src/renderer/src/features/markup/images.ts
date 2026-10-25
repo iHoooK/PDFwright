@@ -44,3 +44,11 @@ export function imageSize(src: string): Promise<{ width: number; height: number 
     image.src = src
   })
 }
+
+/** Байты PNG или JPEG для замены картинки документа (MuPDF принимает оба формата). */
+export async function readImageBytes(file: File): Promise<Uint8Array> {
+  if (file.size > IMAGE_MAX_BYTES) throw new Error(t.markup.imageTooBig)
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  if (isPng(bytes) || isJpeg(bytes)) return bytes
+  throw new Error(t.markup.imageFormat)
+}
