@@ -30,6 +30,8 @@ export default defineConfig({
         '@renderer': resolve(import.meta.dirname, 'src/renderer/src')
       }
     },
+    // Worker pdf-content — ES-модуль: MuPDF загружается динамическим import и top-level await.
+    worker: { format: 'es' },
     build: {
       minify: true,
       rolldownOptions: { input: resolve(import.meta.dirname, 'src/renderer/index.html') }
