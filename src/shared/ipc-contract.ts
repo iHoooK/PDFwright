@@ -48,6 +48,7 @@ export const APP_COMMANDS = [
   'edit.find',
   'tools.merge',
   'tools.split',
+  'tools.compare',
   'app.settings',
   'app.start',
   'view.zoomIn',

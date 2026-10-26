@@ -81,7 +81,7 @@ import { pdfContent } from '@renderer/pdf-content/client'
 import { getApi } from './api'
 import { applyTheme, resolvedTheme } from './theme'
 
-export type Screen = 'start' | 'viewer' | 'settings' | 'kit'
+export type Screen = 'start' | 'viewer' | 'settings' | 'kit' | 'compare'
 export type Tool = 'select' | 'edit' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'sign'
 /** Инструмент «Правка»: выбор объектов документа, новый текст или ластик области. */
 export type ContentMode = 'objects' | 'text' | 'erase'
@@ -169,6 +169,20 @@ export interface PasswordRequest {
   resolve: (password: string | null) => void
 }
 
+// Сравнение
+let compareCounter = 0
+
+/** Вторая версия документа для экрана сравнения; живёт, пока открыт этот экран. */
+export interface CompareSession {
+  /** Растёт с каждым новым сравнением: экран сбрасывает результаты по нему. */
+  id: number
+  /** Вкладка документа, который сравнивается. */
+  baseId: string
+  doc: PdfDocument
+  name: string
+  path: string
+}
+
 export const ZOOM_STEPS = [25, 33, 50, 67, 80, 90, 100, 110, 125, 150, 175, 200, 300, 400] as const
 export const TOOLS: readonly Tool[] = [
   'select',
@@ -232,6 +246,8 @@ export interface State {
   passwordRequest: PasswordRequest | null
   propertiesOpen: boolean
   closeConfirm: string | null
+  // Сравнение
+  compare: CompareSession | null
   toolDialog: ToolDialog
   settingsSection: SettingsSection
   update: UpdateState
@@ -299,6 +315,9 @@ type Action =
   | { type: 'password'; request: PasswordRequest | null }
   | { type: 'properties'; open: boolean }
   | { type: 'closeConfirm'; id: string | null }
+  // Сравнение
+  | { type: 'compareOpen'; session: CompareSession }
+  | { type: 'compareClose' }
   | { type: 'toolDialog'; dialog: ToolDialog }
   | { type: 'update'; patch: Partial<UpdateState> }
 
@@ -345,6 +364,8 @@ const initial: State = {
   passwordRequest: null,
   propertiesOpen: false,
   closeConfirm: null,
+  // Сравнение
+  compare: null,
   toolDialog: null,
   settingsSection: 'general',
   update: {
@@ -608,6 +629,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, propertiesOpen: action.open }
     case 'closeConfirm':
       return { ...state, closeConfirm: action.id }
+    // Сравнение
+    case 'compareOpen':
+      return { ...state, compare: action.session, screen: 'compare' }
+    case 'compareClose':
+      return {
+        ...state,
+        compare: null,
+        screen:
+          state.screen === 'compare' ? (state.activeId === null ? 'start' : 'viewer') : state.screen
+      }
     case 'toolDialog':
       return { ...state, toolDialog: action.dialog }
     case 'update':
@@ -710,6 +741,11 @@ export interface Actions {
   redo: () => void
   save: () => Promise<boolean>
   saveAs: () => Promise<boolean>
+  // Сравнение
+  /** Выбирает второй PDF и открывает экран сравнения с активным документом. */
+  compareWith: () => void
+  /** Закрывает сравнение и возвращает к документу. */
+  closeCompare: () => void
   openTool: (dialog: ToolDialog) => void
   checkUpdates: () => void
   downloadUpdate: () => void
@@ -1644,6 +1680,62 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       },
       save,
       saveAs,
+      // Сравнение
+      compareWith: () => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready' || !tab.doc) {
+          toast(t.compare.needDoc)
+          return
+        }
+        // Запрос пароля второго файла показывает экран документа.
+        if (stateRef.current.screen !== 'viewer') dispatch({ type: 'activateDoc', id: tab.id })
+        void (async () => {
+          const file = await api.openPdfDialog()
+          if (!file) return
+          const askPassword = (reason: PasswordReason): Promise<string | null> =>
+            new Promise((resolve) => {
+              dispatch({
+                type: 'password',
+                request: {
+                  fileName: file.name,
+                  reason,
+                  resolve: (password) => {
+                    dispatch({ type: 'password', request: null })
+                    resolve(password)
+                  }
+                }
+              })
+            })
+          try {
+            const bytes = new Uint8Array((await api.readFile(file.path)).bytes)
+            const doc = await loadPdfDocument(bytes, { askPassword })
+            if (!stateRef.current.docs.some((d) => d.id === tab.id)) {
+              doc.destroy()
+              return
+            }
+            compareCounter += 1
+            dispatch({
+              type: 'compareOpen',
+              session: { id: compareCounter, baseId: tab.id, doc, name: file.name, path: file.path }
+            })
+            console.info(`[pdfwright] сравнение: ${tab.name} и ${file.name}`)
+          } catch (error) {
+            if (error instanceof PdfLoadError && error.kind === 'cancelled') return
+            toast(
+              `${t.compare.openFailed}: ${error instanceof Error ? error.message : String(error)}`
+            )
+          }
+        })()
+      },
+      closeCompare: () => {
+        const session = stateRef.current.compare
+        if (!session) return
+        dispatch({ type: 'compareClose' })
+        // Документ освобождается после того, как экран сравнения размонтирован.
+        window.setTimeout(() => {
+          session.doc.destroy()
+        }, 0)
+      },
       openTool: (dialog) => {
         dispatch({ type: 'toolDialog', dialog })
       },
@@ -1745,6 +1837,16 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     updateSettings
   ])
 
+  // Сравнение: вторая версия освобождается, когда пользователь ушёл с экрана
+  // сравнения (вкладка, «Начало») или закрыл сравниваемый документ.
+  const compareSession = state.compare
+  const compareLeft =
+    compareSession !== null &&
+    (state.screen !== 'compare' || !state.docs.some((d) => d.id === compareSession.baseId))
+  useEffect(() => {
+    if (compareLeft) actions.closeCompare()
+  }, [compareLeft, actions])
+
   // Команды меню приложения приходят из main и выполняются теми же действиями.
   useEffect(() => {
     const run = (command: AppCommand): void => {
@@ -1781,6 +1883,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           break
         case 'tools.split':
           actions.openTool('split')
+          break
+        case 'tools.compare':
+          actions.compareWith()
           break
         case 'app.settings':
           actions.openSettings()
