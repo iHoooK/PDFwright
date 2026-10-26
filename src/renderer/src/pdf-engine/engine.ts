@@ -89,6 +89,7 @@ export class PdfDocument {
   private readonly geometries: (PageGeometry | undefined)[]
   private readonly pages = new Map<number, Promise<PDFPageProxy>>()
   private readonly texts = new Map<number, Promise<TextContent>>()
+  private fieldObjects: Promise<FieldObjects | null> | null = null
   private destroyed = false
 
   constructor(
@@ -211,11 +212,34 @@ export class PdfDocument {
     }
   }
 
+  /** Значения полей формы, введённые на странице (слой форм pdf.js). */
+  get annotationStorage(): PDFDocumentProxy['annotationStorage'] {
+    return this.proxy.annotationStorage
+  }
+
+  /** Все поля формы документа по именам или null, если формы нет. */
+  getFieldObjects(): Promise<FieldObjects | null> {
+    const loading =
+      this.fieldObjects ??
+      (this.proxy.getFieldObjects() as Promise<FieldObjects | null>).catch(() => null)
+    this.fieldObjects = loading
+    return loading
+  }
+
   destroy(): void {
     this.destroyed = true
     void this.task.destroy()
   }
 }
+
+/** Поле формы глазами pdf.js (`getFieldObjects`): виджет на странице. */
+export interface FieldObject {
+  id: string
+  type: string
+  page: number
+  editable?: boolean
+}
+export type FieldObjects = Map<string, FieldObject[]>
 
 interface OutlineNode {
   title: string
@@ -283,12 +307,15 @@ export interface RenderHandle {
 /**
  * Рисует страницу в canvas с учётом devicePixelRatio. Возвращает ручку
  * для отмены: при смене масштаба или уходе страницы с экрана рендер прерывается.
+ * С formCanvases поля форм на холсте не рисуются — их показывает слой форм,
+ * а вид флажков и переключателей pdf.js кладёт в отдельные холсты этой карты.
  */
 export function renderPageToCanvas(
   page: PDFPageProxy,
   canvas: HTMLCanvasElement,
   viewport: PageViewport,
-  pixelRatio: number
+  pixelRatio: number,
+  formCanvases?: Map<string, HTMLCanvasElement>
 ): RenderHandle {
   const width = Math.max(1, Math.floor(viewport.width * pixelRatio))
   const height = Math.max(1, Math.floor(viewport.height * pixelRatio))
@@ -300,7 +327,8 @@ export function renderPageToCanvas(
     canvas,
     viewport,
     transform: pixelRatio === 1 ? undefined : [pixelRatio, 0, 0, pixelRatio, 0, 0],
-    annotationMode: pdfjs.AnnotationMode.ENABLE
+    annotationMode: formCanvases ? pdfjs.AnnotationMode.ENABLE_FORMS : pdfjs.AnnotationMode.ENABLE,
+    ...(formCanvases ? { annotationCanvasMap: formCanvases } : {})
   })
   const done = task.promise.then(
     () => undefined,
@@ -321,5 +349,5 @@ export function viewportFor(page: PDFPageProxy, scale: number, rotation: Rotatio
   return page.getViewport({ scale, rotation: (page.rotate + rotation) % 360 })
 }
 
-export { TextLayer } from 'pdfjs-dist'
+export { AnnotationLayer, AnnotationType, TextLayer } from 'pdfjs-dist'
 export type { PDFPageProxy, TextContent }

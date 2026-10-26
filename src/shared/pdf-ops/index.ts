@@ -4,6 +4,23 @@ import { chunkEveryN, expandRange, parsePageRanges } from './ranges'
 
 export { PdfOpsError, PRODUCER } from './document'
 export { applyMarkup, type ApplyMarkupOptions, type MarkupSaveMode } from './markup'
+export {
+  applyFormValues,
+  FORM_OFF,
+  readFormFields,
+  type ApplyFormsOptions,
+  type FormFieldInfo,
+  type FormFieldKind,
+  type FormValue,
+  type FormValues
+} from './forms'
+export {
+  clearMetadata,
+  METADATA_FIELDS,
+  readMetadata,
+  writeMetadata,
+  type DocumentMetadata
+} from './metadata'
 
 /**
  * Операции над PDF на pdf-lib. Все функции чистые: принимают байты, возвращают

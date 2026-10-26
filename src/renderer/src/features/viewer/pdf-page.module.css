@@ -83,3 +83,13 @@
   background: var(--accent);
   border-color: var(--accent);
 }
+
+/*
+ * Слой форм pdf.js (.annotationLayer из pdf_viewer.css) над текстовым слоем.
+ * Размер слоя pdf.js считает через эти переменные, как в своём просмотрщике.
+ */
+.forms {
+  --user-unit: 1;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}

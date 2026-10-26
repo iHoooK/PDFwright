@@ -29,7 +29,9 @@ import {
   type ZoomMode as DefaultZoomMode
 } from '@shared/settings-schema'
 import {
+  applyFormValues,
   applyMarkup,
+  clearMetadata,
   computeMoveOrder,
   deletePages,
   duplicatePages,
@@ -39,7 +41,11 @@ import {
   insertPagesFrom,
   isIdentityOrder,
   reorderPages,
-  rotatePages
+  rotatePages,
+  writeMetadata,
+  type DocumentMetadata,
+  type FormValue,
+  type FormValues
 } from '@shared/pdf-ops'
 import { findMatches, type TextMatch } from '@shared/pdf-search'
 import { pushSnapshot, type Snapshot } from '@shared/markup/history'
@@ -109,7 +115,18 @@ export interface ToolStyle {
  * разметки делят байты с соседними шагами, поэтому отмена работает одним
  * стеком и для операций со страницами, и для объектов (см. markup/history).
  */
-export type TabSnapshot = Snapshot<Uint8Array, readonly MarkupObject[]>
+export type TabSnapshot = Snapshot<Uint8Array, readonly MarkupObject[]> & {
+  /** Несохранённые значения полей формы на этом шаге. */
+  forms?: FormValues
+}
+
+const NO_FORMS: FormValues = {}
+const hasForms = (tab: DocTab): boolean => Object.keys(tab.forms).length > 0
+const sameFormValue = (a: FormValue | undefined, b: FormValue): boolean =>
+  a !== undefined &&
+  (typeof a === 'string' || typeof b === 'string'
+    ? a === b
+    : a.length === b.length && a.every((v, i) => v === b[i]))
 
 export interface DocTab {
   id: string
@@ -127,6 +144,8 @@ export interface DocTab {
   dirty: boolean
   /** Объекты разметки, ещё не записанные в байты документа. */
   markup: readonly MarkupObject[]
+  /** Значения полей формы, ещё не записанные в байты документа (по имени поля). */
+  forms: FormValues
   history: TabSnapshot[]
   future: TabSnapshot[]
   /** Ключ последней правки: подряд идущие правки с тем же ключом (ползунок) — один шаг отмены. */
@@ -270,6 +289,7 @@ type Action =
       doc: PdfDocument
       bytes: Uint8Array
       markup: readonly MarkupObject[]
+      forms?: FormValues
       history: TabSnapshot[]
       future: TabSnapshot[]
       dirty: boolean
@@ -287,8 +307,15 @@ type Action =
       type: 'markupRestore'
       id: string
       markup: readonly MarkupObject[]
+      forms?: FormValues
       history: TabSnapshot[]
       future: TabSnapshot[]
+    }
+  | {
+      type: 'forms'
+      id: string
+      change: (forms: FormValues) => FormValues
+      coalesce?: string
     }
   | { type: 'docSaved'; id: string; path: string }
   | { type: 'closeDoc'; id: string }
@@ -474,6 +501,7 @@ function reducer(state: State, action: Action): State {
         pages: action.doc.numPages,
         bytes: action.bytes,
         markup: action.markup,
+        forms: action.forms ?? NO_FORMS,
         history: action.history,
         future: action.future,
         coalesce: null,
@@ -505,7 +533,9 @@ function reducer(state: State, action: Action): State {
       const next = updateDoc(state, action.id, (d) => ({
         ...d,
         markup,
-        history: merge ? d.history : pushSnapshot(d.history, { bytes, markup: d.markup }),
+        history: merge
+          ? d.history
+          : pushSnapshot(d.history, { bytes, markup: d.markup, forms: d.forms }),
         future: merge ? d.future : [],
         coalesce: action.coalesce ?? null,
         dirty: true
@@ -513,10 +543,28 @@ function reducer(state: State, action: Action): State {
       const target = action.select === undefined ? state.selection : action.select
       return { ...next, selection: keepSelection(target, markup) }
     }
+    case 'forms': {
+      const tab = state.docs.find((d) => d.id === action.id)
+      const bytes = tab?.bytes
+      if (!tab || !bytes || tab.busy) return state
+      const forms = action.change(tab.forms)
+      if (forms === tab.forms) return state
+      const merge = action.coalesce !== undefined && action.coalesce === tab.coalesce
+      const snapshot: TabSnapshot = { bytes, markup: tab.markup, forms: tab.forms }
+      return updateDoc(state, action.id, (d) => ({
+        ...d,
+        forms,
+        history: merge ? d.history : pushSnapshot(d.history, snapshot),
+        future: merge ? d.future : [],
+        coalesce: action.coalesce ?? null,
+        dirty: true
+      }))
+    }
     case 'markupRestore': {
       const next = updateDoc(state, action.id, (d) => ({
         ...d,
         markup: action.markup,
+        forms: action.forms ?? d.forms,
         history: action.history,
         future: action.future,
         coalesce: null,
@@ -715,6 +763,15 @@ export interface Actions {
   replaceContentImage: (page: number, image: PageImage, file: File) => void
   moveContentImage: (page: number, image: PageImage, rect: PdfSpaceRect) => void
   eraseContent: (page: number, rect: PdfSpaceRect) => void
+  // Формы и метаданные
+  /** Значение поля формы; coalesce склеивает набор текста в один шаг отмены. */
+  setFormValue: (name: string, value: FormValue, coalesce?: string) => void
+  /** Отменяет несохранённые значения полей: поля снова как в файле. */
+  resetForms: () => void
+  /** Вплавляет поля в страницы: значения остаются, полей больше нет. */
+  flattenForms: () => void
+  setMetadata: (patch: Partial<DocumentMetadata>) => Promise<boolean>
+  clearMetadata: () => Promise<boolean>
   togglePagesMode: (on?: boolean) => void
   setSidebarTab: (tab: SidebarTab) => void
   toggleSidebar: (on?: boolean) => void
@@ -833,6 +890,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           bytes: null,
           dirty: false,
           markup: [],
+          forms: NO_FORMS,
           history: [],
           future: [],
           coalesce: null,
@@ -940,9 +998,15 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     if (file) openPath(file.path)
   }, [api, openPath])
 
-  /** Байты документа с записанной в них несохранённой разметкой (режим из настроек). */
+  /**
+   * Байты документа с записанными в них несохранёнными значениями полей формы
+   * (вид полей — шрифтом PT Sans) и разметкой (режим из настроек).
+   */
   const bakeMarkup = useCallback(async (tab: DocTab): Promise<Uint8Array> => {
-    const bytes = tab.bytes ?? new Uint8Array()
+    let bytes = tab.bytes ?? new Uint8Array()
+    if (hasForms(tab)) {
+      bytes = await applyFormValues(bytes, tab.forms, { font: (await loadMarkupFont()).bytes })
+    }
     if (tab.markup.length === 0) return bytes
     const font = tab.markup.some((o) => o.kind === 'text') ? (await loadMarkupFont()).bytes : null
     return applyMarkup(bytes, tab.markup, {
@@ -978,13 +1042,15 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         const bytes = await run(options.keepMarkup ? tab.bytes : await bakeMarkup(tab))
         const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
         const previous = tab.doc
-        const history = pushSnapshot(tab.history, { bytes: tab.bytes, markup: tab.markup })
+        const snapshot: TabSnapshot = { bytes: tab.bytes, markup: tab.markup, forms: tab.forms }
+        const history = pushSnapshot(tab.history, snapshot)
         dispatch({
           type: 'docReplace',
           id: tab.id,
           doc,
           bytes,
           markup: options.keepMarkup ? tab.markup : [],
+          forms: options.keepMarkup ? tab.forms : NO_FORMS,
           history,
           future: [],
           dirty: true,
@@ -1016,12 +1082,19 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       const source = direction === 'undo' ? tab.history : tab.future
       const snapshot = source[source.length - 1]
       if (!snapshot) return
-      const current: TabSnapshot = { bytes: tab.bytes, markup: tab.markup }
+      const current: TabSnapshot = { bytes: tab.bytes, markup: tab.markup, forms: tab.forms }
       const history = direction === 'undo' ? tab.history.slice(0, -1) : [...tab.history, current]
       const future = direction === 'undo' ? [...tab.future, current] : tab.future.slice(0, -1)
       // Шаг разметки: байты те же, документ не перезагружаем.
       if (snapshot.bytes === tab.bytes) {
-        dispatch({ type: 'markupRestore', id: tab.id, markup: snapshot.markup, history, future })
+        dispatch({
+          type: 'markupRestore',
+          id: tab.id,
+          markup: snapshot.markup,
+          forms: snapshot.forms ?? NO_FORMS,
+          history,
+          future
+        })
         return
       }
       const { bytes } = snapshot
@@ -1035,6 +1108,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           doc,
           bytes,
           markup: snapshot.markup,
+          forms: snapshot.forms ?? NO_FORMS,
           history,
           future,
           dirty: true,
@@ -1058,9 +1132,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       if (!tab.bytes) return false
       try {
         let bytes = tab.bytes
-        if (tab.markup.length > 0) {
-          // Разметка записывается в документ отдельным шагом истории: Ctrl+Z
-          // после сохранения возвращает её в редактируемые объекты.
+        if (tab.markup.length > 0 || hasForms(tab)) {
+          // Разметка и значения полей записываются в документ отдельным шагом
+          // истории: Ctrl+Z после сохранения возвращает их в редактируемые.
           dispatch({ type: 'docBusy', id: tab.id, busy: true })
           try {
             bytes = await bakeMarkup(tab)
@@ -1072,7 +1146,12 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
               doc,
               bytes,
               markup: [],
-              history: pushSnapshot(tab.history, { bytes: tab.bytes, markup: tab.markup }),
+              forms: NO_FORMS,
+              history: pushSnapshot(tab.history, {
+                bytes: tab.bytes,
+                markup: tab.markup,
+                forms: tab.forms
+              }),
               future: [],
               dirty: true,
               selectedPages: stateRef.current.selectedPages
@@ -1524,6 +1603,44 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       eraseContent: (page, rect) => {
         void editContent('erase', (bytes) => pdfContent.eraseRegions(bytes, page - 1, [rect]))
       },
+      // Формы и метаданные
+      setFormValue: (name, value, coalesce) => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready') return
+        dispatch({
+          type: 'forms',
+          id: tab.id,
+          change: (forms) =>
+            sameFormValue(forms[name], value) ? forms : { ...forms, [name]: value },
+          ...(coalesce === undefined ? {} : { coalesce: `form:${coalesce}` })
+        })
+      },
+      resetForms: () => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready' || !hasForms(tab)) return
+        dispatch({ type: 'forms', id: tab.id, change: () => NO_FORMS })
+        toast(t.forms.resetDone)
+      },
+      flattenForms: () => {
+        void applyOperation(
+          async (bytes) =>
+            applyFormValues(bytes, NO_FORMS, {
+              font: (await loadMarkupFont()).bytes,
+              flatten: true
+            }),
+          { message: t.forms.flattened }
+        )
+      },
+      setMetadata: (patch) =>
+        applyOperation((bytes) => writeMetadata(bytes, patch), {
+          keepMarkup: true,
+          message: t.forms.metaSaved
+        }),
+      clearMetadata: () =>
+        applyOperation((bytes) => clearMetadata(bytes), {
+          keepMarkup: true,
+          message: t.forms.metaCleared
+        }),
       togglePagesMode: (on) => {
         dispatch(on === undefined ? { type: 'pagesMode' } : { type: 'pagesMode', on })
       },

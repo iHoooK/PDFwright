@@ -33,6 +33,7 @@ import { activeDoc, TOOL_KEYS, useStore, type SidebarTab, type Tool } from '@ren
 import { MergeDialog } from '@renderer/features/tools/MergeDialog'
 import { SplitDialog } from '@renderer/features/tools/SplitDialog'
 import { ImageCommand, MarkupPanel } from '@renderer/features/markup/MarkupPanel'
+import { FormsPanel } from '@renderer/features/forms/FormsPanel'
 import { DocumentView } from './DocumentView'
 import { PagesGrid } from './PagesGrid'
 import { PasswordDialog } from './PasswordDialog'
@@ -331,6 +332,7 @@ export function ViewerScreen(): React.JSX.Element {
 
           <aside className={s.props} aria-label={t.cmd.props} hidden={!state.props}>
             {readyDoc && <MarkupPanel toolLabel={toolLabel} />}
+            {readyDoc && <FormsPanel />}
             {tab && (
               <div className={s.pcard}>
                 <b style={{ fontWeight: 600 }}>{t.props.document}</b>
