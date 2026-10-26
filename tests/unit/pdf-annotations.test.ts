@@ -146,22 +146,18 @@ describe('заметка-стикер в applyMarkup', () => {
     expect(list[0]?.rect.x).toBeCloseTo(100, 0)
   })
 
-  it('режим «Часть содержимого»: только значок, аннотаций нет', async () => {
+  it('режим «Часть содержимого»: заметка остаётся аннотацией, текст не теряется', async () => {
     const blank = await PDFDocument.create()
     blank.addPage([595, 842])
     const bytes = await applyMarkup(await blank.save(), [note], { mode: 'content' })
     const doc = await PDFDocument.load(bytes)
-    expect(doc.getPage(0).node.Annots()?.size() ?? 0).toBe(0)
-    expect(await countSubtype(bytes, 'Text')).toBe(0)
-    // Значок нарисован: в растре есть жёлтые пиксели там, где он стоит.
-    const mu = new mupdf.PDFDocument(bytes)
-    const pix = mu.loadPage(0).toPixmap(mupdf.Matrix.identity, mupdf.ColorSpace.DeviceRGB, false)
-    const x = 103
-    const y = 842 - 710
-    const offset = (y * pix.getWidth() + x) * 3
-    const pixels = pix.getPixels()
-    expect([pixels[offset], pixels[offset + 1], pixels[offset + 2]]).toEqual([255, 216, 107])
-    mu.destroy()
+    // Вплавленный значок без текста бесполезен, поэтому заметка пишется /Text с /Popup.
+    expect(doc.getPage(0).node.Annots()?.size()).toBe(2)
+    expect(await countSubtype(bytes, 'Text')).toBe(1)
+    expect(await countSubtype(bytes, 'Popup')).toBe(1)
+    const list = await annotationsOf(bytes)
+    expect(list.map((a) => a.subtype)).toEqual(['Text'])
+    expect(list[0]?.contents).toBe(note.text)
   })
 })
 
