@@ -17,6 +17,10 @@ const RUNTIME_ROOTS = [
   'pdf-lib',
   '@pdf-lib/fontkit',
   'mupdf',
+  'tesseract.js',
+  'tesseract.js-core',
+  '@tesseract.js-data/rus',
+  '@tesseract.js-data/eng',
   'electron-updater'
 ]
 const START = '<!-- deps:start -->'

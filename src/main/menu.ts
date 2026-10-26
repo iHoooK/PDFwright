@@ -73,6 +73,7 @@ export function installApplicationMenu({ newWindow, strings }: MenuHandlers): vo
         item(s.toImages, 'tools.toImages'),
         item(s.fromImages, 'tools.fromImages'),
         item(s.extractText, 'tools.extractText'),
+        item(s.ocr, 'tools.ocr'),
         item(s.compress, 'tools.compress')
       ]
     },

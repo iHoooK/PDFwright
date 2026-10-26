@@ -54,6 +54,7 @@ export const APP_COMMANDS = [
   'tools.toImages',
   'tools.fromImages',
   'tools.extractText',
+  'tools.ocr',
   'tools.compress',
   'tools.merge',
   'tools.split',

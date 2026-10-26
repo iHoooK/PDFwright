@@ -1,5 +1,6 @@
 import { IconCompress, IconTextFile, IconToImages } from '@renderer/icons'
 import { useStore } from '@renderer/app/store'
+import { OcrDialog } from '@renderer/features/ocr/OcrDialog'
 import { t } from '@renderer/i18n'
 import { CompressDialog } from './CompressDialog'
 import { ExtractTextDialog } from './ExtractTextDialog'
@@ -24,6 +25,8 @@ export function ConvertDialogs(): React.JSX.Element | null {
       return <ExtractTextDialog key={key} />
     case 'compress':
       return <CompressDialog key={key} />
+    case 'ocr':
+      return <OcrDialog key={key} />
     default:
       return null
   }
