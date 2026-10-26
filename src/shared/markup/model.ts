@@ -88,8 +88,19 @@ export interface ImageObject extends MarkupBase {
   signature: boolean
 }
 
+/**
+ * Заметка-стикер: значок на странице и текст во всплывающем окне. При
+ * сохранении — аннотация /Text с окном /Popup; впечатанной остаётся только значок.
+ */
+export interface NoteObject extends MarkupBase {
+  kind: 'note'
+  /** Квадрат значка (NOTE_SIZE) в пространстве страницы; размер не меняется. */
+  rect: Rect
+  text: string
+}
+
 export type MarkupObject =
-  TextMarkObject | InkObject | BoxShapeObject | LineObject | TextObject | ImageObject
+  TextMarkObject | InkObject | BoxShapeObject | LineObject | TextObject | ImageObject | NoteObject
 
 export type MarkupKind = MarkupObject['kind']
 
@@ -106,6 +117,11 @@ export function isBoxObject(o: MarkupObject): o is TextObject | ImageObject {
 /** Можно ли объект двигать и тянуть за ручки (пометки текста привязаны к тексту). */
 export function isMovable(o: MarkupObject): boolean {
   return !isTextMark(o)
+}
+
+/** Можно ли тянуть объект за ручки рамки: у заметки значок постоянного размера. */
+export function isResizable(o: MarkupObject): boolean {
+  return isMovable(o) && o.kind !== 'note'
 }
 
 /**
@@ -129,6 +145,7 @@ export function geometryBounds(o: MarkupObject): Rect {
     case 'ellipse':
     case 'text':
     case 'image':
+    case 'note':
       return o.rect
     case 'line':
     case 'arrow':
@@ -168,6 +185,7 @@ export function transformObject<T extends MarkupObject>(o: T, m: Matrix): T {
     case 'ellipse':
     case 'image':
     case 'text':
+    case 'note':
       return { ...o, rect: transformRect(m, o.rect) }
     case 'line':
     case 'arrow':
@@ -201,6 +219,7 @@ export function hitObject(o: MarkupObject, p: Point, tolerance: number): boolean
       return o.rects.some((r) => containsPoint(inflate(r, tolerance / 2), p))
     case 'text':
     case 'image':
+    case 'note':
       return containsPoint(inflate(o.rect, tolerance / 2), p)
     case 'ink': {
       const reach = o.width / 2 + tolerance

@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState, type MouseEvent } from 'react'
+import type { MarkupObject } from '@shared/markup/model'
 import { IconCheck } from '@renderer/icons'
 import {
   createCancelToken,
@@ -7,6 +8,7 @@ import {
   type PdfDocument,
   type Rotation
 } from '@renderer/pdf-engine/engine'
+import { MarkupPreview } from '@renderer/features/markup/MarkupShapes'
 import s from './pdf-page.module.css'
 
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
   selected?: boolean
   onClick: (event: MouseEvent<HTMLButtonElement>) => void
   onDoubleClick?: () => void
+  /** Несохранённая разметка страницы: рисуется поверх растра, пока документ не сохранён. */
+  markup?: readonly MarkupObject[] | undefined
 }
 
 const THUMB_WIDTH = 160
@@ -32,7 +36,8 @@ export const PageThumbnail = memo(function PageThumbnail({
   current,
   selected,
   onClick,
-  onDoubleClick
+  onDoubleClick,
+  markup
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLButtonElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -99,6 +104,13 @@ export const PageThumbnail = memo(function PageThumbnail({
     >
       <span className={s.thumbFrame} style={{ aspectRatio: `1 / ${ratio}` }}>
         <canvas ref={canvasRef} className={s.thumbCanvas} />
+        {near && markup && markup.length > 0 && (
+          <MarkupPreview
+            geometry={doc.geometryOf(pageNumber)}
+            rotation={rotation}
+            objects={markup}
+          />
+        )}
         {selectable && (
           <span className={s.check} aria-hidden="true">
             {selected && <IconCheck />}

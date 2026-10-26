@@ -7,6 +7,7 @@ import {
   IconInfo,
   IconInsert,
   IconMarker,
+  IconNote,
   IconPages,
   IconPanelLeft,
   IconPanelRight,
@@ -49,6 +50,7 @@ const TOOL_META: readonly { tool: Tool; label: string; icon: ReactNode }[] = [
   { tool: 'pen', label: t.cmd.pen, icon: <IconPen /> },
   { tool: 'shapes', label: t.cmd.shapes, icon: <IconShapes /> },
   { tool: 'text', label: t.cmd.text, icon: <IconText /> },
+  { tool: 'note', label: t.annotations.note, icon: <IconNote /> },
   { tool: 'sign', label: t.cmd.sign, icon: <IconSign /> }
 ]
 

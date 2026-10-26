@@ -13,6 +13,11 @@ import type {
 } from '@shared/pdf-content/engine'
 import type { extractText } from '@shared/pdf-content/extract-text'
 import type { compressPdf } from '@shared/pdf-content/compress'
+import type {
+  editAnnotations,
+  listAnnotations,
+  removeAnnotations
+} from '@shared/pdf-content/annotations'
 
 /** Операции движка pdf-content, доступные через worker. */
 export interface ContentApi {
@@ -29,6 +34,10 @@ export interface ContentApi {
   moveGraphic: typeof moveGraphic
   extractText: typeof extractText
   compressPdf: typeof compressPdf
+  // Аннотации документа
+  listAnnotations: typeof listAnnotations
+  editAnnotations: typeof editAnnotations
+  removeAnnotations: typeof removeAnnotations
 }
 
 export type ContentMethod = keyof ContentApi

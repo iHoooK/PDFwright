@@ -293,6 +293,40 @@ export const en: Strings = {
     metaCleared: 'Metadata removed from the document',
     metaBusy: 'The document is busy: wait for the operation to finish'
   },
+  annotations: {
+    note: 'Note',
+    noteHint:
+      'Click the page to place a note and type its text. Move the icon with Select; edit the text in the properties panel.',
+    notePlaceholder: 'Note text',
+    noteText: 'Note text',
+    selectHint:
+      'Click a markup object or a document annotation. Ctrl+click adds to the selection; Shift-drag over an empty area selects with a box. Drag by the frame, Delete removes.',
+    kinds: {
+      Text: 'Document note',
+      FreeText: 'Text box',
+      Highlight: 'Text highlight',
+      Underline: 'Underline',
+      StrikeOut: 'Strikethrough',
+      Squiggly: 'Squiggly underline',
+      Ink: 'Pen drawing',
+      Square: 'Rectangle',
+      Circle: 'Ellipse',
+      Line: 'Line',
+      Polygon: 'Polygon',
+      PolyLine: 'Polyline',
+      Stamp: 'Stamp',
+      Caret: 'Caret',
+      FileAttachment: 'File attachment',
+      other: 'Document annotation'
+    },
+    fromDocument:
+      'This annotation is already in the file: changes are written to the document at once, Ctrl+Z undoes them.',
+    text: 'Text',
+    group: (n: number) => `Selected objects: ${n}`,
+    groupHint: 'Drag any selected object to move them all. Delete removes everything selected.',
+    removeGroup: 'Remove selected',
+    removed: (n: number) => `Removed objects: ${n}`
+  },
   content: {
     modeLabel: 'What a click does',
     modeObjects: 'Select objects',
@@ -618,8 +652,8 @@ export const en: Strings = {
     { keys: 'Ctrl + ,', action: 'Settings' },
     { keys: 'PageUp / PageDown', action: 'Previous / next page' },
     {
-      keys: 'V, E, H, M, P, U, T, S',
-      action: 'Tools: select, edit, hand, highlighter, pen, shapes, text, signature'
+      keys: 'V, E, H, M, P, U, T, N, S',
+      action: 'Tools: select, edit, hand, highlighter, pen, shapes, text, note, signature'
     }
   ]
 }

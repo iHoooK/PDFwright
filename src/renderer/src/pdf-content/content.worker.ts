@@ -13,6 +13,11 @@ import {
   replaceImage,
   replaceText
 } from '@shared/pdf-content'
+import {
+  editAnnotations,
+  listAnnotations,
+  removeAnnotations
+} from '@shared/pdf-content/annotations'
 import type { ContentApi, ContentRequest, ContentResponse } from './protocol'
 
 /**
@@ -41,7 +46,11 @@ const api: ContentApi = {
   removeGraphic,
   moveGraphic,
   extractText,
-  compressPdf
+  compressPdf,
+  // Аннотации документа
+  listAnnotations,
+  editAnnotations,
+  removeAnnotations
 }
 
 /** Байты результата (сами или поле bytes, как у сжатия) передаются без копирования. */

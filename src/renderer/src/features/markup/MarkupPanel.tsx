@@ -15,6 +15,7 @@ import {
 import {
   activeDoc,
   INK_COLORS,
+  MARK_COLORS,
   MARKER_COLORS,
   useStore,
   type StyledTool,
@@ -25,6 +26,8 @@ import v from '@renderer/features/viewer/viewer.module.css'
 import { measureText } from './font'
 import { readImageFile } from './images'
 import { ContentCard, EditToolCard } from '@renderer/features/content/ContentPanel'
+import { AnnotationCard, GroupCard } from '@renderer/features/annotations/AnnotationCard'
+import { annotationName } from '@renderer/features/annotations/page-annotations'
 import { selectedMarkupId } from './selection'
 import { SignatureDialog } from './SignatureDialog'
 import s from './markup.module.css'
@@ -48,7 +51,15 @@ const SAVE_MODES: readonly { value: MarkupSaveMode; label: string }[] = [
 ]
 
 function objectName(o: MarkupObject): string {
+  if (o.kind === 'note') return t.annotations.note
   return o.kind === 'image' && o.signature ? t.markup.objects.signature : t.markup.objects[o.kind]
+}
+
+/** Палитра объекта и инструмента: маркер и заметка — светлые цвета, остальное — цвета пера. */
+function paletteOf(kind: MarkupObject['kind'] | StyledTool): readonly string[] {
+  if (kind === 'image') return []
+  if (kind === 'highlight' || kind === 'marker') return MARKER_COLORS
+  return kind === 'note' ? MARK_COLORS : INK_COLORS
 }
 
 interface StyleFieldsProps {
@@ -130,8 +141,7 @@ function StyleFields({ idPrefix, colors, value, onChange }: StyleFieldsProps): R
 
 function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
   const { actions } = useStore()
-  const colors =
-    object.kind === 'image' ? [] : object.kind === 'highlight' ? MARKER_COLORS : INK_COLORS
+  const colors = paletteOf(object.kind)
   const hasWidth =
     object.kind === 'ink' ||
     object.kind === 'rect' ||
@@ -152,6 +162,21 @@ function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
   }
   return (
     <div className={v.pcard} data-markup-props={object.kind}>
+      {object.kind === 'note' && (
+        <div className={v.field}>
+          <label htmlFor="markup-note">{t.annotations.noteText}</label>
+          <textarea
+            id="markup-note"
+            className={s.textField}
+            value={object.text}
+            placeholder={t.annotations.notePlaceholder}
+            rows={Math.min(8, Math.max(3, object.text.split('\n').length))}
+            onChange={(event) => {
+              actions.updateMarkup({ ...object, text: event.target.value }, 'text')
+            }}
+          />
+        </div>
+      )}
       {object.kind === 'text' && (
         <div className={v.field}>
           <label htmlFor="markup-text">{t.props.text}</label>
@@ -316,7 +341,7 @@ function ToolCard({ tool }: { tool: StyledTool }): React.JSX.Element {
       )}
       <StyleFields
         idPrefix={`tool-${tool}`}
-        colors={tool === 'marker' ? MARKER_COLORS : INK_COLORS}
+        colors={paletteOf(tool)}
         value={{
           color: style.color,
           opacity: style.opacity,
@@ -332,7 +357,9 @@ function ToolCard({ tool }: { tool: StyledTool }): React.JSX.Element {
 }
 
 function isStyled(tool: Tool): tool is StyledTool {
-  return tool === 'marker' || tool === 'pen' || tool === 'shapes' || tool === 'text'
+  return (
+    tool === 'marker' || tool === 'pen' || tool === 'shapes' || tool === 'text' || tool === 'note'
+  )
 }
 
 /**
@@ -345,24 +372,38 @@ export function MarkupPanel({ toolLabel }: { toolLabel: string }): React.JSX.Ele
   const markupId = selectedMarkupId(state.selection)
   const selected = tab?.markup.find((o) => o.id === markupId) ?? null
   const content = state.selection?.source === 'content' ? state.selection : null
+  const annotation = state.selection?.source === 'annotation' ? state.selection : null
+  const group = state.selectionGroup.length
   const tool = state.tool
   const hint =
     tool === 'edit' && state.contentMode === 'erase'
       ? t.content.eraseHint
       : tool === 'edit' && state.contentMode === 'text'
         ? t.content.textHint
-        : t.markup.hint[tool]
+        : tool === 'note'
+          ? t.annotations.noteHint
+          : tool === 'select'
+            ? t.annotations.selectHint
+            : t.markup.hint[tool]
   const showSaveMode = isStyled(tool) || tool === 'sign' || (tab?.markup.length ?? 0) > 0
   return (
     <>
       <h3>
-        {selected
-          ? objectName(selected)
-          : content
-            ? t.content.objects[content.object.kind]
-            : toolLabel}
+        {group > 1
+          ? t.annotations.group(group)
+          : selected
+            ? objectName(selected)
+            : annotation
+              ? annotationName(annotation.subtype)
+              : content
+                ? t.content.objects[content.object.kind]
+                : toolLabel}
       </h3>
-      {selected && <ObjectCard key={selected.id} object={selected} />}
+      {group > 1 && <GroupCard count={group} />}
+      {group <= 1 && selected && <ObjectCard key={selected.id} object={selected} />}
+      {group <= 1 && annotation && (
+        <AnnotationCard key={annotation.id} page={annotation.page} index={annotation.index} />
+      )}
       {content && <ContentCard target={content} />}
       {tool === 'edit' && <EditToolCard />}
       {!selected && isStyled(tool) && <ToolCard tool={tool} />}

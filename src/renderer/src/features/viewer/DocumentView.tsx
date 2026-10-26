@@ -6,7 +6,8 @@ import { useStore, type DocTab, type StyledTool, type Tool } from '@renderer/app
 import { cx } from '@renderer/components/cx'
 import { loadMarkupFont } from '@renderer/features/markup/font'
 import { MarkupLayer } from '@renderer/features/markup/MarkupLayer'
-import { selectedMarkupId } from '@renderer/features/markup/selection'
+import { useMarkupByPage } from '@renderer/features/markup/by-page'
+import type { SelectionTarget } from '@renderer/features/markup/selection'
 import { ContentLayer } from '@renderer/features/content/ContentLayer'
 import { selectionToPageRects } from '@renderer/features/markup/text-selection'
 import { PdfPageView, type PageForms } from './PdfPageView'
@@ -14,10 +15,17 @@ import s from './viewer.module.css'
 import { t } from '@renderer/i18n'
 
 const NO_MARKUP: readonly MarkupObject[] = []
+const NO_TARGETS: readonly SelectionTarget[] = []
 
 /** Стиль какого инструмента применяется к новым объектам. */
 function styledTool(tool: Tool): StyledTool {
-  return tool === 'marker' || tool === 'pen' || tool === 'shapes' || tool === 'text' ? tool : 'pen'
+  return tool === 'marker' ||
+    tool === 'pen' ||
+    tool === 'shapes' ||
+    tool === 'text' ||
+    tool === 'note'
+    ? tool
+    : 'pen'
 }
 
 const PAD = 24
@@ -164,18 +172,21 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
     })
   }, [])
 
-  const markupByPage = useMemo(() => {
-    const map = new Map<number, MarkupObject[]>()
-    for (const o of tab.markup) {
-      const list = map.get(o.page) ?? []
-      list.push(o)
-      map.set(o.page, list)
+  const markupByPage = useMarkupByPage(tab.markup)
+  const selectedContent = state.selection?.source === 'content' ? state.selection : null
+  // Выбранные объекты «Выделения» по страницам: разметка и аннотации документа.
+  const selectedByPage = useMemo(() => {
+    const map = new Map<number, SelectionTarget[]>()
+    for (const target of state.selectionGroup) {
+      const page =
+        target.source === 'markup' ? tab.markup.find((o) => o.id === target.id)?.page : target.page
+      if (page === undefined) continue
+      const list = map.get(page) ?? []
+      list.push(target)
+      map.set(page, list)
     }
     return map
-  }, [tab.markup])
-  const selectedId = selectedMarkupId(state.selection)
-  const selectedContent = state.selection?.source === 'content' ? state.selection : null
-  const selectedPage = tab.markup.find((o) => o.id === selectedId)?.page ?? null
+  }, [state.selectionGroup, tab.markup])
   const scale = (resolvedZoom / 100) * CSS_UNITS
   const tool = state.tool
   const style = state.toolStyles[styledTool(tool)]
@@ -242,12 +253,15 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
             visiblePages.has(n) || scrollMode === 'single' ? (
               <>
                 <MarkupLayer
+                  doc={doc}
+                  bytes={tab.bytes}
                   geometry={doc.geometryOf(n)}
                   pageNumber={n}
                   scale={scale}
                   rotation={rotation}
                   objects={markupByPage.get(n) ?? NO_MARKUP}
-                  selectedId={selectedPage === n ? selectedId : null}
+                  selected={selectedByPage.get(n) ?? NO_TARGETS}
+                  groupSize={state.selectionGroup.length}
                   tool={tool}
                   style={style}
                   shapeKind={state.shapeKind}

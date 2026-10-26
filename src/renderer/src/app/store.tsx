@@ -52,11 +52,15 @@ import { findMatches, type TextMatch } from '@shared/pdf-search'
 import { pushSnapshot, type Snapshot } from '@shared/markup/history'
 import { boxRectCentered, normalizeTurn, type Point } from '@shared/markup/geometry'
 import {
+  isMovable,
+  moveObject,
   newMarkupId,
   type MarkupObject,
   type ShapeKind,
   type TextMarkKind
 } from '@shared/markup/model'
+import { NOTE_COLOR } from '@shared/markup/note'
+import type { AnnotationPatch, PageAnnotation } from '@shared/pdf-content/annotations'
 import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
 import type {
   PageGraphic,
@@ -79,17 +83,20 @@ import { t } from '@renderer/i18n'
 import { loadMarkupFont } from '@renderer/features/markup/font'
 import { imageSize, readImageBytes, readImageFile } from '@renderer/features/markup/images'
 import {
+  hasTarget,
   sameTarget,
   selectedMarkupId,
   type PageContentObject,
   type SelectionTarget
 } from '@renderer/features/markup/selection'
+import { findAnnotation } from '@renderer/features/annotations/page-annotations'
 import { pdfContent } from '@renderer/pdf-content/client'
 import { getApi } from './api'
 import { applyTheme, resolvedTheme } from './theme'
 
 export type Screen = 'start' | 'viewer' | 'settings' | 'kit' | 'compare'
-export type Tool = 'select' | 'edit' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'sign'
+export type Tool =
+  'select' | 'edit' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'note' | 'sign'
 /** Инструмент «Правка»: выбор объектов документа, новый текст или ластик области. */
 export type ContentMode = 'objects' | 'text' | 'erase'
 type ContentEditKind = keyof typeof t.content.done
@@ -101,7 +108,7 @@ export type ConvertDialog = 'toImages' | 'fromImages' | 'extractText' | 'compres
 export type ToolDialog = 'merge' | 'split' | ConvertDialog | null
 export type SelectMode = 'single' | 'toggle' | 'range'
 /** Инструменты со своим цветом, непрозрачностью и толщиной в панели свойств. */
-export type StyledTool = 'marker' | 'pen' | 'shapes' | 'text'
+export type StyledTool = 'marker' | 'pen' | 'shapes' | 'text' | 'note'
 
 /** Документ-источник для конвертации: байты с записанной несохранённой разметкой. */
 export interface ConvertSource {
@@ -223,6 +230,7 @@ export const TOOLS: readonly Tool[] = [
   'pen',
   'shapes',
   'text',
+  'note',
   'sign'
 ]
 export const TOOL_KEYS: Record<Tool, string> = {
@@ -233,6 +241,7 @@ export const TOOL_KEYS: Record<Tool, string> = {
   pen: 'P',
   shapes: 'U',
   text: 'T',
+  note: 'N',
   sign: 'S'
 }
 export const MARK_COLORS = ['#ffd86b', '#9be39b', '#9fd3ff', '#ffb0c8', '#d7bfff'] as const
@@ -268,6 +277,11 @@ export interface State {
   /** Стиль нового текста в «Правке»: берётся у последнего выбранного текста документа. */
   contentTextStyle: TextStyle | null
   selection: SelectionTarget | null
+  /**
+   * Все выбранные объекты «Выделения» (Ctrl+щелчок, рамка с Shift); selection —
+   * последний из них. Один объект — группа из него же, без выбора — пусто.
+   */
+  selectionGroup: readonly SelectionTarget[]
   pagesMode: boolean
   page: number
   scrollRequest: { page: number; token: number } | null
@@ -347,6 +361,7 @@ type Action =
   | { type: 'contentMode'; mode: ContentMode }
   | { type: 'contentTextStyle'; patch: Partial<TextStyle> }
   | { type: 'select'; target: SelectionTarget | null }
+  | { type: 'selectGroup'; targets: readonly SelectionTarget[] }
   | { type: 'pagesMode'; on?: boolean }
   | { type: 'page'; page: number; scroll: boolean }
   | { type: 'selection'; pages: ReadonlySet<number>; anchor: number | null }
@@ -386,7 +401,8 @@ const initial: State = {
     marker: { color: MARK_COLORS[0], opacity: 1, width: 1, fontSize: 14 },
     pen: { color: INK_COLORS[0], opacity: 1, width: 2, fontSize: 14 },
     shapes: { color: INK_COLORS[1], opacity: 1, width: 2, fontSize: 14 },
-    text: { color: INK_COLORS[0], opacity: 1, width: 1, fontSize: 14 }
+    text: { color: INK_COLORS[0], opacity: 1, width: 1, fontSize: 14 },
+    note: { color: NOTE_COLOR, opacity: 1, width: 1, fontSize: 14 }
   },
   markKind: 'highlight',
   shapeKind: 'rect',
@@ -394,6 +410,7 @@ const initial: State = {
   contentMode: 'objects',
   contentTextStyle: null,
   selection: null,
+  selectionGroup: [],
   pagesMode: false,
   page: 1,
   scrollRequest: null,
@@ -428,6 +445,7 @@ function resetView(state: State): State {
     selectionAnchor: null,
     search: EMPTY_SEARCH,
     selection: null,
+    selectionGroup: [],
     rotation: 0,
     pagesMode: false,
     zoom: zoomFromSetting(state.settings.viewer.defaultZoom)
@@ -446,8 +464,24 @@ function keepSelection(
   target: SelectionTarget | null,
   markup: readonly MarkupObject[]
 ): SelectionTarget | null {
-  if (target?.source === 'content') return target
+  // Аннотацию документа проверяет слой разметки по списку для новых байтов.
+  if (target?.source === 'content' || target?.source === 'annotation') return target
   return target && markup.some((o) => o.id === target.id) ? target : null
+}
+
+/** Выбор после правки: из группы уходят исчезнувшие объекты, главный — последний оставшийся. */
+function regroup(
+  state: State,
+  selection: SelectionTarget | null,
+  keep: (target: SelectionTarget) => boolean
+): Pick<State, 'selection' | 'selectionGroup'> {
+  const group = state.selectionGroup.filter(keep)
+  const primary = selection && keep(selection) ? selection : (group[group.length - 1] ?? null)
+  if (!primary) return { selection: null, selectionGroup: [] }
+  return {
+    selection: primary,
+    selectionGroup: hasTarget(group, primary) ? group : [...group, primary]
+  }
 }
 
 function textStyleOf(object: PageContentObject): TextStyle | null {
@@ -459,7 +493,8 @@ function textStyleOf(object: PageContentObject): TextStyle | null {
 
 /** Какой выбор имеет смысл в инструменте: разметка — в «Выделении», документ — в «Правке». */
 function selectionForTool(target: SelectionTarget | null, tool: Tool): SelectionTarget | null {
-  if (target?.source === 'markup' && tool === 'select') return target
+  if ((target?.source === 'markup' || target?.source === 'annotation') && tool === 'select')
+    return target
   if (target?.source === 'content' && tool === 'edit') return target
   return null
 }
@@ -528,10 +563,11 @@ function reducer(state: State, action: Action): State {
         selectedPages: action.selectedPages,
         selectionAnchor: null,
         // Строки и картинки документа после новых байтов читаются заново.
-        selection:
-          state.selection?.source === 'content'
-            ? null
-            : keepSelection(state.selection, action.markup),
+        ...regroup(
+          state,
+          state.selection,
+          (target) => target.source !== 'content' && keepSelection(target, action.markup) !== null
+        ),
         search: EMPTY_SEARCH
       }
     }
@@ -552,8 +588,14 @@ function reducer(state: State, action: Action): State {
         coalesce: action.coalesce ?? null,
         dirty: true
       }))
-      const target = action.select === undefined ? state.selection : action.select
-      return { ...next, selection: keepSelection(target, markup) }
+      if (action.select !== undefined) {
+        const target = keepSelection(action.select, markup)
+        return { ...next, selection: target, selectionGroup: target ? [target] : [] }
+      }
+      return {
+        ...next,
+        ...regroup(state, state.selection, (target) => keepSelection(target, markup) !== null)
+      }
     }
     case 'forms': {
       const tab = state.docs.find((d) => d.id === action.id)
@@ -582,7 +624,14 @@ function reducer(state: State, action: Action): State {
         coalesce: null,
         dirty: true
       }))
-      return { ...next, selection: keepSelection(state.selection, action.markup) }
+      return {
+        ...next,
+        ...regroup(
+          state,
+          state.selection,
+          (target) => keepSelection(target, action.markup) !== null
+        )
+      }
     }
     case 'docSaved':
       return updateDoc(state, action.id, (d) => ({
@@ -633,7 +682,11 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         tool: action.tool,
-        selection: selectionForTool(state.selection, action.tool)
+        ...regroup(
+          state,
+          state.selection,
+          (target) => selectionForTool(target, action.tool) !== null
+        )
       }
     case 'toolStyle':
       return {
@@ -653,22 +706,31 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         contentMode: action.mode,
-        selection: action.mode === 'objects' ? state.selection : null
+        selection: action.mode === 'objects' ? state.selection : null,
+        selectionGroup: action.mode === 'objects' ? state.selectionGroup : []
       }
     case 'contentTextStyle':
       return state.contentTextStyle
         ? { ...state, contentTextStyle: { ...state.contentTextStyle, ...action.patch } }
         : state
     case 'select': {
-      if (sameTarget(state.selection, action.target)) return state
+      if (sameTarget(state.selection, action.target) && state.selectionGroup.length <= 1)
+        return state
       // Выбранный текст документа задаёт стиль нового текста в «Правке».
       const style = action.target?.source === 'content' ? textStyleOf(action.target.object) : null
       return {
         ...state,
         selection: action.target,
+        selectionGroup: action.target ? [action.target] : [],
         contentTextStyle: style ?? state.contentTextStyle
       }
     }
+    case 'selectGroup':
+      return {
+        ...state,
+        selection: action.targets[action.targets.length - 1] ?? null,
+        selectionGroup: action.targets
+      }
     case 'pagesMode':
       return { ...state, pagesMode: action.on ?? !state.pagesMode }
     case 'page':
@@ -786,6 +848,15 @@ export interface Actions {
   flattenForms: () => void
   setMetadata: (patch: Partial<DocumentMetadata>) => Promise<boolean>
   clearMetadata: () => Promise<boolean>
+  // Аннотации документа
+  /** Ctrl+щелчок: добавляет объект к выбору или убирает его оттуда. */
+  toggleSelected: (target: SelectionTarget) => void
+  /** Выбор рамкой: ровно эти объекты (пустой список снимает выбор). */
+  selectGroup: (targets: readonly SelectionTarget[]) => void
+  /** Сдвигает выбранные объекты разметки и аннотации документа одним шагом отмены, пт. */
+  moveSelected: (dx: number, dy: number) => void
+  /** Правка аннотации документа: рамка, цвет, непрозрачность или текст. */
+  editAnnotation: (page: number, index: number, patch: AnnotationPatch) => void
   togglePagesMode: (on?: boolean) => void
   setSidebarTab: (tab: SidebarTab) => void
   toggleSidebar: (on?: boolean) => void
@@ -1054,6 +1125,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
          * несохранённая разметка остаётся редактируемыми объектами поверх.
          */
         keepMarkup?: boolean
+        /** Разметка после операции (с keepMarkup): перенос группы — один шаг отмены. */
+        markup?: readonly MarkupObject[]
       } = {}
     ): Promise<boolean> => {
       const tab = activeDoc(stateRef.current)
@@ -1070,7 +1143,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           id: tab.id,
           doc,
           bytes,
-          markup: options.keepMarkup ? tab.markup : [],
+          markup: options.keepMarkup ? (options.markup ?? tab.markup) : [],
           forms: options.keepMarkup ? tab.forms : NO_FORMS,
           history,
           future: [],
@@ -1362,6 +1435,51 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       }
     }
 
+    // Аннотации документа
+    /** Объекты аннотаций для движка: по месту в списке для текущих байтов. */
+    const resolveAnnotations = async (
+      bytes: Uint8Array,
+      targets: readonly SelectionTarget[]
+    ): Promise<{ pageIndex: number; annotation: PageAnnotation }[]> => {
+      const found: { pageIndex: number; annotation: PageAnnotation }[] = []
+      for (const target of targets) {
+        if (target.source !== 'annotation') continue
+        const annotation = await findAnnotation(bytes, target.page, target.index)
+        if (annotation?.subtype === target.subtype) {
+          found.push({ pageIndex: target.page - 1, annotation })
+        }
+      }
+      return found
+    }
+    /** Удаляет выбранные объекты разметки и аннотации документа одним шагом отмены. */
+    const removeTargets = (targets: readonly SelectionTarget[]): void => {
+      const tab = activeDoc(stateRef.current)
+      const bytes = tab?.bytes
+      if (tab?.status !== 'ready' || !bytes || tab.busy) return
+      const ids = new Set(targets.filter((x) => x.source === 'markup').map((x) => x.id))
+      const keep = (markup: readonly MarkupObject[]): readonly MarkupObject[] =>
+        markup.filter((o) => !ids.has(o.id))
+      const count = targets.length
+      if (!targets.some((x) => x.source === 'annotation')) {
+        dispatch({ type: 'markup', id: tab.id, change: keep, select: null })
+        if (count > 1) toast(t.annotations.removed(count))
+        return
+      }
+      void (async () => {
+        try {
+          const found = await resolveAnnotations(bytes, targets)
+          dispatch({ type: 'select', target: null })
+          await applyOperation((current) => pdfContent.removeAnnotations(current, found), {
+            keepMarkup: true,
+            markup: keep(activeDoc(stateRef.current)?.markup ?? tab.markup),
+            ...(count > 1 ? { message: t.annotations.removed(count) } : {})
+          })
+        } catch (error) {
+          toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })()
+    }
+
     return {
       // Окна и сессия
       openInNewWindow: (id, saveFirst = false) => {
@@ -1564,8 +1682,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         dispatch({ type: 'contentMode', mode })
       },
       removeSelected: () => {
-        const target = stateRef.current.selection
+        const { selection: target, selectionGroup } = stateRef.current
         if (target?.source === 'content') removeContentObject(target.page, target.object)
+        else if (selectionGroup.length > 1 || target?.source === 'annotation')
+          removeTargets(selectionGroup.length > 0 ? selectionGroup : target ? [target] : [])
         else if (target) removeMarkupObject(target.id)
       },
       replaceContentText: (page, line, text, style) => {
@@ -1676,6 +1796,70 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           keepMarkup: true,
           message: t.forms.metaCleared
         }),
+      // Аннотации документа
+      toggleSelected: (target) => {
+        const { selectionGroup } = stateRef.current
+        dispatch({
+          type: 'selectGroup',
+          targets: hasTarget(selectionGroup, target)
+            ? selectionGroup.filter((item) => !sameTarget(item, target))
+            : [...selectionGroup, target]
+        })
+      },
+      selectGroup: (targets) => {
+        dispatch({ type: 'selectGroup', targets })
+      },
+      moveSelected: (dx, dy) => {
+        const { selectionGroup } = stateRef.current
+        const tab = activeDoc(stateRef.current)
+        const bytes = tab?.bytes
+        if (tab?.status !== 'ready' || !bytes || tab.busy) return
+        const ids = new Set(selectionGroup.filter((x) => x.source === 'markup').map((x) => x.id))
+        const move = (markup: readonly MarkupObject[]): readonly MarkupObject[] =>
+          markup.map((o) => (ids.has(o.id) && isMovable(o) ? moveObject(o, dx, dy) : o))
+        if (!selectionGroup.some((x) => x.source === 'annotation')) {
+          dispatch({ type: 'markup', id: tab.id, change: move })
+          return
+        }
+        void (async () => {
+          try {
+            const found = await resolveAnnotations(bytes, selectionGroup)
+            const edits = found
+              .filter((item) => item.annotation.can.move)
+              .map((item) => {
+                const { rect } = item.annotation
+                return { ...item, patch: { rect: { ...rect, x: rect.x + dx, y: rect.y + dy } } }
+              })
+            await applyOperation((current) => pdfContent.editAnnotations(current, edits), {
+              keepMarkup: true,
+              markup: move(activeDoc(stateRef.current)?.markup ?? tab.markup)
+            })
+          } catch (error) {
+            toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        })()
+      },
+      editAnnotation: (page, index, patch) => {
+        const bytes = activeDoc(stateRef.current)?.bytes
+        if (!bytes) return
+        void (async () => {
+          try {
+            const annotation = await findAnnotation(bytes, page, index)
+            if (!annotation) return
+            // Вид FreeText строится заново шрифтом с кириллицей.
+            const font = annotation.subtype === 'FreeText' ? (await loadMarkupFont()).bytes : null
+            await applyOperation(
+              (current) =>
+                pdfContent.editAnnotations(current, [{ pageIndex: page - 1, annotation, patch }], {
+                  font
+                }),
+              { keepMarkup: true }
+            )
+          } catch (error) {
+            toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        })()
+      },
       togglePagesMode: (on) => {
         dispatch(on === undefined ? { type: 'pagesMode' } : { type: 'pagesMode', on })
       },
