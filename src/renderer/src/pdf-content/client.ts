@@ -149,6 +149,22 @@ export class PdfContentClient {
     return this.call('inspectProtection', ...args)
   }
 
+  // Аннотации документа
+
+  /** Аннотации страницы (номер с 0), которые можно выбрать в «Выделении». */
+  listAnnotations(...args: Parameters<ContentApi['listAnnotations']>) {
+    return this.call('listAnnotations', ...args)
+  }
+
+  /** Перенос, размер, цвет и текст нескольких аннотаций одним сохранением. */
+  editAnnotations(...args: Parameters<ContentApi['editAnnotations']>) {
+    return this.call('editAnnotations', ...args)
+  }
+
+  removeAnnotations(...args: Parameters<ContentApi['removeAnnotations']>) {
+    return this.call('removeAnnotations', ...args)
+  }
+
   /** Останавливает worker; незавершённые вызовы получают ошибку. */
   dispose(): void {
     this.fail(

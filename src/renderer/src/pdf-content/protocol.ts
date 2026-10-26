@@ -19,6 +19,11 @@ import type {
   relockPdf,
   unlockPdf
 } from '@shared/pdf-content/protect'
+import type {
+  editAnnotations,
+  listAnnotations,
+  removeAnnotations
+} from '@shared/pdf-content/annotations'
 
 /** Операции движка pdf-content, доступные через worker. */
 export interface ContentApi {
@@ -40,6 +45,10 @@ export interface ContentApi {
   unlockPdf: typeof unlockPdf
   relockPdf: typeof relockPdf
   inspectProtection: typeof inspectProtection
+  // Аннотации документа
+  listAnnotations: typeof listAnnotations
+  editAnnotations: typeof editAnnotations
+  removeAnnotations: typeof removeAnnotations
 }
 
 export type ContentMethod = keyof ContentApi

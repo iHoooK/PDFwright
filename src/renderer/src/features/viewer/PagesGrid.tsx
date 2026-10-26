@@ -2,6 +2,7 @@ import { useState, type DragEvent, type MouseEvent } from 'react'
 import { useStore, type DocTab, type SelectMode } from '@renderer/app/store'
 import { cx } from '@renderer/components/cx'
 import type { PdfDocument } from '@renderer/pdf-engine/engine'
+import { useMarkupByPage } from '@renderer/features/markup/by-page'
 import { PageThumbnail } from './PageThumbnail'
 import s from './viewer.module.css'
 
@@ -20,6 +21,7 @@ export function PagesGrid({ tab, doc }: { tab: DocTab; doc: PdfDocument }): Reac
   const { state, actions } = useStore()
   const [dropTarget, setDropTarget] = useState<number | null>(null)
   const [dragging, setDragging] = useState(false)
+  const markup = useMarkupByPage(tab.markup)
 
   const onDragStart = (page: number) => (event: DragEvent<HTMLDivElement>) => {
     if (!state.selectedPages.has(page)) actions.selectPage(page, 'single')
@@ -77,6 +79,7 @@ export function PagesGrid({ tab, doc }: { tab: DocTab; doc: PdfDocument }): Reac
               pageNumber={page}
               rotation={state.rotation}
               selected={state.selectedPages.has(page)}
+              markup={markup.get(page)}
               onClick={(event) => {
                 actions.selectPage(page, modeOf(event))
               }}

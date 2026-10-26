@@ -5,6 +5,7 @@ import {
   beginText,
   closePath,
   concatTransformationMatrix,
+  fillAndStroke,
   drawObject,
   endText,
   fill,
@@ -53,6 +54,7 @@ import {
   type MarkupObject,
   type TextObject
 } from '../markup/model'
+import { noteIcon, noteInk } from '../markup/note'
 import { fontMeasure, layoutTextObject, type MeasureText } from '../markup/text-layout'
 import type { MarkupSaveMode } from '../settings-schema'
 import { load, PdfOpsError, save } from './document'
@@ -98,10 +100,13 @@ const ANNOT_SUBTYPE: Record<MarkupObject['kind'], string> = {
   line: 'Line',
   arrow: 'Line',
   text: 'FreeText',
-  image: 'Stamp'
+  image: 'Stamp',
+  note: 'Text'
 }
 /** Флаг /F 4 — «печатать»: пометки выходят и на бумаге. */
 const PRINT_FLAG = 4
+/** Всплывающее окно заметки справа от значка, пт. */
+const NOTE_POPUP = { width: 180, height: 120, gap: 4 }
 /** Кривые Безье, приближающие четверть окружности. */
 const KAPPA = 0.5522847498
 
@@ -251,9 +256,28 @@ async function buildAppearance(ctx: Context, o: MarkupObject): Promise<Appearanc
       body.push(cm(box.matrix), cm([box.width, 0, 0, box.height, 0, 0]), drawObject('Im1'))
       break
     }
+    case 'note': {
+      const icon = noteIcon(o.rect)
+      body.push(
+        fillColor(o.color),
+        strokeColor(noteInk(o.color)),
+        setLineWidth(icon.stroke),
+        setLineJoin(LineJoinStyle.Round),
+        setLineCap(LineCapStyle.Round),
+        ...polyline(icon.body),
+        closePath(),
+        fillAndStroke(),
+        ...polyline(icon.fold),
+        stroke()
+      )
+      for (const [from, to] of icon.lines) body.push(...polyline([from, to]))
+      body.push(stroke())
+      break
+    }
   }
   return {
-    bbox: inflate(visualBounds(o), 1),
+    // Рамка заметки — ровно её значок: так его двигают и в других программах.
+    bbox: o.kind === 'note' ? o.rect : inflate(visualBounds(o), 1),
     ops: [pushGraphicsState(), setGraphicsState('GS0'), ...body, popGraphicsState()],
     resources
   }
@@ -310,6 +334,12 @@ function annotationDict(
       dict.DA = PDFString.of(`/Helv ${round(o.fontSize)} Tf ${round(r)} ${round(g)} ${round(b)} rg`)
       dict.BS = { W: 0 }
       break
+    case 'note':
+      // /Contents — текстовая строка PDF в UTF-16BE с BOM: кириллица читается везде.
+      dict.Contents = PDFHexString.fromText(o.text)
+      dict.Name = 'Note'
+      dict.Open = false
+      break
     case 'image':
       dict.Contents = PDFHexString.fromText(
         m({ ru: o.signature ? 'Подпись' : 'Изображение', en: o.signature ? 'Signature' : 'Image' })
@@ -317,6 +347,24 @@ function annotationDict(
       break
   }
   return dict
+}
+
+/** Всплывающее окно /Popup заметки: закрыто, открывается щелчком по значку в просмотрщике. */
+function notePopupDict(icon: Rect, parent: PDFRef): Record<string, unknown> {
+  const left = icon.x + icon.width + NOTE_POPUP.gap
+  const top = icon.y + icon.height
+  return {
+    Type: 'Annot',
+    Subtype: 'Popup',
+    Rect: rectArray({
+      x: left,
+      y: top - NOTE_POPUP.height,
+      width: NOTE_POPUP.width,
+      height: NOTE_POPUP.height
+    }),
+    Parent: parent,
+    Open: false
+  }
 }
 
 /**
@@ -367,8 +415,17 @@ export async function applyMarkup(
       })
       const formRef = doc.context.register(form)
       if (options.mode === 'annotation') {
-        const annot = doc.context.obj(annotationDict(page, o, formRef, ap.bbox) as never)
-        page.node.addAnnot(doc.context.register(annot))
+        const dict = annotationDict(page, o, formRef, ap.bbox)
+        const annotRef = doc.context.nextRef()
+        // Окно заметки ссылается на неё (/Parent), а она на окно (/Popup).
+        const popupRef =
+          o.kind === 'note'
+            ? doc.context.register(doc.context.obj(notePopupDict(o.rect, annotRef) as never))
+            : null
+        if (popupRef) dict.Popup = popupRef
+        doc.context.assign(annotRef, doc.context.obj(dict as never))
+        page.node.addAnnot(annotRef)
+        if (popupRef) page.node.addAnnot(popupRef)
       } else {
         forms.push(formRef)
       }

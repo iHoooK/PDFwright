@@ -1,17 +1,13 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   apply,
-  arrowHead,
-  boxContentSize,
   invert,
   normalizeTurn,
   rectFromPoints,
   simplifyPath,
-  textLineStroke,
   transformRect,
   viewMatrix,
   viewSize,
-  type Matrix,
   type PageGeometry,
   type Point,
   type Rect
@@ -20,32 +16,54 @@ import {
   geometryBounds,
   isBoxObject,
   isMovable,
+  isResizable,
   moveObject,
   newMarkupId,
   visualBounds,
-  type ImageObject,
   type LineObject,
   type MarkupObject,
+  type NoteObject,
   type ShapeKind,
   type TextObject
 } from '@shared/markup/model'
-import { FRAME_HANDLES, handlePoint, resizeInView, type FrameHandle } from '@shared/markup/resize'
+import { noteRectAt } from '@shared/markup/note'
+import {
+  dragFrame,
+  FRAME_HANDLES,
+  handlePoint,
+  resizeInView,
+  type FrameHandle
+} from '@shared/markup/resize'
 import {
   fitTextBox,
-  layoutTextObject,
   LINE_HEIGHT,
   MARKUP_FONT_FAMILY,
   TEXT_PADDING
 } from '@shared/markup/text-layout'
+import type { PageAnnotation } from '@shared/pdf-content/annotations'
 import type { Actions, Tool, ToolStyle } from '@renderer/app/store'
-import type { Rotation } from '@renderer/pdf-engine/engine'
+import type { PdfDocument, Rotation } from '@renderer/pdf-engine/engine'
 import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
+import { usePageAnnotations } from '@renderer/features/annotations/page-annotations'
 import { measureText } from './font'
-import { hitSources, markupSource, type SelectionSource } from './selection'
+import { BoxObject, VectorObject } from './MarkupShapes'
+import { boxPlacement, type BoxPlacement } from './placement'
+import {
+  annotationSource,
+  annotationTarget,
+  hasTarget,
+  hitSources,
+  markupSource,
+  type SelectionSource,
+  type SelectionTarget
+} from './selection'
 import s from './markup.module.css'
 
 interface Props {
+  doc: PdfDocument
+  /** Байты документа: по ним читаются его аннотации (MuPDF). */
+  bytes: Uint8Array | null
   geometry: PageGeometry
   pageNumber: number
   /** CSS-пикселей на пункт. */
@@ -53,8 +71,10 @@ interface Props {
   /** Поворот вида (без собственного /Rotate страницы). */
   rotation: Rotation
   objects: readonly MarkupObject[]
-  /** id выбранного объекта, если он на этой странице. */
-  selectedId: string | null
+  /** Выбранные объекты этой страницы (разметка и аннотации документа). */
+  selected: readonly SelectionTarget[]
+  /** Сколько объектов выбрано всего: ручки размера — только у единственного. */
+  groupSize: number
   tool: Tool
   style: ToolStyle
   shapeKind: ShapeKind
@@ -65,33 +85,21 @@ interface Props {
 const HIT_TOLERANCE = 6
 /** Меньше этого жест считается щелчком, а не протягиванием, пт. */
 const CLICK_DISTANCE = 3
+/** Всплывающее окно текста заметки, CSS-пиксели. */
+const NOTE_POPUP = { width: 220, height: 120, gap: 8 }
+const NO_ANNOTATIONS: readonly PageAnnotation[] = []
 
 interface Editing {
-  object: TextObject
+  object: TextObject | NoteObject
   isNew: boolean
 }
 
-interface BoxPlacement {
-  frame: Rect
-  width: number
-  height: number
-  turn: number
-}
-
-function boxPlacement(
-  o: TextObject | ImageObject,
-  matrix: Matrix,
-  geometry: PageGeometry,
-  rotation: Rotation,
-  scale: number
-): BoxPlacement {
-  const content = boxContentSize(o.rect, o.rotate)
-  return {
-    frame: transformRect(matrix, o.rect),
-    width: content.width * scale,
-    height: content.height * scale,
-    turn: normalizeTurn(geometry.rotate + rotation - o.rotate)
-  }
+/** Перенос выбранного: id объектов разметки и места аннотаций в списке, сдвиг в пунктах. */
+interface Moving {
+  markup: ReadonlySet<string>
+  annotations: ReadonlySet<number>
+  dx: number
+  dy: number
 }
 
 /** Текст нового содержания: рамка подгоняется от начала текста (см. fitTextBox). */
@@ -99,140 +107,12 @@ function withText(o: TextObject, text: string): TextObject {
   return fitTextBox({ ...o, text }, measureText)
 }
 
-/** Векторные объекты рисуются в координатах страницы внутри группы с матрицей вида. */
-function VectorObject({ o }: { o: MarkupObject }): React.JSX.Element | null {
-  const stroke = {
-    stroke: o.color,
-    fill: 'none',
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round'
-  } as const
-  switch (o.kind) {
-    case 'highlight':
-      return null
-    case 'underline':
-    case 'strikeout': {
-      const kind = o.kind
-      return (
-        <g opacity={o.opacity}>
-          {o.rects.map((r, i) => {
-            const line = textLineStroke(r, kind)
-            return (
-              <line
-                key={i}
-                x1={line.from.x}
-                y1={line.from.y}
-                x2={line.to.x}
-                y2={line.to.y}
-                stroke={o.color}
-                strokeWidth={line.width}
-              />
-            )
-          })}
-        </g>
-      )
-    }
-    case 'ink':
-      return (
-        <g opacity={o.opacity} {...stroke} strokeWidth={o.width}>
-          {o.paths.map((path, i) => (
-            <polyline
-              key={i}
-              points={(path.length === 1 ? [...path, ...path] : path)
-                .map((p) => `${p.x},${p.y}`)
-                .join(' ')}
-            />
-          ))}
-        </g>
-      )
-    case 'rect':
-      return (
-        <rect {...o.rect} opacity={o.opacity} stroke={o.color} fill="none" strokeWidth={o.width} />
-      )
-    case 'ellipse':
-      return (
-        <ellipse
-          cx={o.rect.x + o.rect.width / 2}
-          cy={o.rect.y + o.rect.height / 2}
-          rx={o.rect.width / 2}
-          ry={o.rect.height / 2}
-          opacity={o.opacity}
-          stroke={o.color}
-          fill="none"
-          strokeWidth={o.width}
-        />
-      )
-    case 'line':
-    case 'arrow': {
-      const head = o.kind === 'arrow' ? arrowHead(o.from, o.to, o.width) : null
-      return (
-        <g opacity={o.opacity} {...stroke} strokeWidth={o.width}>
-          <line x1={o.from.x} y1={o.from.y} x2={o.to.x} y2={o.to.y} />
-          {head && (
-            <polyline
-              points={`${head[0].x},${head[0].y} ${o.to.x},${o.to.y} ${head[1].x},${head[1].y}`}
-            />
-          )}
-        </g>
-      )
-    }
-    case 'text':
-    case 'image':
-      return null
-  }
-}
-
-function BoxObject({
-  o,
-  placement
-}: {
-  o: TextObject | ImageObject
-  placement: BoxPlacement
-}): React.JSX.Element {
-  const { frame, width, height, turn } = placement
-  const content = boxContentSize(o.rect, o.rotate)
+function containsRect(outer: Rect, inner: Rect): boolean {
   return (
-    <div
-      className={s.box}
-      style={{
-        left: frame.x,
-        top: frame.y,
-        width: frame.width,
-        height: frame.height,
-        opacity: o.opacity
-      }}
-      data-markup-kind={o.kind}
-    >
-      <div
-        className={s.boxInner}
-        style={{ width, height, transform: `translate(-50%, -50%) rotate(${turn}deg)` }}
-      >
-        {o.kind === 'image' ? (
-          <img src={o.src} alt="" draggable={false} className={s.image} />
-        ) : (
-          <svg
-            width={width}
-            height={height}
-            viewBox={`0 0 ${content.width} ${content.height}`}
-            preserveAspectRatio="none"
-            className={s.textSvg}
-          >
-            {layoutTextObject(o, measureText).lines.map((line, i) => (
-              <text
-                key={i}
-                x={line.x}
-                y={line.baseline}
-                fontSize={o.fontSize}
-                fontFamily={`'${MARKUP_FONT_FAMILY}'`}
-                fill={o.color}
-              >
-                {line.text}
-              </text>
-            ))}
-          </svg>
-        )}
-      </div>
-    </div>
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
   )
 }
 
@@ -243,7 +123,7 @@ function TextEditor({
   onChange,
   onDone
 }: {
-  editing: Editing
+  editing: Editing & { object: TextObject }
   placement: BoxPlacement
   scale: number
   onChange: (text: string) => void
@@ -299,20 +179,73 @@ function TextEditor({
   )
 }
 
+/** Всплывающее окно текста заметки рядом со значком (справа, у края страницы — слева). */
+function NoteEditor({
+  note,
+  icon,
+  pageWidth,
+  onChange,
+  onDone
+}: {
+  note: NoteObject
+  icon: Rect
+  pageWidth: number
+  onChange: (text: string) => void
+  onDone: () => void
+}): React.JSX.Element {
+  const right = icon.x + icon.width + NOTE_POPUP.gap
+  const left =
+    right + NOTE_POPUP.width <= pageWidth ? right : icon.x - NOTE_POPUP.gap - NOTE_POPUP.width
+  return (
+    <div
+      className={s.notePopup}
+      style={{ left: Math.max(0, left), top: icon.y, width: NOTE_POPUP.width }}
+      data-markup-editor=""
+      data-note-editor=""
+    >
+      <textarea
+        className={s.noteText}
+        aria-label={t.annotations.noteText}
+        placeholder={t.annotations.notePlaceholder}
+        value={note.text}
+        autoFocus
+        spellCheck={false}
+        style={{ height: NOTE_POPUP.height, borderColor: note.color }}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
+        onBlur={onDone}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' || (event.key === 'Enter' && event.ctrlKey)) {
+            event.preventDefault()
+            event.stopPropagation()
+            onDone()
+          }
+        }}
+      />
+    </div>
+  )
+}
+
 /**
  * Слой разметки поверх страницы: объекты в координатах PDF переводятся в
  * пиксели вида матрицей pdf.js (масштаб, поворот вида и /Rotate страницы).
  * Инструменты рисования ловят указатель на всём слое; «Выделение» слушает
- * страницу в фазе захвата и забирает щелчок, только если под ним объект, —
- * иначе выделение текста работает как обычно.
+ * страницу в фазе захвата и забирает щелчок, только если под ним объект
+ * разметки или аннотация документа, — иначе выделение текста работает как
+ * обычно. Ctrl+щелчок собирает группу, Shift и протяжка по пустому месту —
+ * выбор рамкой; группа двигается и удаляется целиком.
  */
 export const MarkupLayer = memo(function MarkupLayer({
+  doc,
+  bytes,
   geometry,
   pageNumber,
   scale,
   rotation,
   objects,
-  selectedId,
+  selected,
+  groupSize,
   tool,
   style,
   shapeKind,
@@ -320,11 +253,20 @@ export const MarkupLayer = memo(function MarkupLayer({
 }: Props): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [preview, setPreview] = useState<MarkupObject | null>(null)
+  const [moving, setMoving] = useState<Moving | null>(null)
+  /** Рамка аннотации, которую тянут за ручку (пространство страницы). */
+  const [resizing, setResizing] = useState<{ index: number; rect: Rect } | null>(null)
+  /** Рамка выбора с Shift, пиксели вида. */
+  const [marquee, setMarquee] = useState<Rect | null>(null)
+  const [hovered, setHovered] = useState<SelectionTarget | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
   const editingRef = useRef<Editing | null>(null)
   useLayoutEffect(() => {
     editingRef.current = editing
   })
+
+  const loaded = usePageAnnotations(doc, bytes, pageNumber, tool === 'select')
+  const annotations = loaded ?? NO_ANNOTATIONS
 
   const totalRotation = geometry.rotate + rotation
   const matrix = useMemo(
@@ -333,7 +275,20 @@ export const MarkupLayer = memo(function MarkupLayer({
   )
   const inverse = useMemo(() => invert(matrix), [matrix])
   const size = viewSize(geometry.box, totalRotation, scale)
-  const sources = useMemo<SelectionSource[]>(() => [markupSource(objects)], [objects])
+  const sources = useMemo<SelectionSource[]>(
+    () => [markupSource(objects), annotationSource(pageNumber, annotations)],
+    [objects, pageNumber, annotations]
+  )
+
+  // Выбранная аннотация исчезла из файла (отмена, другая правка) — из выбора тоже.
+  useEffect(() => {
+    if (!loaded) return
+    for (const target of selected) {
+      if (target.source !== 'annotation') continue
+      const found = loaded.find((a) => a.index === target.index)
+      if (found?.subtype !== target.subtype) actions.toggleSelected(target)
+    }
+  }, [loaded, selected, actions])
 
   const viewPoint = useCallback((clientX: number, clientY: number): Point => {
     const rect = rootRef.current?.getBoundingClientRect()
@@ -371,6 +326,16 @@ export const MarkupLayer = memo(function MarkupLayer({
     editingRef.current = null
     setEditing(null)
     const { object, isNew } = current
+    if (object.kind === 'note') {
+      // Заметка без текста не ставится; у поставленной текст можно и стереть.
+      const before = objects.find((o) => o.id === object.id)
+      if (isNew) {
+        if (object.text.trim().length > 0) actions.addMarkup(object, false)
+      } else if (before?.kind === 'note' && before.text !== object.text) {
+        actions.updateMarkup(object)
+      }
+      return
+    }
     if (object.text.trim().length === 0) {
       if (!isNew) actions.removeMarkup(object.id)
     } else if (isNew) {
@@ -378,52 +343,126 @@ export const MarkupLayer = memo(function MarkupLayer({
     } else {
       actions.updateMarkup(object)
     }
-  }, [actions])
+  }, [actions, objects])
 
-  // Смена инструмента или страницы завершает правку текста.
+  // Смена инструмента завершает правку текста.
   useEffect(() => {
-    if (tool !== 'text' && tool !== 'select') finishEditing()
+    if (tool !== 'text' && tool !== 'note' && tool !== 'select') finishEditing()
   }, [tool, finishEditing])
 
+  /** Перенос объекта или всей группы; без сдвига щелчок по члену группы выбирает только его. */
   const startMove = useCallback(
-    (event: PointerEvent, object: MarkupObject) => {
+    (event: PointerEvent, target: SelectionTarget, group: readonly SelectionTarget[]) => {
       const start = pagePoint(event.clientX, event.clientY)
-      let moved: MarkupObject | null = null
+      const markupIds = new Set(group.filter((x) => x.source === 'markup').map((x) => x.id))
+      const annotationIndexes = new Set(
+        group.flatMap((x) => (x.source === 'annotation' && x.page === pageNumber ? [x.index] : []))
+      )
+      let delta: Point | null = null
       gesture(
         (e) => {
           const p = pagePoint(e.clientX, e.clientY)
-          moved = moveObject(object, p.x - start.x, p.y - start.y)
-          setPreview(moved)
+          delta = { x: p.x - start.x, y: p.y - start.y }
+          setMoving({
+            markup: markupIds,
+            annotations: annotationIndexes,
+            dx: delta.x,
+            dy: delta.y
+          })
         },
         () => {
-          setPreview(null)
-          if (moved) actions.updateMarkup(moved)
+          setMoving(null)
+          const moved = delta !== null && Math.hypot(delta.x, delta.y) * scale >= 1
+          if (!delta || !moved) {
+            if (group.length > 1) actions.select(target)
+            return
+          }
+          const single = group.length === 1 ? objects.find((o) => o.id === target.id) : undefined
+          if (single) actions.updateMarkup(moveObject(single, delta.x, delta.y))
+          else actions.moveSelected(delta.x, delta.y)
         }
       )
     },
-    [actions, gesture, pagePoint]
+    [actions, gesture, objects, pageNumber, pagePoint, scale]
   )
 
-  // «Выделение»: выбор, перемещение и правка текста двойным щелчком.
+  /** Shift и протяжка по пустому месту: всё, что целиком внутри рамки (с Ctrl — добавить). */
+  const startMarquee = useCallback(
+    (event: PointerEvent, existing: readonly SelectionTarget[]) => {
+      const start = viewPoint(event.clientX, event.clientY)
+      const additive = event.ctrlKey || event.metaKey
+      gesture(
+        (e) => {
+          setMarquee(rectFromPoints(start, viewPoint(e.clientX, e.clientY)))
+        },
+        (e) => {
+          setMarquee(null)
+          const view = rectFromPoints(start, viewPoint(e.clientX, e.clientY))
+          if (Math.max(view.width, view.height) < CLICK_DISTANCE) {
+            if (!additive) actions.select(null)
+            return
+          }
+          const area = transformRect(inverse, view)
+          const found: SelectionTarget[] = [
+            ...objects
+              .filter((o) => containsRect(area, visualBounds(o)))
+              .map((o): SelectionTarget => ({ source: 'markup', id: o.id })),
+            ...annotations
+              .filter((a) => containsRect(area, a.rect))
+              .map((a) => annotationTarget(pageNumber, a))
+          ]
+          const base = additive ? existing : []
+          actions.selectGroup([...base, ...found.filter((x) => !hasTarget(base, x))])
+        }
+      )
+    },
+    [actions, annotations, gesture, inverse, objects, pageNumber, viewPoint]
+  )
+
+  // Текущая группа нужна обработчикам страницы без их пересоздания на каждый выбор.
+  const groupRef = useRef<{ selected: readonly SelectionTarget[]; size: number }>({
+    selected,
+    size: groupSize
+  })
+  useLayoutEffect(() => {
+    groupRef.current = { selected, size: groupSize }
+  })
+
+  // «Выделение»: выбор, группа, перенос, рамка с Shift и правка текста двойным щелчком.
   useEffect(() => {
     const page = rootRef.current?.parentElement
     if (!page || tool !== 'select') return
-    const hit = (event: MouseEvent): MarkupObject | null => {
-      const target = hitSources(
+    const hit = (event: MouseEvent): SelectionTarget | null =>
+      hitSources(
         sources,
         pageNumber,
         pagePoint(event.clientX, event.clientY),
         HIT_TOLERANCE / scale
       )
-      return target ? (objects.find((o) => o.id === target.id) ?? null) : null
+    const movable = (target: SelectionTarget): boolean => {
+      if (target.source === 'markup') {
+        const object = objects.find((o) => o.id === target.id)
+        return object !== undefined && isMovable(object)
+      }
+      if (target.source !== 'annotation') return false
+      const { index } = target
+      return annotations.some((a) => a.index === index && a.can.move)
     }
     const isOwnControl = (event: Event): boolean =>
       event.target instanceof Element &&
       event.target.closest('[data-markup-handle], [data-markup-editor]') !== null
     const onDown = (event: PointerEvent): void => {
       if (event.button !== 0 || isOwnControl(event)) return
-      const object = hit(event)
-      if (!object) {
+      const target = hit(event)
+      const { selected: mine, size } = groupRef.current
+      if (!target) {
+        if (event.shiftKey) {
+          event.preventDefault()
+          event.stopPropagation()
+          window.getSelection()?.removeAllRanges()
+          startMarquee(event, mine)
+          return
+        }
         // Снимает выбор и на других страницах; повторный null состояние не меняет.
         actions.select(null)
         return
@@ -431,36 +470,61 @@ export const MarkupLayer = memo(function MarkupLayer({
       event.preventDefault()
       event.stopPropagation()
       window.getSelection()?.removeAllRanges()
-      actions.select({ source: 'markup', id: object.id })
-      if (isMovable(object)) startMove(event, object)
+      if (event.ctrlKey || event.metaKey) {
+        actions.toggleSelected(target)
+        return
+      }
+      const inGroup = size > 1 && hasTarget(mine, target)
+      if (!inGroup) actions.select(target)
+      if (inGroup || movable(target)) startMove(event, target, inGroup ? mine : [target])
     }
-    // Нажатие на объект не должно начинать выделение текста под ним.
+    // Нажатие на объект (и рамка с Shift) не должно начинать выделение текста под ним.
     const onMouseDown = (event: MouseEvent): void => {
-      if (!isOwnControl(event) && hit(event)) event.preventDefault()
+      if (!isOwnControl(event) && (hit(event) || event.shiftKey)) event.preventDefault()
     }
     const onDoubleClick = (event: MouseEvent): void => {
-      const object = hit(event)
-      if (object?.kind === 'text') {
+      const target = hit(event)
+      const object =
+        target?.source === 'markup' ? objects.find((o) => o.id === target.id) : undefined
+      if (object?.kind === 'text' || object?.kind === 'note') {
         event.preventDefault()
         setEditing({ object, isNew: false })
       }
     }
     const onHover = (event: PointerEvent): void => {
       if (event.buttons !== 0) return
-      page.classList.toggle(s.hoverObject ?? '', hit(event) !== null)
+      const target = hit(event)
+      page.classList.toggle(s.hoverObject ?? '', target !== null)
+      setHovered((current) => (current?.id === target?.id ? current : target))
+    }
+    const onLeave = (): void => {
+      setHovered(null)
     }
     page.addEventListener('pointerdown', onDown, true)
     page.addEventListener('mousedown', onMouseDown, true)
     page.addEventListener('dblclick', onDoubleClick, true)
     page.addEventListener('pointermove', onHover)
+    page.addEventListener('pointerleave', onLeave)
     return () => {
       page.removeEventListener('pointerdown', onDown, true)
       page.removeEventListener('mousedown', onMouseDown, true)
       page.removeEventListener('dblclick', onDoubleClick, true)
       page.removeEventListener('pointermove', onHover)
+      page.removeEventListener('pointerleave', onLeave)
       page.classList.remove(s.hoverObject ?? '')
     }
-  }, [tool, sources, objects, pageNumber, pagePoint, scale, actions, startMove])
+  }, [
+    tool,
+    sources,
+    objects,
+    annotations,
+    pageNumber,
+    pagePoint,
+    scale,
+    actions,
+    startMove,
+    startMarquee
+  ])
 
   /** Конец по умолчанию для щелчка без протягивания: на 100×60 пикселей вправо-вниз на экране. */
   const defaultEnd = (start: Point): Point => {
@@ -506,26 +570,29 @@ export const MarkupLayer = memo(function MarkupLayer({
           actions.addMarkup(make(tiny ? defaultEnd(start) : end), false)
         }
       )
-    } else if (tool === 'text') {
+    } else if (tool === 'text' || tool === 'note') {
       if (editingRef.current) {
         finishEditing()
         return
       }
       // Редактор на другой странице закрывается по потере фокуса.
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-      const object: TextObject = withText(
-        {
-          ...base,
-          id: newMarkupId(),
-          kind: 'text',
-          rect: { x: start.x, y: start.y, width: 0, height: 0 },
-          // Текст встаёт ровно на экране: с учётом /Rotate страницы и поворота вида.
-          rotate: normalizeTurn(totalRotation),
-          text: '',
-          fontSize: style.fontSize
-        },
-        ''
-      )
+      const object: TextObject | NoteObject =
+        tool === 'note'
+          ? { ...base, id: newMarkupId(), kind: 'note', rect: noteRectAt(start), text: '' }
+          : withText(
+              {
+                ...base,
+                id: newMarkupId(),
+                kind: 'text',
+                rect: { x: start.x, y: start.y, width: 0, height: 0 },
+                // Текст встаёт ровно на экране: с учётом /Rotate страницы и поворота вида.
+                rotate: normalizeTurn(totalRotation),
+                text: '',
+                fontSize: style.fontSize
+              },
+              ''
+            )
       setEditing({ object, isNew: true })
     } else if (tool === 'sign') {
       actions.placeSignature(pageNumber, start)
@@ -558,6 +625,32 @@ export const MarkupLayer = memo(function MarkupLayer({
     )
   }
 
+  /** Рамка аннотации документа за ручку: новая /Rect, геометрию пересчитывает движок. */
+  const startAnnotationResize = (
+    event: React.PointerEvent,
+    annotation: PageAnnotation,
+    handle: FrameHandle
+  ): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    const frame = transformRect(matrix, annotation.rect)
+    let rect: Rect | null = null
+    gesture(
+      (e) => {
+        const view = dragFrame(frame, handle, viewPoint(e.clientX, e.clientY), {
+          min: 4 * scale,
+          keepAspect: annotation.subtype === 'Stamp' && !e.shiftKey
+        })
+        rect = transformRect(inverse, view)
+        setResizing({ index: annotation.index, rect })
+      },
+      () => {
+        setResizing(null)
+        if (rect) actions.editAnnotation(pageNumber, annotation.index, { rect })
+      }
+    )
+  }
+
   const startEndpoint = (
     event: React.PointerEvent,
     object: LineObject,
@@ -579,68 +672,144 @@ export const MarkupLayer = memo(function MarkupLayer({
   }
 
   const shown = useMemo(() => {
-    const list = objects.map((o) => (o.id === preview?.id ? preview : o))
+    let list = objects.map((o) => (o.id === preview?.id ? preview : o))
     if (preview && !objects.some((o) => o.id === preview.id)) list.push(preview)
+    if (moving) {
+      list = list.map((o) =>
+        moving.markup.has(o.id) && isMovable(o) ? moveObject(o, moving.dx, moving.dy) : o
+      )
+    }
+    if (editing?.object.kind === 'note') {
+      // Новая заметка видна, пока пишут её текст; у старой текст меняется на лету.
+      const note = editing.object
+      return list.some((o) => o.id === note.id)
+        ? list.map((o) => (o.id === note.id ? note : o))
+        : [...list, note]
+    }
     return editing ? list.filter((o) => o.id !== editing.object.id) : list
-  }, [objects, preview, editing])
-  const highlights = shown.filter((o) => o.kind === 'highlight')
-  const selected = shown.find((o) => o.id === selectedId) ?? null
-  const drawing = tool === 'pen' || tool === 'shapes' || tool === 'text' || tool === 'sign'
-  const gTransform = `matrix(${matrix.join(' ')})`
+  }, [objects, preview, moving, editing])
 
-  let frame: React.JSX.Element | null = null
-  if (selected && !editing) {
-    const bounds = transformRect(matrix, visualBounds(selected))
-    const interactive = tool === 'select' && isMovable(selected)
-    const handles: React.JSX.Element[] = []
-    if (interactive && (selected.kind === 'line' || selected.kind === 'arrow')) {
-      for (const end of ['from', 'to'] as const) {
-        const p = apply(matrix, selected[end])
-        handles.push(
-          <span
-            key={end}
-            className={s.handle}
-            data-markup-handle={end}
-            style={{ left: p.x, top: p.y }}
-            onPointerDown={(e) => {
-              startEndpoint(e, selected, end)
-            }}
-          />
-        )
+  /** Рамка аннотации на экране с учётом переноса или изменения размера. */
+  const annotationRect = (a: PageAnnotation): Rect => {
+    if (resizing?.index === a.index) return resizing.rect
+    if (moving?.annotations.has(a.index) && a.can.move) {
+      return { ...a.rect, x: a.rect.x + moving.dx, y: a.rect.y + moving.dy }
+    }
+    return a.rect
+  }
+
+  const highlights = shown.filter((o) => o.kind === 'highlight')
+  const drawing =
+    tool === 'pen' || tool === 'shapes' || tool === 'text' || tool === 'note' || tool === 'sign'
+  const gTransform = `matrix(${matrix.join(' ')})`
+  const single = groupSize === 1 && tool === 'select'
+
+  const frames: React.JSX.Element[] = []
+  const frameStyle = (bounds: Rect): React.CSSProperties => ({
+    left: bounds.x - 3,
+    top: bounds.y - 3,
+    width: bounds.width + 6,
+    height: bounds.height + 6
+  })
+  for (const target of selected) {
+    if (target.source === 'markup') {
+      const object = shown.find((o) => o.id === target.id)
+      if (!object || editing?.object.id === object.id) continue
+      const bounds = transformRect(matrix, visualBounds(object))
+      frames.push(
+        <div
+          key={target.id}
+          className={s.frame}
+          style={frameStyle(bounds)}
+          data-markup-selected={object.kind}
+        />
+      )
+      if (!single) continue
+      if (object.kind === 'line' || object.kind === 'arrow') {
+        for (const end of ['from', 'to'] as const) {
+          const p = apply(matrix, object[end])
+          frames.push(
+            <span
+              key={end}
+              className={s.handle}
+              data-markup-handle={end}
+              style={{ left: p.x, top: p.y }}
+              onPointerDown={(e) => {
+                startEndpoint(e, object, end)
+              }}
+            />
+          )
+        }
+      } else if (isResizable(object)) {
+        const g = transformRect(matrix, geometryBounds(object))
+        for (const handle of FRAME_HANDLES) {
+          const p = handlePoint(g, handle)
+          frames.push(
+            <span
+              key={handle.id}
+              className={s.handle}
+              data-markup-handle={handle.id}
+              style={{ left: p.x, top: p.y, cursor: handle.cursor }}
+              onPointerDown={(e) => {
+                startResize(e, object, handle)
+              }}
+            />
+          )
+        }
       }
-    } else if (interactive) {
-      const g = transformRect(matrix, geometryBounds(selected))
+    } else if (target.source === 'annotation') {
+      const annotation = annotations.find((a) => a.index === target.index)
+      if (!annotation) continue
+      const rect = annotationRect(annotation)
+      const changed = rect !== annotation.rect
+      const bounds = transformRect(matrix, rect)
+      frames.push(
+        <div
+          key={target.id}
+          className={cx(s.frame, changed && s.ghost)}
+          style={frameStyle(bounds)}
+          data-annotation-selected={annotation.subtype}
+        />
+      )
+      if (!single || !annotation.can.resize) continue
       for (const handle of FRAME_HANDLES) {
-        const p = handlePoint(g, handle)
-        handles.push(
+        const p = handlePoint(bounds, handle)
+        frames.push(
           <span
-            key={handle.id}
+            key={`${target.id}:${handle.id}`}
             className={s.handle}
             data-markup-handle={handle.id}
             style={{ left: p.x, top: p.y, cursor: handle.cursor }}
             onPointerDown={(e) => {
-              startResize(e, selected, handle)
+              startAnnotationResize(e, annotation, handle)
             }}
           />
         )
       }
     }
-    frame = (
-      <>
-        <div
-          className={s.frame}
-          style={{
-            left: bounds.x - 3,
-            top: bounds.y - 3,
-            width: bounds.width + 6,
-            height: bounds.height + 6
-          }}
-          data-markup-selected={selected.kind}
-        />
-        {handles}
-      </>
-    )
   }
+
+  // Подсветка объекта под указателем в «Выделении» (если он ещё не выбран).
+  let hoverFrame: React.JSX.Element | null = null
+  if (tool === 'select' && hovered && !hasTarget(selected, hovered) && !moving) {
+    let rect: Rect | null = null
+    if (hovered.source === 'markup') {
+      const object = shown.find((o) => o.id === hovered.id)
+      rect = object ? visualBounds(object) : null
+    } else if (hovered.source === 'annotation') {
+      const index = hovered.index
+      rect = annotations.find((a) => a.index === index)?.rect ?? null
+    }
+    if (rect) {
+      const view = transformRect(matrix, rect)
+      hoverFrame = (
+        <div className={s.hoverFrame} style={frameStyle(view)} data-hover-frame={hovered.source} />
+      )
+    }
+  }
+
+  const editingNote = editing?.object.kind === 'note' ? editing.object : null
+  const editingText = editing?.object.kind === 'text' ? editing.object : null
 
   return (
     <div
@@ -657,6 +826,7 @@ export const MarkupLayer = memo(function MarkupLayer({
           : undefined
       }
       data-markup-layer={pageNumber}
+      data-annotations={loaded ? loaded.length : undefined}
     >
       {highlights.length > 0 && (
         <svg
@@ -693,15 +863,34 @@ export const MarkupLayer = memo(function MarkupLayer({
           placement={boxPlacement(o, matrix, geometry, rotation, scale)}
         />
       ))}
-      {frame}
-      {editing && (
+      {hoverFrame}
+      {frames}
+      {marquee && <div className={s.marquee} style={{ ...marquee }} data-marquee="" />}
+      {editingText && editing && (
         <TextEditor
-          editing={editing}
-          placement={boxPlacement(editing.object, matrix, geometry, rotation, scale)}
+          editing={{ ...editing, object: editingText }}
+          placement={boxPlacement(editingText, matrix, geometry, rotation, scale)}
           scale={scale}
           onChange={(text) => {
             setEditing((current) =>
-              current ? { ...current, object: withText(current.object, text) } : current
+              current?.object.kind === 'text'
+                ? { ...current, object: withText(current.object, text) }
+                : current
+            )
+          }}
+          onDone={finishEditing}
+        />
+      )}
+      {editingNote && (
+        <NoteEditor
+          note={editingNote}
+          icon={transformRect(matrix, editingNote.rect)}
+          pageWidth={size.width}
+          onChange={(text) => {
+            setEditing((current) =>
+              current?.object.kind === 'note'
+                ? { ...current, object: { ...current.object, text } }
+                : current
             )
           }}
           onDone={finishEditing}

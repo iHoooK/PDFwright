@@ -5,11 +5,13 @@ import { cx } from '@renderer/components/cx'
 import { useStore, type DocTab } from '@renderer/app/store'
 import { t } from '@renderer/i18n'
 import { createCancelToken, type OutlineEntry, type PdfDocument } from '@renderer/pdf-engine/engine'
+import { useMarkupByPage } from '@renderer/features/markup/by-page'
 import { PageThumbnail } from './PageThumbnail'
 import s from './viewer.module.css'
 
 export function ThumbsPanel({ tab, doc }: { tab: DocTab; doc: PdfDocument }): React.JSX.Element {
   const { state, actions } = useStore()
+  const markup = useMarkupByPage(tab.markup)
   return (
     <div className={cx(s.sidebarBody, s.thumbs)}>
       {Array.from({ length: tab.pages }, (_, i) => (
@@ -19,6 +21,7 @@ export function ThumbsPanel({ tab, doc }: { tab: DocTab; doc: PdfDocument }): Re
           pageNumber={i + 1}
           rotation={state.rotation}
           current={state.page === i + 1}
+          markup={markup.get(i + 1)}
           onClick={() => {
             actions.setPage(i + 1)
           }}

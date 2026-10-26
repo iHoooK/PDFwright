@@ -38,6 +38,7 @@ export {
   Keyboard20Regular as IconKeyboard,
   Link20Regular as IconLink,
   Merge20Regular as IconMerge,
+  Note20Regular as IconNote,
   Open20Regular as IconExternal,
   PanelLeft20Regular as IconPanelLeft,
   PanelRight20Regular as IconPanelRight,

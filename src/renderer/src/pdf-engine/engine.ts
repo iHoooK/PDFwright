@@ -78,6 +78,9 @@ export class PdfLoadError extends Error {
   }
 }
 
+/** Аннотации, которые не пометки: их нельзя выбрать в «Выделении». */
+const NOT_MARKUP = new Set(['Link', 'Widget', 'Popup'])
+
 /**
  * Обёртка над документом pdf.js: кэширует страницы и текст, собирает размеры
  * страниц, разрешает закладки, отдаёт метаданные. Один экземпляр на вкладку.
@@ -91,6 +94,7 @@ export class PdfDocument {
   private readonly pages = new Map<number, Promise<PDFPageProxy>>()
   private readonly texts = new Map<number, Promise<TextContent>>()
   private fieldObjects: Promise<FieldObjects | null> | null = null
+  private readonly annotated = new Map<number, Promise<boolean>>()
   private destroyed = false
 
   constructor(
@@ -147,6 +151,24 @@ export class PdfDocument {
       if (n % batch === 0) onProgress(n)
     }
     onProgress(this.numPages)
+  }
+
+  /**
+   * Есть ли на странице пометки (аннотации, кроме ссылок, полей форм и окон
+   * заметок). pdf.js уже разобрал страницу, поэтому MuPDF для списка пометок
+   * будят только там, где они есть.
+   */
+  hasMarkupAnnotations(pageNumber: number): Promise<boolean> {
+    let request = this.annotated.get(pageNumber)
+    if (!request) {
+      request = this.getPage(pageNumber)
+        .then((page) => page.getAnnotations())
+        .then((annotations: { subtype?: unknown }[]) =>
+          annotations.some((a) => typeof a.subtype === 'string' && !NOT_MARKUP.has(a.subtype))
+        )
+      this.annotated.set(pageNumber, request)
+    }
+    return request
   }
 
   getTextContent(pageNumber: number): Promise<TextContent> {

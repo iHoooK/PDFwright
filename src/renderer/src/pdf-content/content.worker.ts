@@ -14,6 +14,11 @@ import {
   replaceText
 } from '@shared/pdf-content'
 import { inspectProtection, protectPdf, relockPdf, unlockPdf } from '@shared/pdf-content/protect'
+import {
+  editAnnotations,
+  listAnnotations,
+  removeAnnotations
+} from '@shared/pdf-content/annotations'
 import type { ContentApi, ContentRequest, ContentResponse } from './protocol'
 
 /**
@@ -47,7 +52,11 @@ const api: ContentApi = {
   protectPdf,
   unlockPdf,
   relockPdf,
-  inspectProtection
+  inspectProtection,
+  // Аннотации документа
+  listAnnotations,
+  editAnnotations,
+  removeAnnotations
 }
 
 /** Байты результата (сами или поле bytes, как у сжатия) передаются без копирования. */
