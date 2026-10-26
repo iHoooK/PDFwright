@@ -164,7 +164,9 @@ function createBrowserMock(): PdfwrightApi {
     },
     showItemInFolder: () => Promise.resolve(),
     setDirtyCount: () => Promise.resolve(),
-    takePendingOpenFile: () => Promise.resolve(null),
+    takeStartupFiles: () => Promise.resolve({ files: [], active: null, missing: [] }),
+    setWindowTabs: () => Promise.resolve(),
+    openInNewWindow: () => Promise.resolve(),
     // Заглушка обновлений: имитирует найденную версию и скачивание с прогрессом.
     checkForUpdates: () =>
       new Promise((resolve) => {

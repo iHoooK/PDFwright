@@ -7,6 +7,7 @@ import { TOOL_KEYS, TOOLS, useStore, type Tool } from './store'
  * одиночные буквы переключают инструмент, как в графических редакторах.
  */
 export const HOTKEYS: readonly { keys: string; action: string }[] = [
+  { keys: 'Ctrl + N', action: 'Новое окно' },
   { keys: 'Ctrl + O', action: 'Открыть файл' },
   { keys: 'Ctrl + S', action: 'Сохранить' },
   { keys: 'Ctrl + Shift + S', action: 'Сохранить как' },

@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   applySettingsPatch,
   createDefaultSettings,
+  normalizeSessionWindows,
   normalizeSettings,
   RECENT_LIMIT_MAX,
+  SESSION_TABS_MAX,
+  SESSION_WINDOWS_MAX,
   SETTINGS_SCHEMA_VERSION,
   SIGNATURE_MAX_LENGTH,
   SIGNATURES_MAX,
@@ -80,5 +83,69 @@ describe('applySettingsPatch', () => {
     const copy = structuredClone(current)
     applySettingsPatch(current, { window: { maximized: true } })
     expect(current).toEqual(copy)
+  })
+})
+
+describe('сеанс в настройках', () => {
+  it('старый файл настроек без раздела session получает безопасные значения', () => {
+    const result = normalizeSettings({ general: { theme: 'dark' }, window: { width: 1200 } })
+    expect(result.session).toEqual({ restore: true, windows: [] })
+    expect(normalizeSettings({ session: 'мусор' }).session).toEqual({ restore: true, windows: [] })
+  })
+
+  it('чинит окна сеанса: повторы путей, активная вкладка, рамка, пустые окна', () => {
+    const windows = normalizeSessionWindows([
+      { x: 100, y: 50, width: 1200.6, height: 800, maximized: true, tabs: ['C:/a.pdf'], active: 0 },
+      {
+        x: 'левый',
+        y: 50,
+        width: 10,
+        height: 'высокий',
+        tabs: ['C:/b.pdf', 42, 'C:/A.PDF', '', 'C:/c.pdf'],
+        active: 4
+      },
+      { tabs: [] },
+      { tabs: 'C:/d.pdf' },
+      null
+    ])
+    expect(windows).toEqual([
+      {
+        x: 100,
+        y: 50,
+        width: 1201,
+        height: 800,
+        maximized: true,
+        tabs: ['C:/a.pdf'],
+        active: 0
+      },
+      {
+        x: null,
+        y: null,
+        width: 1280,
+        height: 800,
+        maximized: false,
+        tabs: ['C:/b.pdf', 'C:/c.pdf'],
+        active: 1
+      }
+    ])
+  })
+
+  it('ограничивает число окон и вкладок, неверный номер вкладки — первая', () => {
+    const many = Array.from({ length: SESSION_WINDOWS_MAX + 3 }, (_, i) => ({
+      tabs: [`C:/w${i}.pdf`],
+      active: 7
+    }))
+    const windows = normalizeSessionWindows(many)
+    expect(windows).toHaveLength(SESSION_WINDOWS_MAX)
+    expect(windows[0]?.active).toBe(0)
+    const tabs = Array.from({ length: SESSION_TABS_MAX + 5 }, (_, i) => `C:/t${i}.pdf`)
+    expect(normalizeSessionWindows([{ tabs }])[0]?.tabs).toHaveLength(SESSION_TABS_MAX)
+  })
+
+  it('patch переключателя не стирает окна сеанса', () => {
+    const current = normalizeSettings({ session: { windows: [{ tabs: ['C:/a.pdf'] }] } })
+    const next = applySettingsPatch(current, { session: { restore: false } })
+    expect(next.session.restore).toBe(false)
+    expect(next.session.windows).toHaveLength(1)
   })
 })

@@ -1,28 +1,18 @@
-import { app, BrowserWindow, dialog, session, shell } from 'electron'
-import { join } from 'node:path'
-import { APP_OPEN_FILE_CHANNEL, UPDATE_PROGRESS_CHANNEL } from '@shared/ipc-contract'
-import { isAllowedExternalUrl } from '@shared/external-links'
-import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH } from '@shared/settings-schema'
+import { app, BrowserWindow, session } from 'electron'
+import { stat } from 'node:fs/promises'
+import { isAbsolute } from 'node:path'
 import { registerIpcHandlers } from './ipc'
 import { installApplicationMenu } from './menu'
 import { extractPdfPath } from './open-args'
-import {
-  installAppProtocol,
-  registerAppScheme,
-  rendererDirFromMain,
-  rendererIndexUrl
-} from './protocol'
+import { installAppProtocol, registerAppScheme, rendererDirFromMain } from './protocol'
 import { isPortableBuild } from './services/app-paths'
 import { RecentFilesStore } from './services/recent-files'
 import { UpdateService } from './services/update-service'
 import { SettingsStore } from './services/settings-store'
+import { planSessionRestore } from './window-plan'
+import { WindowManager } from './windows'
 
 const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
-
-let mainWindow: BrowserWindow | null = null
-let pendingFile: string | null = null
-let dirtyCount = 0
-let installingUpdate = false
 
 // E2E-тесты запускают несобранное приложение со своей папкой данных, чтобы не
 // трогать настройки и недавние файлы пользователя. В установленной программе
@@ -36,11 +26,10 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   registerAppScheme()
-  pendingFile = extractPdfPath(process.argv, process.cwd())
-  void bootstrap()
+  void bootstrap(extractPdfPath(process.argv, process.cwd()))
 }
 
-async function bootstrap(): Promise<void> {
+async function bootstrap(startupFile: string | null): Promise<void> {
   app.setAppUserModelId(APP_USER_MODEL_ID)
 
   const settings = SettingsStore.forUserData(app.getPath('userData'))
@@ -55,135 +44,96 @@ async function bootstrap(): Promise<void> {
   const csp = buildContentSecurityPolicy()
   applyContentSecurityPolicy(csp)
   installAppProtocol(rendererDirFromMain(import.meta.dirname), csp)
+  const windows = new WindowManager(settings)
   registerIpcHandlers({
     settings,
     recent,
-    takePendingFile: () => {
-      const file = pendingFile
-      pendingFile = null
-      return file
-    },
-    setDirtyCount: (count) => {
-      dirtyCount = count
-    },
+    windows,
     updates: new UpdateService(isPortableBuild(), (progress) => {
-      installingUpdate = progress.percent >= 100
-      mainWindow?.webContents.send(UPDATE_PROGRESS_CHANNEL, progress)
+      windows.sendUpdateProgress(progress)
     })
   })
-  installApplicationMenu()
+  installApplicationMenu({
+    newWindow: () => {
+      windows.newWindow()
+    }
+  })
 
-  mainWindow = createMainWindow(settings)
+  await openStartupWindows(windows, settings, startupFile)
 
   app.on('second-instance', (_event, argv, workingDirectory) => {
-    const window = mainWindow
-    if (!window) return
-    if (window.isMinimized()) window.restore()
-    window.focus()
     const file = extractPdfPath(argv, workingDirectory)
-    if (file !== null) window.webContents.send(APP_OPEN_FILE_CHANNEL, file)
+    if (file === null) windows.revealLatest()
+    else windows.openFile(file)
   })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) mainWindow = createMainWindow(settings)
+    if (BrowserWindow.getAllWindows().length === 0) windows.create()
   })
 
   app.on('window-all-closed', () => {
     app.quit()
   })
+
+  app.on('before-quit', () => {
+    windows.beginQuit()
+  })
+
+  // Сеанс пишется при закрытии окон; выход ждёт, пока запись дойдёт до диска.
+  let flushed = false
+  app.on('will-quit', (event) => {
+    if (flushed) return
+    flushed = true
+    event.preventDefault()
+    void settings.flush().finally(() => {
+      app.quit()
+    })
+  })
 }
 
-function createMainWindow(settings: SettingsStore): BrowserWindow {
-  const saved = settings.get().window
-
-  const window = new BrowserWindow({
-    width: saved.width,
-    height: saved.height,
-    minWidth: WINDOW_MIN_WIDTH,
-    minHeight: WINDOW_MIN_HEIGHT,
-    show: false,
-    autoHideMenuBar: true,
-    backgroundColor: '#f3f3f3',
-    title: 'PDFwright',
-    ...(app.isPackaged ? {} : { icon: join(app.getAppPath(), 'resources', 'icon-256.png') }),
-    webPreferences: {
-      preload: join(import.meta.dirname, '../preload/index.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      spellcheck: false
-    }
-  })
-
-  if (saved.maximized) window.maximize()
-  window.once('ready-to-show', () => {
-    window.show()
-  })
-
-  // Предупреждения и ошибки renderer дублируются в stderr main-процесса:
-  // так их видно в логах CI и при запуске из консоли без DevTools.
-  window.webContents.on('console-message', (details) => {
-    if (details.level === 'warning' || details.level === 'error') {
-      console.error(`[renderer:${details.level}] ${details.message}`)
-    } else if (!app.isPackaged) {
-      console.log(`[renderer:${details.level}] ${details.message}`)
-    }
-  })
-
-  // Любая навигация и новые окна запрещены; разрешённые внешние ссылки
-  // открываются в системном браузере.
-  window.webContents.setWindowOpenHandler(({ url }) => {
-    if (isAllowedExternalUrl(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-  window.webContents.on('will-navigate', (event, url) => {
-    if (url !== window.webContents.getURL()) event.preventDefault()
-  })
-
-  // Несохранённые изменения: спрашиваем подтверждение до закрытия окна.
-  window.on('close', (event) => {
-    if (dirtyCount === 0 || installingUpdate) return
-    const choice = dialog.showMessageBoxSync(window, {
-      type: 'warning',
-      title: 'PDFwright',
-      message:
-        dirtyCount === 1
-          ? 'В документе есть несохранённые изменения.'
-          : `Несохранённые изменения в документах: ${dirtyCount}.`,
-      detail: 'Закрыть программу без сохранения? Изменения будут потеряны.',
-      buttons: ['Закрыть без сохранения', 'Отмена'],
-      defaultId: 1,
-      cancelId: 1,
-      noLink: true
-    })
-    if (choice !== 0) event.preventDefault()
-  })
-
-  // Размер окна запоминаем при закрытии, чтобы не писать файл на каждый пиксель.
-  window.on('close', () => {
-    const [width, height] = window.getSize()
-    void settings.update({
-      window: {
-        width: width ?? saved.width,
-        height: height ?? saved.height,
-        maximized: window.isMaximized()
-      }
-    })
-  })
-  window.on('closed', () => {
-    if (mainWindow === window) mainWindow = null
-  })
-
-  const devServerUrl = process.env.ELECTRON_RENDERER_URL
-  if (!app.isPackaged && devServerUrl) {
-    void window.loadURL(devServerUrl)
-  } else {
-    void window.loadURL(rendererIndexUrl())
+/**
+ * Первые окна: файл из аргументов запуска — в одном окне; без файла —
+ * окна и вкладки прошлого сеанса, если это включено в Параметрах.
+ * Отсутствующие файлы пропускаются, о них сообщает самое активное окно.
+ */
+async function openStartupWindows(
+  windows: WindowManager,
+  settings: SettingsStore,
+  file: string | null
+): Promise<void> {
+  const session = settings.get().session
+  if (file !== null || !session.restore || session.windows.length === 0) {
+    windows.create(file === null ? {} : { open: { files: [file], active: file } })
+    return
   }
+  const paths = session.windows.flatMap((window) => window.tabs)
+  const found = new Set(
+    (await Promise.all(paths.map(async (path) => ((await isFile(path)) ? path : null)))).filter(
+      (path) => path !== null
+    )
+  )
+  const plan = planSessionRestore(session.windows, (path) => found.has(path))
+  if (plan.windows.length === 0) {
+    windows.create({ open: { missing: plan.missing } })
+    return
+  }
+  plan.windows.forEach((window, index) => {
+    const last = index === plan.windows.length - 1
+    windows.create({
+      frame: window.frame,
+      maximized: window.maximized,
+      open: { files: window.files, active: window.active, missing: last ? plan.missing : [] }
+    })
+  })
+}
 
-  return window
+async function isFile(path: string): Promise<boolean> {
+  if (!isAbsolute(path)) return false
+  try {
+    return (await stat(path)).isFile()
+  } catch {
+    return false
+  }
 }
 
 /**

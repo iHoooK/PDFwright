@@ -647,6 +647,9 @@ function reducer(state: State, action: Action): State {
 }
 
 export interface Actions {
+  // Окна и сессия
+  /** Переносит вкладку в новое окно; несохранённый документ с saveFirst сначала сохраняется. */
+  openInNewWindow: (id: string, saveFirst?: boolean) => void
   go: (screen: Screen) => void
   openSettings: (section?: SettingsSection) => void
   openDialog: () => Promise<void>
@@ -805,11 +808,11 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
   }, [api])
 
   const openPath = useCallback(
-    (path: string) => {
+    (path: string): string => {
       const existing = stateRef.current.docs.find((d) => d.path === path)
       if (existing && existing.status !== 'error') {
         dispatch({ type: 'activateDoc', id: existing.id })
-        return
+        return existing.id
       }
       if (existing) dispatch({ type: 'closeDoc', id: existing.id })
       docCounter += 1
@@ -875,6 +878,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           refreshRecent()
         }
       })()
+      return id
     },
     [api, refreshRecent]
   )
@@ -887,8 +891,11 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     ]).then(([info, settings, recent]) => {
       applyTheme(settings.general.theme)
       dispatch({ type: 'ready', info, settings, recent })
-      void api.takePendingOpenFile().then((path) => {
-        if (path !== null) openPath(path)
+      void api.takeStartupFiles().then(({ files, active, missing }) => {
+        const ids = files.map((path) => openPath(path))
+        const activeId = active === null ? undefined : ids[files.indexOf(active)]
+        if (activeId !== undefined) dispatch({ type: 'activateDoc', id: activeId })
+        if (missing.length > 0) toast(t.windows.missing(missing.map(basenameOf).join(', ')))
       })
     })
     const unsubscribeOpen = api.onOpenFile(openPath)
@@ -899,13 +906,25 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       unsubscribeOpen()
       unsubscribeProgress()
     }
-  }, [api, openPath])
+  }, [api, openPath, toast])
 
   // main спрашивает подтверждение при закрытии окна, если есть несохранённые документы.
   const dirtyCount = state.docs.filter((d) => d.dirty).length
   useEffect(() => {
     api.setDirtyCount(dirtyCount).catch(() => undefined)
   }, [api, dirtyCount])
+
+  // main запоминает вкладки окна для сеанса и для выбора окна под файл из Проводника.
+  const tabPaths = state.docs
+    .filter((d) => d.status !== 'error')
+    .map((d) => d.path)
+    .join('\n')
+  const activePath = activeDoc(state)?.path ?? null
+  useEffect(() => {
+    api
+      .setWindowTabs({ paths: tabPaths === '' ? [] : tabPaths.split('\n'), active: activePath })
+      .catch(() => undefined)
+  }, [api, tabPaths, activePath])
 
   const updateSettings = useCallback(
     async (patch: SettingsPatch) => {
@@ -1237,6 +1256,21 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     }
 
     return {
+      // Окна и сессия
+      openInNewWindow: (id, saveFirst = false) => {
+        void (async () => {
+          const tab = stateRef.current.docs.find((d) => d.id === id)
+          if (!tab || tab.status === 'error') return
+          // Новое окно читает документ с диска: несохранённые правки туда не попадут.
+          if (tab.dirty && !(saveFirst && (await writeTab(tab, tab.path)))) return
+          try {
+            await api.openInNewWindow(tab.path)
+            dispatch({ type: 'closeDoc', id })
+          } catch (error) {
+            toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        })()
+      },
       go: (screen) => {
         dispatch({ type: 'screen', screen })
       },
@@ -1834,7 +1868,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     save,
     saveAs,
     toast,
-    updateSettings
+    updateSettings,
+    writeTab
   ])
 
   // Сравнение: вторая версия освобождается, когда пользователь ушёл с экрана

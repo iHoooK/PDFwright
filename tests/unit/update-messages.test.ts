@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeUpdateError, formatBytes } from '@shared/update-messages'
+import { describeUpdateError, formatBytes, UPDATE_DIRTY_ERROR } from '@shared/update-messages'
 
 describe('describeUpdateError', () => {
   it('распознаёт сетевые ошибки, отсутствие релиза и лимиты', () => {
@@ -21,6 +21,15 @@ describe('describeUpdateError', () => {
     expect(describeUpdateError(new Error('x'.repeat(300)))).toHaveLength(
       'Обновление не выполнено: '.length + 161
     )
+  })
+})
+
+describe('UPDATE_DIRTY_ERROR', () => {
+  it('ошибку main о несохранённых документах в других окнах объясняет по-человечески', () => {
+    const error = new Error(
+      `Error invoking remote method 'update:install': Error: ${UPDATE_DIRTY_ERROR}`
+    )
+    expect(describeUpdateError(error)).toMatch(/во всех окнах/)
   })
 })
 

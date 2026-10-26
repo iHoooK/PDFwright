@@ -1,4 +1,6 @@
 /// <reference lib="dom" />
+import { spawn } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -153,4 +155,93 @@ export function subtypes(doc: PDFDocument, index: number): string[] {
 
 export function tool(page: Page, name: string): ReturnType<Page['getByRole']> {
   return page.getByRole('toolbar', { name: 'Команды' }).getByRole('button', { name, exact: true })
+}
+
+/** Окружение запуска: данные программы во временной папке теста, собранный renderer. */
+function appEnv(): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value
+  }
+  return { ...env, PDFWRIGHT_USER_DATA: join(ctx.work, 'userData'), ELECTRON_RENDERER_URL: '' }
+}
+
+function requireApp(): ElectronApplication {
+  if (!ctx.app) throw new Error('программа не запущена')
+  return ctx.app
+}
+
+/** Ждёт интерфейс окна: строку вкладок документов. */
+export async function waitForShell(page: Page): Promise<Page> {
+  await page.getByRole('tablist', { name: 'Документы' }).waitFor({ timeout: 60_000 })
+  return page
+}
+
+/** Запуск без файла в аргументах: так восстанавливаются окна и вкладки прошлого сеанса. */
+export async function launchWithoutFile(): Promise<Page> {
+  ctx.app = await electron.launch({ cwd: ROOT, args: ['.'], env: appEnv() })
+  return waitForShell(await ctx.app.firstWindow())
+}
+
+/**
+ * Повторный запуск программы с файлом, как двойной щелчок в Проводнике при
+ * открытой программе: второй экземпляр передаёт файл первому и завершается.
+ */
+export async function launchSecondInstance(pdfPath: string): Promise<void> {
+  const electronPath = createRequire(import.meta.url)('electron') as string
+  const child = spawn(electronPath, ['.', pdfPath], { cwd: ROOT, env: appEnv(), stdio: 'ignore' })
+  const code = await new Promise<number | null>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      child.kill()
+      reject(new Error('второй экземпляр не завершился'))
+    }, 30_000)
+    child.once('exit', (exitCode) => {
+      clearTimeout(timer)
+      resolve(exitCode)
+    })
+  })
+  if (code !== 0) throw new Error(`второй экземпляр завершился с кодом ${String(code)}`)
+}
+
+/** Выход как «Файл → Выход»: окна закрываются по-настоящему, сеанс записывается. */
+export async function quitApp(): Promise<void> {
+  const app = requireApp()
+  const child = app.process()
+  const exited = new Promise((r) => child.once('exit', r))
+  await app
+    .evaluate(({ app: electronApp }) => {
+      setTimeout(() => {
+        electronApp.quit()
+      }, 0)
+    })
+    .catch(() => undefined)
+  await Promise.race([exited, new Promise((r) => setTimeout(r, 15_000))])
+  if (child.exitCode === null && child.signalCode === null) {
+    throw new Error('программа не завершилась после команды выхода')
+  }
+  ctx.app = null
+}
+
+/** Нажимает пункт меню приложения по id: нативное меню Playwright не видит. */
+export async function clickMenuItem(id: string): Promise<void> {
+  await requireApp().evaluate(({ Menu }, itemId) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById(itemId)
+    if (!item) throw new Error(`нет пункта меню ${itemId}`)
+    // Тип click в Electron — общий Function; обработчики PDFwright аргументов не читают.
+    ;(item.click as () => void)()
+  }, id)
+}
+
+/** Выполняет действие и ждёт открытое им новое окно с готовым интерфейсом. */
+export async function waitForNewWindow(action: () => Promise<unknown>): Promise<Page> {
+  const [page] = await Promise.all([requireApp().waitForEvent('window'), action()])
+  return waitForShell(page)
+}
+
+/** Имена файлов во вкладках документов окна, по порядку. */
+export async function tabNames(page: Page): Promise<string[]> {
+  return page
+    .getByRole('tablist', { name: 'Документы' })
+    .locator('[role="tab"][title]')
+    .evaluateAll((tabs) => tabs.map((tab) => tab.getAttribute('title')?.split(/[\\/]/).pop() ?? ''))
 }

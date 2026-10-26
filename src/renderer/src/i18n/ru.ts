@@ -91,6 +91,18 @@ export const ru = {
     fitPage: 'Страница целиком',
     zoomActual: 'Масштаб 100%'
   },
+  windows: {
+    newWindow: 'Новое окно',
+    tabMenu: (name: string) => `Действия с вкладкой «${name}»`,
+    openInNewWindow: 'Открыть в новом окне',
+    closeTab: 'Закрыть вкладку',
+    saveFirstTitle: 'Сначала сохранить документ',
+    saveFirstText: (name: string) =>
+      `В «${name}» есть несохранённые изменения. В новом окне документ откроется с диска, поэтому сначала его нужно сохранить.`,
+    saveAndOpen: 'Сохранить и открыть',
+    cancel: 'Отмена',
+    missing: (names: string) => `Файлы прошлого сеанса не найдены: ${names}`
+  },
   sidebar: {
     thumbs: 'Страницы',
     outline: 'Закладки',
@@ -390,7 +402,10 @@ export const ru = {
       'На\u00a0YouTube показываю, как эти программы рождаются: от\u00a0идеи до\u00a0релиза. Вопросы и\u00a0пожелания — в\u00a0Telegram. Если PDFwright пригодился, поддержать разработку можно через DonationAlerts или Boosty.',
     on: 'Вкл.',
     off: 'Выкл.',
-    hotkeys: 'Горячие клавиши'
+    hotkeys: 'Горячие клавиши',
+    restoreSession: 'Открывать вкладки прошлого сеанса',
+    restoreSessionHint:
+      'При запуске без файла открываются те же окна и документы, что были при выходе'
   },
   password: {
     title: 'Документ защищён паролем',

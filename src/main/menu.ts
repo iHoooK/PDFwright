@@ -6,7 +6,12 @@ import { APP_COMMAND_CHANNEL, type AppCommand } from '@shared/ipc-contract'
  * ускорители и открывается по Alt. Каждый пункт шлёт команду в renderer,
  * где она обрабатывается тем же кодом, что и горячие клавиши интерфейса.
  */
-export function installApplicationMenu(): void {
+export interface MenuHandlers {
+  /** «Файл → Новое окно»: окно создаёт main, renderer в этом не участвует. */
+  newWindow: () => void
+}
+
+export function installApplicationMenu({ newWindow }: MenuHandlers): void {
   const send = (command: AppCommand) => (): void => {
     const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
     window?.webContents.send(APP_COMMAND_CHANNEL, command)
@@ -25,6 +30,7 @@ export function installApplicationMenu(): void {
     {
       label: 'Файл',
       submenu: [
+        { id: 'window.new', label: 'Новое окно', accelerator: 'CmdOrCtrl+N', click: newWindow },
         item('Открыть…', 'file.open', 'CmdOrCtrl+O'),
         item('Сохранить', 'file.save', 'CmdOrCtrl+S'),
         item('Сохранить как…', 'file.saveAs', 'CmdOrCtrl+Shift+S'),

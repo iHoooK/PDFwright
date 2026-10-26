@@ -173,6 +173,20 @@ export function SettingsScreen(): React.JSX.Element {
                 }}
               />
             </SettingCard>
+            <SettingCard
+              icon={<IconDocument />}
+              title={t.settings.restoreSession}
+              hint={t.settings.restoreSessionHint}
+            >
+              <Toggle
+                checked={settings.session.restore}
+                onLabel={t.settings.on}
+                offLabel={t.settings.off}
+                onChange={(restore) => {
+                  void actions.updateSettings({ session: { restore } })
+                }}
+              />
+            </SettingCard>
             <SettingCard icon={<IconKeyboard />} title={t.settings.hotkeys} column>
               <dl className={s.hotkeys}>
                 {HOTKEYS.map((h) => (
