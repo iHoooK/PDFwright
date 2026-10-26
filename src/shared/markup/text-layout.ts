@@ -1,4 +1,10 @@
-import { boxContentSize, resizeBoxKeepingOrigin } from './geometry'
+import {
+  apply,
+  boxContentMatrix,
+  boxContentSize,
+  resizeBoxKeepingOrigin,
+  type PageBox
+} from './geometry'
 import type { TextObject } from './model'
 
 /**
@@ -153,9 +159,40 @@ export function layoutTextObject(o: TextObject, measure: MeasureText): TextLayou
  * заданной ширины ширина остаётся, а высота — не меньше высоты текста
  * (пустое место, оставленное пользователем, сохраняется).
  */
-export function fitTextBox(o: TextObject, measure: MeasureText): TextObject {
+export function fitTextBox(o: TextObject, measure: MeasureText, page?: PageBox): TextObject {
   const layout = layoutTextObject(o, measure)
   const content = boxContentSize(o.rect, o.rotate)
+  if (o.fixedWidth !== true && page) {
+    // Блок, растущий по тексту, не выходит за край страницы: там он получает
+    // заданную ширину и дальше переносит строки.
+    const available = roomToPageEdge(o, page)
+    if (layout.width > available && available >= o.fontSize * 3) {
+      return fitTextBox(
+        {
+          ...o,
+          fixedWidth: true,
+          rect: resizeBoxKeepingOrigin(o.rect, o.rotate, available, content.height)
+        },
+        measure
+      )
+    }
+  }
   const height = o.fixedWidth === true ? Math.max(content.height, layout.height) : layout.height
   return { ...o, rect: resizeBoxKeepingOrigin(o.rect, o.rotate, layout.width, height) }
+}
+
+/** Сколько места от начала текста блока до края страницы вдоль строки, пт. */
+function roomToPageEdge(o: TextObject, page: PageBox): number {
+  const origin = apply(boxContentMatrix(o.rect, o.rotate), { x: 0, y: 0 })
+  const [x0, y0, x1, y1] = page
+  switch (o.rotate) {
+    case 90:
+      return y1 - origin.y
+    case 180:
+      return origin.x - x0
+    case 270:
+      return origin.y - y0
+    default:
+      return x1 - origin.x
+  }
 }

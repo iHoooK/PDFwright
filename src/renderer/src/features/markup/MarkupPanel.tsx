@@ -144,7 +144,8 @@ function StyleFields({ idPrefix, colors, value, onChange }: StyleFieldsProps): R
 }
 
 function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
-  const { actions } = useStore()
+  const { state, actions } = useStore()
+  const pageBox = activeDoc(state)?.doc?.geometryOf(object.page).box
   const colors = paletteOf(object.kind)
   const hasWidth =
     object.kind === 'ink' ||
@@ -160,7 +161,7 @@ function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
       next = { ...next, width: patch.width }
     if (patch.fontSize !== undefined && next.kind === 'text') {
       // Кегль меняется только здесь; рамка заданной ширины остаётся, текст переносится в ней.
-      next = fitTextBox({ ...next, fontSize: patch.fontSize }, measureText)
+      next = fitTextBox({ ...next, fontSize: patch.fontSize }, measureText, pageBox)
     }
     actions.updateMarkup(next, key)
   }
@@ -191,7 +192,7 @@ function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
             rows={Math.min(6, Math.max(2, object.text.split('\n').length))}
             onChange={(event) => {
               actions.updateMarkup(
-                fitTextBox({ ...object, text: event.target.value }, measureText),
+                fitTextBox({ ...object, text: event.target.value }, measureText, pageBox),
                 'text'
               )
             }}

@@ -323,3 +323,18 @@ export function boxRectCentered(
   const h = sideways ? width : height
   return { x: center.x - w / 2, y: center.y - h / 2, width: w, height: h }
 }
+
+/**
+ * Сдвиг, который возвращает рамку внутрь страницы: объект не должен уходить
+ * за край, где его не видно и не схватить. Рамка больше страницы
+ * выравнивается по левому нижнему краю.
+ */
+export function shiftInside(rect: Rect, box: PageBox): Point {
+  const [x0, y0, x1, y1] = box
+  const fit = (lo: number, size: number, min: number, max: number): number => {
+    if (size >= max - min || lo < min) return min - lo
+    if (lo + size > max) return max - (lo + size)
+    return 0
+  }
+  return { x: fit(rect.x, rect.width, x0, x1), y: fit(rect.y, rect.height, y0, y1) }
+}

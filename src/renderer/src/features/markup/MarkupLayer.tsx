@@ -4,16 +4,20 @@ import {
   invert,
   normalizeTurn,
   rectFromPoints,
+  shiftInside,
   simplifyPath,
   transformRect,
+  unionRects,
   viewMatrix,
   viewSize,
+  type PageBox,
   type PageGeometry,
   type Point,
   type Rect
 } from '@shared/markup/geometry'
 import {
   geometryBounds,
+  hitTest,
   isBoxObject,
   isMovable,
   isResizable,
@@ -103,8 +107,8 @@ interface Moving {
 }
 
 /** Текст нового содержания: рамка подгоняется от начала текста (см. fitTextBox). */
-function withText(o: TextObject, text: string): TextObject {
-  return fitTextBox({ ...o, text }, measureText)
+function withText(o: TextObject, text: string, page: PageBox): TextObject {
+  return fitTextBox({ ...o, text }, measureText, page)
 }
 
 function containsRect(outer: Rect, inner: Rect): boolean {
@@ -377,13 +381,22 @@ export const MarkupLayer = memo(function MarkupLayer({
             if (group.length > 1) actions.select(target)
             return
           }
+          // Объекты разметки группы не уходят за край страницы: сдвиг ограничивается.
+          const base = delta
+          const members = objects.filter((o) => markupIds.has(o.id))
+          let shift = base
+          if (members.length > 0) {
+            const moved = members.map((o) => visualBounds(moveObject(o, base.x, base.y)))
+            const fix = shiftInside(unionRects(moved), geometry.box)
+            shift = { x: base.x + fix.x, y: base.y + fix.y }
+          }
           const single = group.length === 1 ? objects.find((o) => o.id === target.id) : undefined
-          if (single) actions.updateMarkup(moveObject(single, delta.x, delta.y))
-          else actions.moveSelected(delta.x, delta.y)
+          if (single) actions.updateMarkup(moveObject(single, shift.x, shift.y))
+          else actions.moveSelected(shift.x, shift.y)
         }
       )
     },
-    [actions, gesture, objects, pageNumber, pagePoint, scale]
+    [actions, gesture, geometry.box, objects, pageNumber, pagePoint, scale]
   )
 
   /** Shift и протяжка по пустому месту: всё, что целиком внутри рамки (с Ctrl — добавить). */
@@ -577,6 +590,12 @@ export const MarkupLayer = memo(function MarkupLayer({
       }
       // Редактор на другой странице закрывается по потере фокуса.
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      // Щелчок по уже поставленному блоку того же вида открывает его правку, а не новый поверх.
+      const existing = hitTest(objects, pageNumber, start, HIT_TOLERANCE / scale)
+      if (existing?.kind === tool) {
+        setEditing({ object: existing, isNew: false })
+        return
+      }
       const object: TextObject | NoteObject =
         tool === 'note'
           ? { ...base, id: newMarkupId(), kind: 'note', rect: noteRectAt(start), text: '' }
@@ -591,7 +610,8 @@ export const MarkupLayer = memo(function MarkupLayer({
                 text: '',
                 fontSize: style.fontSize
               },
-              ''
+              '',
+              geometry.box
             )
       setEditing({ object, isNew: true })
     } else if (tool === 'sign') {
@@ -620,7 +640,11 @@ export const MarkupLayer = memo(function MarkupLayer({
       },
       () => {
         setPreview(null)
-        if (result) actions.updateMarkup(result)
+        const resized: MarkupObject | null = result
+        if (!resized) return
+        // Растянутый за край объект возвращается на страницу целиком.
+        const fix = shiftInside(visualBounds(resized), geometry.box)
+        actions.updateMarkup(moveObject(resized, fix.x, fix.y))
       }
     )
   }
@@ -874,7 +898,7 @@ export const MarkupLayer = memo(function MarkupLayer({
           onChange={(text) => {
             setEditing((current) =>
               current?.object.kind === 'text'
-                ? { ...current, object: withText(current.object, text) }
+                ? { ...current, object: withText(current.object, text, geometry.box) }
                 : current
             )
           }}

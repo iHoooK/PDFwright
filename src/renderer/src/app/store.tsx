@@ -50,7 +50,13 @@ import {
 } from '@shared/pdf-ops'
 import { findMatches, type TextMatch } from '@shared/pdf-search'
 import { pushSnapshot, type Snapshot } from '@shared/markup/history'
-import { boxRectCentered, normalizeTurn, type Point } from '@shared/markup/geometry'
+import {
+  boxRectCentered,
+  normalizeTurn,
+  shiftInside,
+  type Point,
+  type Rect
+} from '@shared/markup/geometry'
 import {
   isMovable,
   moveObject,
@@ -1506,13 +1512,18 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       const width = Math.min(maxWidth, pageWidth / 2, natural.width)
       const height = (width * natural.height) / natural.width
       const at = center ?? { x: (box[0] + box[2]) / 2, y: (box[1] + box[3]) / 2 }
+      // Подпись, поставленная щелчком у края, целиком остаётся на странице.
+      const inside = (rect: Rect): Rect => {
+        const fix = shiftInside(rect, box)
+        return { ...rect, x: rect.x + fix.x, y: rect.y + fix.y }
+      }
       addMarkup({
         id: newMarkupId(),
         page,
         kind: 'image',
         color: '#000000',
         opacity: 1,
-        rect: boxRectCentered(at, width, height, rotate),
+        rect: inside(boxRectCentered(at, width, height, rotate)),
         rotate,
         src,
         signature

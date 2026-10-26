@@ -3,7 +3,8 @@
   background: var(--paper);
   box-shadow: var(--page-shadow);
   border-radius: 2px;
-  overflow: hidden;
+  /* clip, а не hidden: фокус в поле у края страницы не должен прокручивать её содержимое. */
+  overflow: clip;
   flex: none;
   contain: strict;
 }
@@ -56,7 +57,7 @@
   border: 2px solid transparent;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 .thumb[aria-current='true'] .thumbFrame,
 .thumb[aria-selected='true'] .thumbFrame {

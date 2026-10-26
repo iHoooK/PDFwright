@@ -414,7 +414,9 @@ export async function applyMarkup(
         Resources: ap.resources as never
       })
       const formRef = doc.context.register(form)
-      if (options.mode === 'annotation') {
+      // Заметка — комментарий, а не рисунок: она всегда остаётся аннотацией, иначе её
+      // текст пропал бы при вплавлении (на странице остался бы только значок).
+      if (options.mode === 'annotation' || o.kind === 'note') {
         const dict = annotationDict(page, o, formRef, ap.bbox)
         const annotRef = doc.context.nextRef()
         // Окно заметки ссылается на неё (/Parent), а она на окно (/Popup).

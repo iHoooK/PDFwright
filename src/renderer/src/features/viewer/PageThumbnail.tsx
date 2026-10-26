@@ -75,6 +75,10 @@ export const PageThumbnail = memo(function PageThumbnail({
           viewport,
           Math.min(2, window.devicePixelRatio || 1)
         )
+        // Холст заполняет рамку миниатюры (её ширину задаёт раскладка), а не свои 160 px:
+        // иначе картинка обрезается, а слой разметки поверх не совпадает с ней.
+        canvas.style.width = '100%'
+        canvas.style.height = 'auto'
         refs.cancel = handle.cancel
         return handle.done
       })
