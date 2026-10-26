@@ -884,17 +884,100 @@ function rangeAlong(rect: PdfSpaceRect, v: PdfSpacePoint): [number, number] {
   return extentAlong(rect, v)
 }
 
+/** Объект страницы для сдвига: рамка в пространстве PDF и протяжённость вдоль письма и поперёк. */
+interface ShiftItem {
+  kind: 'text' | 'image' | 'graphic'
+  /** Вдоль письма. */
+  a: number
+  b: number
+  /** Поперёк письма: lo — ниже (дальше по ходу страницы), hi — выше. */
+  lo: number
+  hi: number
+  /** Базовая линия строки поперёк письма. */
+  baseline: number
+  image: RawImage | null
+}
+
+function overlapsAlong(x: { a: number; b: number }, y: { a: number; b: number }): boolean {
+  return Math.min(x.b, y.b) - Math.max(x.a, y.a) > 0.5
+}
+
+/** Копия содержимого страницы только из области region: всё за её пределами вырезано. */
+function regionCopy(ctx: PageContext, region: PdfSpaceRect): PDFObject {
+  const { doc, mupdf } = ctx
+  const temp = doc.newDictionary()
+  temp.put('Type', doc.newName('Page'))
+  for (const key of ['MediaBox', 'CropBox', 'Rotate']) {
+    const value = ctx.pageObj.getInheritable(key)
+    if (!value.isNull()) temp.put(key, value)
+  }
+  temp.put('Resources', copyDictionary(doc, ctx.pageObj.getInheritable('Resources')))
+  temp.put('Contents', doc.addStream(readContent(ctx.pageObj), {}))
+  const at = doc.countPages()
+  doc.insertPage(at, doc.addObject(temp))
+  const page = doc.loadPage(at)
+  try {
+    const bounds = boxToRect(transformBox(ctx.toPdf, page.getBounds()))
+    const x0 = bounds.x - 10
+    const y0 = bounds.y - 10
+    const x1 = bounds.x + bounds.width + 10
+    const y1 = bounds.y + bounds.height + 10
+    const rx1 = region.x + region.width
+    const ry1 = region.y + region.height
+    const outside: BoxRect[] = [
+      [x0, y0, x1, region.y],
+      [x0, ry1, x1, y1],
+      [x0, region.y, region.x, ry1],
+      [rx1, region.y, x1, ry1]
+    ]
+    for (const box of outside) {
+      if (box[2] - box[0] > 0 && box[3] - box[1] > 0) {
+        page.createAnnotation('Redact').setRect(transformBox(ctx.toMu, box))
+      }
+    }
+    // Всё, что задевает область снаружи, в копию не попадает: оно остаётся на месте.
+    page.applyRedactions(
+      false,
+      mupdf.PDFPage.REDACT_IMAGE_REMOVE,
+      mupdf.PDFPage.REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+      mupdf.PDFPage.REDACT_TEXT_REMOVE
+    )
+    const pageObj = page.getObject()
+    const form = doc.newDictionary()
+    form.put('Type', doc.newName('XObject'))
+    form.put('Subtype', doc.newName('Form'))
+    const bbox = doc.newArray()
+    for (const v of [region.x, region.y, rx1, ry1]) bbox.push(doc.newReal(v))
+    form.put('BBox', bbox)
+    const resources = pageObj.get('Resources')
+    if (!resources.isNull()) {
+      form.put('Resources', resources.isIndirect() ? resources : doc.addObject(resources))
+    }
+    return doc.addStream(readContent(pageObj), form)
+  } finally {
+    page.destroy()
+    doc.deletePage(at)
+  }
+}
+
 /**
- * 14.1 Сдвигает содержимое ниже абзаца на delta (пт, вниз — положительное):
- * область страницы под абзацем (вся ширина или колонка, без нижнего поля)
- * копируется в Form XObject и рисуется со смещением, а на странице вырезается.
- * Так текст, картинки и линии сдвигаются точно, со своими шрифтами и
- * кернингом, и остаются настоящим содержимым. Граница области обходит строки,
- * чтобы не разрезать буквы. Возвращает операторы отрисовки сдвинутой копии.
+ * 14.1 Сдвигает содержимое ниже абзаца на delta (пт, вниз — положительное).
+ * Область под абзацем (вся ширина или колонка) переносится Form XObject: в
+ * него попадает только содержимое самой области, а на странице оно
+ * вырезается, поэтому текст, картинки и линии сдвигаются точно, со своими
+ * шрифтами, и копий за пределами области не остаётся. Граница области обходит
+ * строки, чтобы не разрезать буквы. В области «только колонку» сдвиг
+ * останавливается на объекте шире колонки (общая линия, заголовок на всю
+ * ширину) — он остаётся на месте. Нижний колонтитул и поле страницы не
+ * двигаются: если вниз места не хватает, бросается ошибка. Вверх содержимое
+ * поднимается не ближе, чем на полстроки к неподвижному содержимому над ним.
+ * Фон и объекты выше половины страницы, задевающие область, не двигаются.
+ * Возвращает операторы отрисовки сдвинутой копии.
  */
 function shiftBelow(
   ctx: PageContext,
   lines: readonly RawLine[],
+  images: readonly RawImage[],
   skip: ReadonlySet<number>,
   layout: BlockLayout,
   delta: number,
@@ -906,37 +989,132 @@ function shiftBelow(
   if (Math.abs(d.x * d.y) > 1e-6) return ''
   const page = boxToRect(transformBox(ctx.toPdf, ctx.page.getBounds()))
   const [pageLo, pageHi] = rangeAlong(page, n)
-  const footer = pageLo + 0.05 * (pageHi - pageLo)
-  let boundary = rangeAlong(layout.rect, n)[0]
-  if (boundary <= footer) return ''
   const [pageA, pageB] = rangeAlong(page, d)
-  const start = dot(layout.origin, d)
-  const along: [number, number] =
-    scope === 'page' ? [pageA, pageB] : [start - 2, start + layout.width + 2]
-  // Граница не должна резать строки соседних колонок: строку, чья базовая
-  // линия ниже границы, берём целиком, остальную оставляем на месте.
+  const height = pageHi - pageLo
+  const itemOf = (kind: ShiftItem['kind'], box: BoxRect, image: RawImage | null = null) => {
+    const rect = boxToRect(transformBox(ctx.toPdf, box))
+    const [a, b] = rangeAlong(rect, d)
+    const [lo, hi] = rangeAlong(rect, n)
+    return { kind, a, b, lo, hi, baseline: lo, image }
+  }
+  const items: ShiftItem[] = [
+    ...lines.flatMap((raw, i) =>
+      skip.has(i) || !hasText(raw)
+        ? []
+        : [{ ...itemOf('text', raw.box), baseline: dot(lineOrigin(ctx, raw).origin, n) }]
+    ),
+    ...images.map((image) => itemOf('image', image.box, image)),
+    ...listGraphics(ctx.mupdf, ctx.page, ctx.toPdf).map((g) => itemOf('graphic', g.box))
+  ]
+  // Фон и боковые полосы выше половины страницы не двигаются и не мешают.
+  const tall = (s: ShiftItem): boolean => s.hi - s.lo > 0.5 * height
+  const [paraA, paraB] = rangeAlong(layout.rect, d)
+  const [paraLo, paraHi] = rangeAlong(layout.rect, n)
+  const band =
+    scope === 'page' ? { a: pageA - 1, b: pageB + 1 } : { a: paraA - 0.5, b: paraB + 0.5 }
+  const keep = 0.5 * layout.lineHeight
+  /** Хватает ли места вниз абзацу и сдвигаемому (group) при росте на delta. */
+  const checkRoom = (group: readonly ShiftItem[]): void => {
+    // Абзац тоже растёт вниз на delta: он проверяется вместе со сдвигаемым.
+    const paragraph: ShiftItem = {
+      kind: 'text',
+      a: paraA,
+      b: paraB,
+      lo: paraLo,
+      hi: paraHi,
+      baseline: paraLo,
+      image: null
+    }
+    const margin = pageLo + 0.04 * height
+    for (const s of [paragraph, ...group]) {
+      let limit = margin
+      for (const o of items) {
+        if (group.includes(o) || tall(o) || o.hi > s.lo + 0.5 || !overlapsAlong(s, o)) continue
+        limit = Math.max(limit, o.hi + Math.min(keep / 2, Math.max(0, s.lo - o.hi)))
+      }
+      if (s.lo - delta < limit - 0.5) {
+        throw new PdfContentError(
+          m({
+            ru: 'Абзац не помещается: ниже на странице не хватает места. Сократите текст, уменьшите кегль или выберите «Не сдвигать».',
+            en: 'The paragraph does not fit: there is not enough room below it on the page. Shorten the text, reduce the font size or choose “Don’t move”.'
+          })
+        )
+      }
+    }
+  }
+
+  let top = paraLo
+  // Колонтитул: объекты у нижнего края страницы остаются на месте.
+  let bottom = pageLo - 1
+  for (const s of items) {
+    if (!tall(s) && overlapsAlong(s, band) && s.hi <= pageLo + 0.07 * height) {
+      bottom = Math.max(bottom, s.hi + 0.1)
+    }
+  }
+  if (scope === 'column') {
+    // Немного выступающее за колонку (строка длиннее прочих) колонку расширяет,
+    // а объект на всю ширину останавливает сдвиг.
+    const reach = Math.max(24, 0.08 * (pageB - pageA))
+    for (let pass = 0; pass < 3; pass += 1) {
+      for (const s of items) {
+        if (tall(s) || s.lo >= top || !overlapsAlong(s, band)) continue
+        if (s.a >= band.a && s.b <= band.b) continue
+        if (Math.max(band.a - s.a, s.b - band.b) <= reach) {
+          band.a = Math.min(band.a, s.a - 0.5)
+          band.b = Math.max(band.b, s.b + 0.5)
+        } else if (s.hi <= top + 0.5) {
+          bottom = Math.max(bottom, s.hi + 0.1)
+        } else if (s.kind === 'text') {
+          top = Math.min(top, s.lo - 0.1)
+        }
+      }
+    }
+  }
+  // Граница не режет строки: строку, чья базовая линия ниже верхней границы,
+  // берём целиком, остальную оставляем; строка на нижней границе остаётся.
   for (let pass = 0; pass < 5; pass += 1) {
     let moved = false
-    for (const [i, raw] of lines.entries()) {
-      if (skip.has(i) || !hasText(raw)) continue
-      const rect = boxToRect(transformBox(ctx.toPdf, raw.box))
-      const [a, b] = rangeAlong(rect, d)
-      if (b < along[0] || a > along[1]) continue
-      const [lo, hi] = rangeAlong(rect, n)
-      if (!(lo < boundary && boundary < hi)) continue
-      const baseline = dot(lineOrigin(ctx, raw).origin, n)
-      boundary = baseline < boundary ? hi + 0.1 : lo - 0.1
-      moved = true
+    for (const s of items) {
+      if (s.kind !== 'text' || !overlapsAlong(s, band)) continue
+      if (s.lo < top && top < s.hi) {
+        top = s.baseline < top ? s.hi + 0.1 : s.lo - 0.1
+        moved = true
+      }
+      if (s.lo < bottom && bottom < s.hi) {
+        bottom = s.hi + 0.1
+        moved = true
+      }
     }
     if (!moved) break
   }
-  if (boundary <= footer) return ''
-  // Область в пространстве PDF: вдоль письма — along, поперёк — [footer, boundary].
+  if (top <= bottom) {
+    if (delta > 0) checkRoom([])
+    return ''
+  }
+  const inside = (s: ShiftItem): boolean =>
+    s.a >= band.a && s.b <= band.b && s.lo >= bottom && s.hi <= top
+  const moving = items.filter(inside)
+  const still = items.filter((s) => !inside(s) && !tall(s))
+  let shift = delta
+  if (delta > 0) {
+    checkRoom(moving)
+  } else {
+    // Вверх — не ближе полстроки к неподвижному содержимому выше.
+    for (const s of moving) {
+      for (const o of still) {
+        if (o.lo < s.hi - 0.5 || !overlapsAlong(s, o)) continue
+        shift = Math.max(shift, -Math.max(0, o.lo - s.hi - keep))
+      }
+    }
+  }
+  if (moving.length === 0 || Math.abs(shift) < 0.5) return ''
+
+  // Область в пространстве PDF: вдоль письма — band, поперёк — [bottom, top].
   const corners = [
-    [along[0], footer],
-    [along[1], footer],
-    [along[0], boundary],
-    [along[1], boundary]
+    [band.a, bottom],
+    [band.b, bottom],
+    [band.a, top],
+    [band.b, top]
   ].map(([u = 0, v = 0]) => ({ x: d.x * u + n.x * v, y: d.y * u + n.y * v }))
   const x0 = Math.min(...corners.map((c) => c.x))
   const y0 = Math.min(...corners.map((c) => c.y))
@@ -946,29 +1124,31 @@ function shiftBelow(
     width: Math.max(...corners.map((c) => c.x)) - x0,
     height: Math.max(...corners.map((c) => c.y)) - y0
   }
-  // Копия содержимого и ресурсов страницы до вырезания.
+  const ref = regionCopy(ctx, region)
+  // На странице: картинки области убираются точно (вызов «/Имя Do»), чтобы не
+  // стереть пиксели фона под ними; текст и контуры вырезаются redaction.
   const content = readContent(ctx.pageObj)
-  const resources = ctx.pageObj.getInheritable('Resources')
-  const form = ctx.doc.newDictionary()
-  form.put('Type', ctx.doc.newName('XObject'))
-  form.put('Subtype', ctx.doc.newName('Form'))
-  const bbox = ctx.doc.newArray()
-  for (const v of [page.x, page.y, page.x + page.width, page.y + page.height]) {
-    bbox.push(ctx.doc.newReal(v))
+  const calls: XObjectCall[] = []
+  const rest: BoxRect[] = []
+  for (const s of moving) {
+    if (!s.image) continue
+    const userCtm = concat(concat(IMAGE_FLIP, s.image.transform), ctx.toPdf)
+    const located = locateImageCall(ctx, userCtm, s.image, content)
+    if (located && !calls.some((c) => c.start === located.call.start)) calls.push(located.call)
+    else if (!located) rest.push(s.image.box)
   }
-  form.put('BBox', bbox)
-  if (!resources.isNull()) form.put('Resources', resources)
-  const ref = ctx.doc.addStream(content, form)
+  if (calls.length > 0)
+    ctx.pageObj.put('Contents', ctx.doc.addStream(blankRanges(content, calls), {}))
+  if (rest.length > 0) redact(ctx, rest, { text: false, image: 'pixels', lineArt: 'none' })
   redact(ctx, [transformBox(ctx.toMu, rectToBox(region))], {
     text: true,
-    image: 'pixels',
+    image: 'none',
     lineArt: 'covered'
   })
   const name = addResource(ctx, 'XObject', 'PWFm', ref)
-  const tx = -n.x * delta
-  const ty = -n.y * delta
-  const clip = [region.x, region.y, region.width, region.height].map(pdfNumber).join(' ')
-  return `q 1 0 0 1 ${pdfNumber(tx)} ${pdfNumber(ty)} cm ${clip} re W n /${name} Do Q`
+  const tx = -n.x * shift
+  const ty = -n.y * shift
+  return `q 1 0 0 1 ${pdfNumber(tx)} ${pdfNumber(ty)} cm /${name} Do Q`
 }
 
 /** Удаляет строку текста целиком (вырезает из файла). */
@@ -1049,7 +1229,7 @@ export async function replaceBlock(
     )
   }
   return modifyPage(bytes, pageIndex, (ctx) => {
-    withExtracted(ctx.page, ({ lines }) => {
+    withExtracted(ctx.page, ({ lines, images }) => {
       const targets = block.lines.map((ref) => findLine(lines, ref, ctx.toPdf))
       const members = targets.flatMap((t) => {
         const raw = lines[t]
@@ -1129,7 +1309,7 @@ export async function replaceBlock(
         const delta = rows.length * lineHeight - oldRows * layout.lineHeight
         const scope = options.shift ?? 'page'
         if (scope !== 'none' && options.origin === undefined && Math.abs(delta) > 0.5) {
-          ops.push(shiftBelow(ctx, lines, new Set(targets), layout, delta, scope))
+          ops.push(shiftBelow(ctx, lines, images, new Set(targets), layout, delta, scope))
         }
         if (rows.length > 0) {
           ops.push(
@@ -1248,8 +1428,12 @@ interface LocatedCall {
  * размер в пикселях и та же матрица. Не находит картинки внутри форм и
  * встроенные (BI … EI) — для них остаётся redaction.
  */
-function locateImageCall(ctx: PageContext, userCtm: Matrix, item: RawImage): LocatedCall | null {
-  const content = readContent(ctx.pageObj)
+function locateImageCall(
+  ctx: PageContext,
+  userCtm: Matrix,
+  item: RawImage,
+  content: Uint8Array = readContent(ctx.pageObj)
+): LocatedCall | null {
   const xobjects = ctx.pageObj.getInheritable('Resources').get('XObject')
   if (!xobjects.isDictionary()) return null
   const calls = findXObjectCalls(content)
