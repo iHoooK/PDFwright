@@ -23,12 +23,15 @@ export function distinctBytes<B, M>(history: readonly Snapshot<B, M>[]): number 
   return new Set(history.map((s) => s.bytes)).size
 }
 
-/** Добавляет снимок в конец истории и отбрасывает самые старые шаги сверх лимитов. */
-export function pushSnapshot<B, M>(
-  history: readonly Snapshot<B, M>[],
-  entry: Snapshot<B, M>,
+/**
+ * Добавляет снимок в конец истории и отбрасывает самые старые шаги сверх лимитов.
+ * Снимок может нести и другие поля вкладки (например, значения форм).
+ */
+export function pushSnapshot<S extends Snapshot<unknown, unknown>>(
+  history: readonly S[],
+  entry: S,
   limits: HistoryLimits = HISTORY_LIMITS
-): Snapshot<B, M>[] {
+): S[] {
   const next = [...history, entry]
   while (next.length > limits.steps) next.shift()
   while (next.length > 1 && distinctBytes(next) > limits.byteCopies) next.shift()

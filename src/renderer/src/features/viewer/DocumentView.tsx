@@ -9,7 +9,7 @@ import { MarkupLayer } from '@renderer/features/markup/MarkupLayer'
 import { selectedMarkupId } from '@renderer/features/markup/selection'
 import { ContentLayer } from '@renderer/features/content/ContentLayer'
 import { selectionToPageRects } from '@renderer/features/markup/text-selection'
-import { PdfPageView } from './PdfPageView'
+import { PdfPageView, type PageForms } from './PdfPageView'
 import s from './viewer.module.css'
 
 const NO_MARKUP: readonly MarkupObject[] = []
@@ -178,6 +178,17 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
   const scale = (resolvedZoom / 100) * CSS_UNITS
   const tool = state.tool
   const style = state.toolStyles[styledTool(tool)]
+  // Поля форм заполняются в «Выделении»; в других инструментах они только видны.
+  const forms = useMemo<PageForms>(
+    () => ({
+      values: tab.forms,
+      enabled: tool === 'select',
+      onChange: actions.setFormValue,
+      onUndo: actions.undo,
+      onRedo: actions.redo
+    }),
+    [tab.forms, tool, actions]
+  )
 
   // «Маркер»: отпускание кнопки после выделения текста превращает выделение в пометку.
   const onPointerUp = useCallback(() => {
@@ -225,6 +236,7 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
           rotation={rotation}
           visible={visiblePages.has(n) || scrollMode === 'single'}
           highlights={highlightsByPage.get(n) ?? none}
+          forms={forms}
           overlay={
             visiblePages.has(n) || scrollMode === 'single' ? (
               <>
