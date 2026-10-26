@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
  * скрытом окне, затем вызывается системный диалог печати. Так страницы
  * печатаются в векторе, а не как снимки canvas из нашего просмотрщика.
  */
-export async function printPdfFile(path: string): Promise<void> {
+export async function printPdfFile(path: string, failed: string): Promise<void> {
   const window = new BrowserWindow({
     show: false,
     width: 800,
@@ -20,7 +20,7 @@ export async function printPdfFile(path: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       window.webContents.print({ silent: false, printBackground: true }, (success, reason) => {
         if (success || reason === 'cancelled' || reason === 'Print job canceled') resolve()
-        else reject(new Error(reason || 'Печать не выполнена'))
+        else reject(new Error(reason || failed))
       })
     })
   } finally {

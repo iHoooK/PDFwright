@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import { degrees, PDFDocument, type PDFPage } from 'pdf-lib'
 import { load, PdfOpsError, PRODUCER, save } from './document'
 import { chunkEveryN, expandRange, parsePageRanges } from './ranges'
@@ -33,7 +34,12 @@ function indices(doc: PDFDocument, pages: readonly number[]): number[] {
   const unique = [...new Set(pages)].sort((a, b) => a - b)
   for (const p of unique) {
     if (!Number.isInteger(p) || p < 1 || p > total)
-      throw new PdfOpsError(`Страницы ${p} нет в документе (всего ${total}).`)
+      throw new PdfOpsError(
+        m({
+          ru: `Страницы ${p} нет в документе (всего ${total}).`,
+          en: `Page ${p} is not in the document (${total} in total).`
+        })
+      )
   }
   return unique.map((p) => p - 1)
 }
@@ -59,7 +65,12 @@ export async function deletePages(
   const doc = await load(bytes)
   const toRemove = indices(doc, pages)
   if (toRemove.length >= doc.getPageCount())
-    throw new PdfOpsError('Нельзя удалить все страницы: в документе должна остаться хотя бы одна.')
+    throw new PdfOpsError(
+      m({
+        ru: 'Нельзя удалить все страницы: в документе должна остаться хотя бы одна.',
+        en: 'You cannot delete all pages: at least one must remain in the document.'
+      })
+    )
   for (const index of [...toRemove].reverse()) doc.removePage(index)
   return save(doc)
 }
@@ -76,7 +87,12 @@ export async function reorderPages(
   const total = doc.getPageCount()
   const sorted = [...order].sort((a, b) => a - b)
   if (sorted.length !== total || sorted.some((p, i) => p !== i + 1)) {
-    throw new PdfOpsError('Порядок должен содержать каждую страницу ровно один раз.')
+    throw new PdfOpsError(
+      m({
+        ru: 'Порядок должен содержать каждую страницу ровно один раз.',
+        en: 'The order must contain every page exactly once.'
+      })
+    )
   }
   const pages: PDFPage[] = doc.getPages()
   for (let i = total - 1; i >= 0; i -= 1) doc.removePage(i)
@@ -147,7 +163,8 @@ export async function duplicatePages(
 }
 
 export async function mergeDocuments(documents: readonly Uint8Array[]): Promise<Uint8Array> {
-  if (documents.length === 0) throw new PdfOpsError('Добавьте хотя бы один файл.')
+  if (documents.length === 0)
+    throw new PdfOpsError(m({ ru: 'Добавьте хотя бы один файл.', en: 'Add at least one file.' }))
   const out = await PDFDocument.create()
   let first: PDFDocument | null = null
   for (const bytes of documents) {

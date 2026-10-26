@@ -1,3 +1,4 @@
+import { m } from '../messages'
 /**
  * Разбор заголовков PNG и JPEG без декодирования пикселей: тип, размер,
  * плотность (dpi) и ориентация EXIF. Плюс запись плотности в готовые файлы,
@@ -40,7 +41,9 @@ export function readImageInfo(bytes: Uint8Array): ImageInfo {
   const kind = sniffImageKind(bytes)
   if (kind === 'png') return readPngInfo(bytes)
   if (kind === 'jpeg') return readJpegInfo(bytes)
-  throw new ImageFormatError('Поддерживаются картинки PNG и JPEG.')
+  throw new ImageFormatError(
+    m({ ru: 'Поддерживаются картинки PNG и JPEG.', en: 'Only PNG and JPEG images are supported.' })
+  )
 }
 
 /** Размер картинки на экране: при ориентациях 5–8 ширина и высота меняются местами. */
@@ -56,7 +59,12 @@ export function orientedSize(info: ImageInfo): { width: number; height: number }
 function readPngInfo(bytes: Uint8Array): ImageInfo {
   const view = viewOf(bytes)
   if (bytes.length < 33 || ascii(bytes, 12, 4) !== 'IHDR') {
-    throw new ImageFormatError('Файл PNG повреждён: нет заголовка IHDR.')
+    throw new ImageFormatError(
+      m({
+        ru: 'Файл PNG повреждён: нет заголовка IHDR.',
+        en: 'The PNG file is damaged: the IHDR header is missing.'
+      })
+    )
   }
   const width = view.getUint32(16)
   const height = view.getUint32(20)
@@ -69,7 +77,8 @@ function readPngInfo(bytes: Uint8Array): ImageInfo {
     }
     if (chunk.type === 'IDAT') break
   }
-  if (width === 0 || height === 0) throw new ImageFormatError('Картинка PNG пустая.')
+  if (width === 0 || height === 0)
+    throw new ImageFormatError(m({ ru: 'Картинка PNG пустая.', en: 'The PNG image is empty.' }))
   return { kind: 'png', width, height, dpi, orientation: 1 }
 }
 
@@ -109,7 +118,13 @@ function crc32(data: Uint8Array): number {
 export function withPngDpi(bytes: Uint8Array, dpi: number): Uint8Array {
   const chunks = [...pngChunks(bytes)]
   const ihdr = chunks[0]
-  if (ihdr?.type !== 'IHDR') throw new ImageFormatError('Файл PNG повреждён: нет заголовка IHDR.')
+  if (ihdr?.type !== 'IHDR')
+    throw new ImageFormatError(
+      m({
+        ru: 'Файл PNG повреждён: нет заголовка IHDR.',
+        en: 'The PNG file is damaged: the IHDR header is missing.'
+      })
+    )
   const ppm = Math.round(dpi / 0.0254)
   const body = new Uint8Array(4 + 9)
   body.set([0x70, 0x48, 0x59, 0x73]) // pHYs
@@ -191,7 +206,12 @@ function readJpegInfo(bytes: Uint8Array): ImageInfo {
     }
   }
   if (width === 0 || height === 0) {
-    throw new ImageFormatError('Файл JPEG повреждён: не найден размер картинки.')
+    throw new ImageFormatError(
+      m({
+        ru: 'Файл JPEG повреждён: не найден размер картинки.',
+        en: 'The JPEG file is damaged: the image size was not found.'
+      })
+    )
   }
   return { kind: 'jpeg', width, height, dpi, orientation }
 }
@@ -232,7 +252,8 @@ function exifOrientation(bytes: Uint8Array, tiff: number, length: number): ExifO
  * после SOI, если его нет (Chromium пишет JFIF с плотностью 1:1 без единиц).
  */
 export function withJpegDpi(bytes: Uint8Array, dpi: number): Uint8Array {
-  if (sniffImageKind(bytes) !== 'jpeg') throw new ImageFormatError('Это не JPEG.')
+  if (sniffImageKind(bytes) !== 'jpeg')
+    throw new ImageFormatError(m({ ru: 'Это не JPEG.', en: 'This is not a JPEG file.' }))
   const value = Math.max(1, Math.min(65535, Math.round(dpi)))
   for (const segment of jpegSegments(bytes)) {
     if (segment.marker === 0xe0 && ascii(bytes, segment.data, 5) === 'JFIF\0') {

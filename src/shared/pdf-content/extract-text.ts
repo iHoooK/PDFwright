@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import { loadMupdf } from './mupdf'
 import { openPdf } from './open'
 import { PdfContentError } from './types'
@@ -103,14 +104,22 @@ export async function extractText(
   const doc = openPdf(
     mupdf,
     bytes,
-    'Документ зашифрован: текст защищённых паролем файлов не извлекается.'
+    m({
+      ru: 'Документ зашифрован: текст защищённых паролем файлов не извлекается.',
+      en: 'The document is encrypted: text cannot be extracted from password-protected files.'
+    })
   )
   try {
     const total = doc.countPages()
     const indices = pageIndices ?? Array.from({ length: total }, (_, i) => i)
     return indices.map((index) => {
       if (!Number.isInteger(index) || index < 0 || index >= total) {
-        throw new PdfContentError(`Страницы ${index + 1} нет в документе (всего ${total}).`)
+        throw new PdfContentError(
+          m({
+            ru: `Страницы ${index + 1} нет в документе (всего ${total}).`,
+            en: `Page ${index + 1} is not in the document (${total} in total).`
+          })
+        )
       }
       const page = doc.loadPage(index)
       const stext = page.toStructuredText('')

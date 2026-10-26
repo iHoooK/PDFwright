@@ -33,6 +33,7 @@ const api: PdfwrightApi = {
   removeRecentFile: (path) => ipcRenderer.invoke(IpcChannels.recentRemove, path),
   setDirtyCount: (count) => ipcRenderer.invoke(IpcChannels.appSetDirty, count),
   takeStartupFiles: () => ipcRenderer.invoke(IpcChannels.appTakeStartup),
+  applyLanguage: () => ipcRenderer.invoke(IpcChannels.appApplyLanguage),
   setWindowTabs: (tabs) => ipcRenderer.invoke(IpcChannels.windowSetTabs, tabs),
   openInNewWindow: (path) => ipcRenderer.invoke(IpcChannels.windowOpenFile, path),
   checkForUpdates: () => ipcRenderer.invoke(IpcChannels.updateCheck),

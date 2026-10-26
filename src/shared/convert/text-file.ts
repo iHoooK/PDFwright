@@ -1,3 +1,4 @@
+import { m } from '../messages'
 /**
  * Текст из PDF для буфера обмена и файла .txt: склейка страниц и кодирование
  * в UTF-8 с BOM и переводами строк Windows, чтобы кириллицу верно читали и
@@ -15,7 +16,7 @@ export function joinPagesText(pages: readonly PageText[], markPages: boolean): s
   const parts = pages.map(({ page, text }) => {
     const body = text.replace(/\s+$/, '')
     if (!markPages) return body
-    const mark = `— Страница ${page} —`
+    const mark = m({ ru: `— Страница ${page} —`, en: `— Page ${page} —` })
     return body.length > 0 ? `${mark}\n\n${body}` : mark
   })
   return parts.filter((part) => part.length > 0).join('\n\n') + (parts.length > 0 ? '\n' : '')

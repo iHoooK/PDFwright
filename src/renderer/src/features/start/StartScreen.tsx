@@ -1,5 +1,5 @@
 import { IconClose, IconImage, IconMerge, IconOpen, IconSplit } from '@renderer/icons'
-import { t } from '@renderer/i18n'
+import { locale, t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
 import { IconButton } from '@renderer/components/controls'
 import { useStore } from '@renderer/app/store'
@@ -14,8 +14,8 @@ function formatOpened(ms: number): string {
   const today = new Date()
   const sameDay = date.toDateString() === today.toDateString()
   return sameDay
-    ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    ? date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
 export function StartScreen(): React.JSX.Element {

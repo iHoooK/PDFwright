@@ -23,6 +23,7 @@ import {
   createDefaultSettings,
   SIGNATURES_MAX,
   type AppSettings,
+  type Language,
   type MarkupSaveMode,
   type SettingsPatch,
   type Theme,
@@ -720,6 +721,8 @@ export interface Actions {
   removeRecent: (path: string) => void
   updateSettings: (patch: SettingsPatch) => Promise<void>
   cycleTheme: () => void
+  /** Сохраняет язык и перезагружает окна на нём (если нет несохранённых правок). */
+  setLanguage: (language: Language) => void
   toast: (message: string) => void
   zoomBy: (delta: 1 | -1) => void
   zoomTo: (percent: number) => void
@@ -1429,6 +1432,13 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           .catch(() => undefined)
       },
       updateSettings,
+      setLanguage: (language) => {
+        void (async () => {
+          await updateSettings({ general: { language } })
+          const result = await api.applyLanguage()
+          if (!result.applied) toast(t.settings.languageLater(result.dirty))
+        })()
+      },
       cycleTheme: () => {
         const next: Theme = resolvedTheme() === 'dark' ? 'light' : 'dark'
         void updateSettings({ general: { theme: next } })
@@ -1817,7 +1827,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           try {
             const bytes = await extractPages(await bakeMarkup(tab), sel)
             const defaultName = safeFileName(
-              `${stripExtension(tab.name)}_стр${formatPageList(sel).replace(/,\s*/g, '_')}.pdf`
+              t.pages.extractName(
+                stripExtension(tab.name),
+                formatPageList(sel).replace(/,\s*/g, '_')
+              )
             )
             const path = await api.savePdfDialog({
               title: t.ops.extractTitle,

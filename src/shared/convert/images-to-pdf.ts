@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import {
   concatTransformationMatrix,
   drawObject,
@@ -128,7 +129,10 @@ export async function imagesToPdf(
   images: readonly ImageInput[],
   options: ImagesToPdfOptions
 ): Promise<Uint8Array> {
-  if (images.length === 0) throw new ImageFormatError('Добавьте хотя бы одну картинку.')
+  if (images.length === 0)
+    throw new ImageFormatError(
+      m({ ru: 'Добавьте хотя бы одну картинку.', en: 'Add at least one image.' })
+    )
   const doc = await PDFDocument.create()
   for (const input of images) {
     let info: ImageInfo
@@ -139,7 +143,12 @@ export async function imagesToPdf(
         info.kind === 'jpeg' ? await doc.embedJpg(input.bytes) : await doc.embedPng(input.bytes)
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
-      throw new ImageFormatError(`Не удалось прочитать «${input.name}»: ${reason}`)
+      throw new ImageFormatError(
+        m({
+          ru: `Не удалось прочитать «${input.name}»: ${reason}`,
+          en: `Could not read "${input.name}": ${reason}`
+        })
+      )
     }
     const layout = layoutImagePage(naturalSizePt(info), options)
     const page = doc.addPage([layout.width, layout.height])

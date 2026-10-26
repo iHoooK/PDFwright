@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { basename, isAbsolute } from 'node:path'
 import {
   IpcChannels,
+  type LanguageApplyResult,
   type AppInfo,
   type IpcHandlers,
   type StartupFiles,
@@ -12,6 +13,7 @@ import { isAllowedExternalUrl } from '@shared/external-links'
 import { isPortableBuild } from '../services/app-paths'
 import { toBuffer, writeAtomicBytes } from '../services/fs-utils'
 import { printPdfFile } from '../services/print-service'
+import { mainStrings, type MainStrings } from '../strings'
 import type { RecentFilesStore } from '../services/recent-files'
 import type { SettingsStore } from '../services/settings-store'
 import type { UpdateService } from '../services/update-service'
@@ -26,6 +28,7 @@ export interface WindowsBridge {
   openInNewWindow: (sender: WebContents, path: string) => void
   setUpdateOwner: (sender: WebContents) => void
   runUpdateInstall: (install: () => void) => void
+  applyLanguage: () => LanguageApplyResult
 }
 
 export interface IpcDependencies {
@@ -33,17 +36,23 @@ export interface IpcDependencies {
   recent: RecentFilesStore
   windows: WindowsBridge
   updates: UpdateService
+  /** Язык в настройках изменился: main ставит меню и язык сообщений заново. */
+  onLanguageChange: () => void
 }
 
-const PDF_FILTERS: Electron.FileFilter[] = [
-  { name: 'Документы PDF', extensions: ['pdf'] },
-  { name: 'Все файлы', extensions: ['*'] }
-]
+function pdfFilters(text: MainStrings): Electron.FileFilter[] {
+  return [
+    { name: text.dialogs.pdfFiles, extensions: ['pdf'] },
+    { name: text.dialogs.allFiles, extensions: ['*'] }
+  ]
+}
 
-const IMAGE_FILTERS: Electron.FileFilter[] = [
-  { name: 'Картинки', extensions: ['png', 'jpg', 'jpeg', 'webp'] },
-  { name: 'Все файлы', extensions: ['*'] }
-]
+function imageFilters(text: MainStrings): Electron.FileFilter[] {
+  return [
+    { name: text.dialogs.images, extensions: ['png', 'jpg', 'jpeg', 'webp'] },
+    { name: text.dialogs.allFiles, extensions: ['*'] }
+  ]
+}
 
 /** Предел размера одной картинки для «Изображения в PDF». */
 const IMAGE_MAX_BYTES = 200 * 1024 * 1024
@@ -53,7 +62,14 @@ const IMAGE_MAX_BYTES = 200 * 1024 * 1024
  * данные сам: renderer — отдельный процесс, и его аргументам нельзя
  * доверять только потому, что типы в preload совпадают.
  */
-export function registerIpcHandlers({ settings, recent, windows, updates }: IpcDependencies): void {
+export function registerIpcHandlers({
+  settings,
+  recent,
+  windows,
+  updates,
+  onLanguageChange
+}: IpcDependencies): void {
+  const text = (): MainStrings => mainStrings(settings.get().general.language)
   handle(IpcChannels.appGetInfo, () => getAppInfo())
   handleFrom(IpcChannels.appTakeStartup, (sender) => windows.takeStartup(sender))
   handleFrom(IpcChannels.appSetDirty, (sender, count) => {
@@ -67,14 +83,18 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
   })
   handle(IpcChannels.settingsGet, () => settings.get())
 
-  handle(IpcChannels.settingsUpdate, (patch) => {
+  handle(IpcChannels.settingsUpdate, async (patch) => {
     // Типы preload не защищают от подделанного вызова: проверяем форму вручную.
     const value: unknown = patch
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       throw new TypeError('settings:update ожидает объект patch')
     }
-    return settings.update(patch)
+    const before = settings.get().general.language
+    const next = await settings.update(patch)
+    if (next.general.language !== before) onLanguageChange()
+    return next
   })
+  handle(IpcChannels.appApplyLanguage, () => windows.applyLanguage())
 
   handle(IpcChannels.shellOpenExternal, async (url) => {
     const value: unknown = url
@@ -90,9 +110,9 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
 
   handle(IpcChannels.dialogOpenPdf, async () => {
     const result = await showOpen({
-      title: 'Открыть PDF',
+      title: text().dialogs.openPdf,
       properties: ['openFile'],
-      filters: PDF_FILTERS
+      filters: pdfFilters(text())
     })
     const path = result.filePaths[0]
     if (result.canceled || path === undefined) return null
@@ -101,9 +121,9 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
 
   handle(IpcChannels.dialogOpenPdfs, async () => {
     const result = await showOpen({
-      title: 'Выберите PDF-файлы',
+      title: text().dialogs.openPdfs,
       properties: ['openFile', 'multiSelections'],
-      filters: PDF_FILTERS
+      filters: pdfFilters(text())
     })
     return result.canceled ? [] : result.filePaths.map((path) => ({ path, name: basename(path) }))
   })
@@ -116,8 +136,8 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
         : {}
     const owner = BrowserWindow.getFocusedWindow()
     const dialogOptions: Electron.SaveDialogOptions = {
-      title: typeof opts.title === 'string' ? opts.title : 'Сохранить PDF',
-      filters: [PDF_FILTERS[0] ?? { name: 'PDF', extensions: ['pdf'] }],
+      title: typeof opts.title === 'string' ? opts.title : text().dialogs.savePdf,
+      filters: [{ name: text().dialogs.pdfFiles, extensions: ['pdf'] }],
       ...(typeof opts.defaultPath === 'string' ? { defaultPath: opts.defaultPath } : {})
     }
     const result = owner
@@ -129,7 +149,7 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
 
   handle(IpcChannels.dialogChooseFolder, async (defaultPath) => {
     const result = await showOpen({
-      title: 'Папка для сохранения',
+      title: text().dialogs.chooseFolder,
       properties: ['openDirectory', 'createDirectory'],
       ...(typeof defaultPath === 'string' && defaultPath.length > 0 ? { defaultPath } : {})
     })
@@ -138,9 +158,9 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
 
   handle(IpcChannels.dialogOpenImages, async () => {
     const result = await showOpen({
-      title: 'Выберите картинки',
+      title: text().dialogs.chooseImages,
       properties: ['openFile', 'multiSelections'],
-      filters: IMAGE_FILTERS
+      filters: imageFilters(text())
     })
     if (result.canceled) return []
     const picked = []
@@ -164,8 +184,8 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
         : {}
     const owner = BrowserWindow.getFocusedWindow()
     const dialogOptions: Electron.SaveDialogOptions = {
-      title: typeof opts.title === 'string' ? opts.title : 'Сохранить текст',
-      filters: [{ name: 'Текст', extensions: ['txt'] }],
+      title: typeof opts.title === 'string' ? opts.title : text().dialogs.saveText,
+      filters: [{ name: text().dialogs.text, extensions: ['txt'] }],
       ...(typeof opts.defaultPath === 'string' ? { defaultPath: opts.defaultPath } : {})
     }
     const result = owner
@@ -207,7 +227,9 @@ export function registerIpcHandlers({ settings, recent, windows, updates }: IpcD
     for (const item of items) await writeAtomicBytes(item.path, item.data, false)
   })
 
-  handle(IpcChannels.filePrint, (path) => printPdfFile(requireAbsolutePath(path)))
+  handle(IpcChannels.filePrint, (path) =>
+    printPdfFile(requireAbsolutePath(path), text().printFailed)
+  )
   handle(IpcChannels.recentList, () => recent.list())
   handle(IpcChannels.recentRemove, (path) => recent.remove(requireAbsolutePath(path)))
 

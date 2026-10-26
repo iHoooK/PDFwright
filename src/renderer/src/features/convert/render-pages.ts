@@ -2,6 +2,7 @@ import * as pdfjs from 'pdfjs-dist'
 import type { CancelToken, PdfDocument } from '@renderer/pdf-engine/engine'
 import { MAX_IMAGE_PIXELS, pageImageSize, type PageImageFormat } from '@shared/convert/page-images'
 import { withJpegDpi, withPngDpi } from '@shared/convert/image-info'
+import { t } from '@renderer/i18n'
 
 /**
  * Рендер страницы в картинку для «PDF в изображения»: pdf.js рисует страницу
@@ -29,7 +30,7 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promi
     canvas.toBlob(
       (blob) => {
         if (blob) resolve(blob)
-        else reject(new Error('Не удалось закодировать картинку'))
+        else reject(new Error(t.errors.encodeImage))
       },
       type,
       quality

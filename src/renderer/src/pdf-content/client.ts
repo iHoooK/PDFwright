@@ -1,3 +1,4 @@
+import { m, messageLanguage } from '@shared/messages'
 import { PdfContentError } from '@shared/pdf-content/types'
 import type { ContentApi, ContentFailure, ContentMethod, ContentResponse } from './protocol'
 
@@ -31,7 +32,8 @@ export class PdfContentClient {
     if (this.worker) return this.worker
     const worker = new Worker(new URL('./content.worker.ts', import.meta.url), {
       type: 'module',
-      name: 'pdf-content'
+      // Язык сообщений движка worker узнаёт по своему имени.
+      name: `pdf-content:${messageLanguage()}`
     })
     worker.onmessage = (event: MessageEvent<ContentResponse>) => {
       const response = event.data
@@ -128,7 +130,11 @@ export class PdfContentClient {
 
   /** Останавливает worker; незавершённые вызовы получают ошибку. */
   dispose(): void {
-    this.fail(new Error('Движок правки содержимого закрыт.'))
+    this.fail(
+      new Error(
+        m({ ru: 'Движок правки содержимого закрыт.', en: 'The content editing engine is closed.' })
+      )
+    )
   }
 }
 

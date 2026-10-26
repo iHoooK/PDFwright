@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import type { Font, Image, PDFDocument as MuDocument, PDFObject, PDFPage as MuPage } from 'mupdf'
 import { groupBlocks } from './blocks'
 import { blankRanges, findXObjectCalls, type XObjectCall } from './content-stream'
@@ -120,12 +121,20 @@ function openDocument(mupdf: Mupdf, bytes: Uint8Array): MuDocument {
   try {
     doc = new mupdf.PDFDocument(bytes)
   } catch (error) {
-    throw new PdfContentError(`Не удалось разобрать PDF: ${errorText(error)}`)
+    throw new PdfContentError(
+      m({
+        ru: `Не удалось разобрать PDF: ${errorText(error)}`,
+        en: `Could not parse the PDF: ${errorText(error)}`
+      })
+    )
   }
   if (doc.needsPassword()) {
     doc.destroy()
     throw new PdfContentError(
-      'Документ зашифрован. Правка защищённых паролем файлов появится в следующих версиях.'
+      m({
+        ru: 'Документ зашифрован. Правка защищённых паролем файлов появится в следующих версиях.',
+        en: 'The document is encrypted. Editing password-protected files will come in a future version.'
+      })
     )
   }
   return doc
@@ -134,7 +143,12 @@ function openDocument(mupdf: Mupdf, bytes: Uint8Array): MuDocument {
 function checkPageIndex(doc: MuDocument, pageIndex: number): void {
   const total = doc.countPages()
   if (!Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= total) {
-    throw new PdfContentError(`Страницы ${pageIndex + 1} нет в документе (всего ${total}).`)
+    throw new PdfContentError(
+      m({
+        ru: `Страницы ${pageIndex + 1} нет в документе (всего ${total}).`,
+        en: `Page ${pageIndex + 1} is not in the document (${total} in total).`
+      })
+    )
   }
 }
 
@@ -456,7 +470,10 @@ function redact(ctx: PageContext, boxes: readonly BoxRect[], methods: RedactMeth
 }
 
 function checkRect(rect: PdfSpaceRect, what: string): void {
-  if (!isValidRect(rect)) throw new PdfContentError(`Некорректная область: ${what}.`)
+  if (!isValidRect(rect))
+    throw new PdfContentError(
+      m({ ru: `Некорректная область: ${what}.`, en: `Invalid area: ${what}.` })
+    )
 }
 
 /**
@@ -473,7 +490,7 @@ export async function eraseRegions(
 ): Promise<Uint8Array> {
   const { text = true, images = true, graphics = true } = options
   rects.forEach((rect, i) => {
-    checkRect(rect, `область ${i + 1}`)
+    checkRect(rect, m({ ru: `область ${i + 1}`, en: `area ${i + 1}` }))
   })
   if (rects.length === 0 || (!text && !images && !graphics)) return bytes.slice()
   return modifyPage(bytes, pageIndex, (ctx) => {
@@ -587,7 +604,12 @@ function findLine(lines: readonly RawLine[], ref: TextLineRef, toPdf: Matrix): n
     }
   })
   if (best < 0 || bestDistance > MATCH_TOLERANCE) {
-    throw new PdfContentError('Строка не найдена на странице: документ изменился.')
+    throw new PdfContentError(
+      m({
+        ru: 'Строка не найдена на странице: документ изменился.',
+        en: 'The line was not found on the page: the document has changed.'
+      })
+    )
   }
   return best
 }
@@ -600,7 +622,10 @@ function findLine(lines: readonly RawLine[], ref: TextLineRef, toPdf: Matrix): n
  */
 function lineRedactionBox(lines: readonly RawLine[], target: number): BoxRect {
   const line = lines[target]
-  if (!line) throw new PdfContentError('Строка не найдена на странице.')
+  if (!line)
+    throw new PdfContentError(
+      m({ ru: 'Строка не найдена на странице.', en: 'The line was not found on the page.' })
+    )
   const box: BoxRect = [...line.box]
   const horizontal = Math.abs(line.dir[1]) < 1e-3
   if (horizontal) {
@@ -622,7 +647,12 @@ function lineRedactionBox(lines: readonly RawLine[], target: number): BoxRect {
     })
   }
   if (box[2] - box[0] <= 0 || box[3] - box[1] <= 0) {
-    throw new PdfContentError('Строку нельзя вырезать, не задев соседний текст.')
+    throw new PdfContentError(
+      m({
+        ru: 'Строку нельзя вырезать, не задев соседний текст.',
+        en: 'The line cannot be cut without touching the text next to it.'
+      })
+    )
   }
   return box
 }
@@ -648,7 +678,12 @@ function cutLines(ctx: PageContext, lines: readonly RawLine[], targets: readonly
   )
   const after = withExtracted(ctx.page, (data) => lineTexts(data.lines))
   if (!sameTexts(before, after)) {
-    throw new PdfContentError('Текст нельзя вырезать, не задев соседний.')
+    throw new PdfContentError(
+      m({
+        ru: 'Текст нельзя вырезать, не задев соседний.',
+        en: 'The text cannot be cut without touching the text next to it.'
+      })
+    )
   }
 }
 
@@ -825,20 +860,31 @@ export async function replaceBlock(
   options: WriteTextOptions = {}
 ): Promise<Uint8Array> {
   if (options.width !== undefined && !(options.width > 0)) {
-    throw new PdfContentError('Некорректная ширина абзаца.')
+    throw new PdfContentError(
+      m({ ru: 'Некорректная ширина абзаца.', en: 'Invalid paragraph width.' })
+    )
   }
   return modifyPage(bytes, pageIndex, (ctx) => {
     withExtracted(ctx.page, ({ lines }) => {
       const targets = block.lines.map((ref) => findLine(lines, ref, ctx.toPdf))
       const first = targets[0] === undefined ? undefined : lines[targets[0]]
-      if (!first) throw new PdfContentError('Абзац не найден на странице: документ изменился.')
+      if (!first)
+        throw new PdfContentError(
+          m({
+            ru: 'Абзац не найден на странице: документ изменился.',
+            en: 'The paragraph was not found on the page: the document has changed.'
+          })
+        )
       const members = targets.flatMap((t) => {
         const raw = lines[t]
         return raw ? [toTextLine(raw, t, ctx.toPdf)] : []
       })
       const geometry = groupBlocks(members)
       const head = geometry[0]
-      if (!head) throw new PdfContentError('Абзац не найден на странице.')
+      if (!head)
+        throw new PdfContentError(
+          m({ ru: 'Абзац не найден на странице.', en: 'The paragraph was not found on the page.' })
+        )
       // У абзаца из одной строки колонки нет: удлинённый текст продолжается в строку,
       // пока ширину не задали ручкой. Многострочный переносится по прежней ширине.
       const width =
@@ -880,7 +926,8 @@ export async function insertText(
   options: InsertTextOptions = {}
 ): Promise<Uint8Array> {
   if (text.trim() === '') return bytes.slice()
-  if (!(style.fontSize > 0)) throw new PdfContentError('Некорректный кегль.')
+  if (!(style.fontSize > 0))
+    throw new PdfContentError(m({ ru: 'Некорректный кегль.', en: 'Invalid font size.' }))
   return modifyPage(bytes, pageIndex, (ctx) => {
     const palette = new FontPalette(
       ctx.mupdf,
@@ -926,7 +973,12 @@ function findImage(images: readonly RawImage[], ref: ImageRef, toPdf: Matrix): R
     }
   }
   if (!best || bestDistance > MATCH_TOLERANCE) {
-    throw new PdfContentError('Картинка не найдена на странице: документ изменился.')
+    throw new PdfContentError(
+      m({
+        ru: 'Картинка не найдена на странице: документ изменился.',
+        en: 'The image was not found on the page: the document has changed.'
+      })
+    )
   }
   return best
 }
@@ -1052,7 +1104,12 @@ export async function replaceImage(
     try {
       replacement = new ctx.mupdf.Image(pngOrJpeg)
     } catch (error) {
-      throw new PdfContentError(`Не удалось прочитать картинку: ${errorText(error)}`)
+      throw new PdfContentError(
+        m({
+          ru: `Не удалось прочитать картинку: ${errorText(error)}`,
+          en: `Could not read the image: ${errorText(error)}`
+        })
+      )
     }
     try {
       const detached = detachImage(ctx, item)
@@ -1077,7 +1134,7 @@ export async function moveImage(
   image: ImageRef,
   rect: PdfSpaceRect
 ): Promise<Uint8Array> {
-  checkRect(rect, 'новая рамка картинки')
+  checkRect(rect, m({ ru: 'новая рамка картинки', en: 'new image frame' }))
   return withImage(bytes, pageIndex, image, (ctx, item) => {
     const detached = detachImage(ctx, item)
     const name = detached.name ?? addResource(ctx, 'XObject', 'PWIm', ctx.doc.addImage(item.image))
@@ -1110,7 +1167,12 @@ function findGraphic(graphics: readonly RawGraphic[], ref: GraphicRef, toPdf: Ma
     }
   })
   if (best < 0 || bestDistance > MATCH_TOLERANCE) {
-    throw new PdfContentError('Контур не найден на странице: документ изменился.')
+    throw new PdfContentError(
+      m({
+        ru: 'Контур не найден на странице: документ изменился.',
+        en: 'The shape was not found on the page: the document has changed.'
+      })
+    )
   }
   return best
 }
@@ -1135,7 +1197,10 @@ function alphaState(ctx: PageContext, alpha: number): string | null {
  */
 function cutGraphic(ctx: PageContext, graphics: readonly RawGraphic[], target: number): string[] {
   const raw = graphics[target]
-  if (!raw) throw new PdfContentError('Контур не найден на странице.')
+  if (!raw)
+    throw new PdfContentError(
+      m({ ru: 'Контур не найден на странице.', en: 'The shape was not found on the page.' })
+    )
   const [x0, y0, x1, y1] = raw.box
   redact(ctx, [[x0 - 0.5, y0 - 0.5, x1 + 0.5, y1 + 0.5]], {
     text: false,
@@ -1172,13 +1237,18 @@ export async function moveGraphic(
   rect: PdfSpaceRect
 ): Promise<Uint8Array> {
   if (!(rect.width >= 0 && rect.height >= 0) || !Number.isFinite(rect.x + rect.y)) {
-    throw new PdfContentError('Некорректная область: новая рамка контура.')
+    throw new PdfContentError(
+      m({ ru: 'Некорректная область: новая рамка контура.', en: 'Invalid area: new shape frame.' })
+    )
   }
   return modifyPage(bytes, pageIndex, (ctx) => {
     const graphics = listGraphics(ctx.mupdf, ctx.page, ctx.toPdf)
     const target = findGraphic(graphics, graphic, ctx.toPdf)
     const raw = graphics[target]
-    if (!raw) throw new PdfContentError('Контур не найден на странице.')
+    if (!raw)
+      throw new PdfContentError(
+        m({ ru: 'Контур не найден на странице.', en: 'The shape was not found on the page.' })
+      )
     const restore = cutGraphic(ctx, graphics, target)
     // Рамка с толщиной линии переводится в рамку самого пути: толщина не масштабируется.
     const visual = boxToRect(transformBox(ctx.toPdf, raw.box))
@@ -1189,8 +1259,15 @@ export async function moveGraphic(
     const top = visual.y + visual.height - (path.y + path.height)
     const sx = path.width > 1e-3 ? Math.max(rect.width - left - right, 0) / path.width : 1
     const sy = path.height > 1e-3 ? Math.max(rect.height - bottom - top, 0) / path.height : 1
-    const m: Matrix = [sx, 0, 0, sy, rect.x + left - path.x * sx, rect.y + bottom - path.y * sy]
-    const ops = graphicOperators(raw, m, alphaState(ctx, raw.alpha))
+    const matrix: Matrix = [
+      sx,
+      0,
+      0,
+      sy,
+      rect.x + left - path.x * sx,
+      rect.y + bottom - path.y * sy
+    ]
+    const ops = graphicOperators(raw, matrix, alphaState(ctx, raw.alpha))
     writeContent(ctx, readContent(ctx.pageObj), [...restore, ops].join('\n'))
   })
 }

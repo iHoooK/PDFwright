@@ -52,7 +52,7 @@ export function AppShell(): React.JSX.Element {
           <img className={s.logo} src={logo} alt="" width={20} height={20} />
           <span>{t.app.name}</span>
         </div>
-        <div className={s.tabs} role="tablist" aria-label="Документы">
+        <div className={s.tabs} role="tablist" aria-label={t.a11y.tabs}>
           <button
             type="button"
             role="tab"
@@ -233,5 +233,5 @@ function pageSizeLabel(doc: DocTab): string {
   const size = doc.doc?.sizeOf(1)
   if (!size) return ''
   const mm = (pt: number): number => Math.round((pt / 72) * 25.4)
-  return `${mm(size.width)} × ${mm(size.height)} мм`
+  return `${mm(size.width)} × ${mm(size.height)} ${t.units.mm}`
 }

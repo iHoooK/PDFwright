@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import { PDFDocument } from 'pdf-lib'
 
 /** Загрузка и сохранение документа pdf-lib — общие для всех операций. */
@@ -17,12 +18,18 @@ export async function load(bytes: Uint8Array): Promise<PDFDocument> {
     doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false })
   } catch (error) {
     throw new PdfOpsError(
-      `Не удалось разобрать PDF: ${error instanceof Error ? error.message : String(error)}`
+      m({
+        ru: `Не удалось разобрать PDF: ${error instanceof Error ? error.message : String(error)}`,
+        en: `Could not parse the PDF: ${error instanceof Error ? error.message : String(error)}`
+      })
     )
   }
   if (doc.isEncrypted) {
     throw new PdfOpsError(
-      'Документ зашифрован. Правка защищённых паролем файлов появится в следующих версиях.'
+      m({
+        ru: 'Документ зашифрован. Правка защищённых паролем файлов появится в следующих версиях.',
+        en: 'The document is encrypted. Editing password-protected files will come in a future version.'
+      })
     )
   }
   return doc

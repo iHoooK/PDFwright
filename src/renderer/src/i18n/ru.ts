@@ -29,6 +29,7 @@ export const ru = {
     recentEmpty: 'Нет недавних файлов. Откройте PDF или перетащите его в окно.',
     removeRecent: 'Убрать из списка',
     pages: 'стр.',
+    pageCount: (n: number) => `${n}\u00a0стр.`,
     soon: 'Появится в следующих версиях'
   },
   compare: {
@@ -126,6 +127,7 @@ export const ru = {
     busy: 'Выполняем операцию…'
   },
   pages: {
+    extractName: (base: string, pages: string) => `${base}_стр${pages}.pdf`,
     selected: (n: number) => (n ? `Выбрано: ${n}` : 'Выберите страницы'),
     hint: 'Клик — выбрать, Ctrl — добавить, Shift — диапазон, перетащите для перестановки, Delete — удалить.',
     rotateCw: 'Повернуть ↻',
@@ -456,8 +458,10 @@ export const ru = {
     themeLight: 'Светлая',
     themeDark: 'Тёмная',
     language: 'Язык интерфейса',
-    languageHint: 'English появится в 0.2.0',
-    languageRu: 'Русский',
+    languageHint:
+      'Интерфейс перезагрузится на\u00a0выбранном языке, открытые документы откроются снова.',
+    languageLater: (n: number) =>
+      `Язык сменится после сохранения документов (несохранённых: ${n}) или при следующем запуске.`,
     backup: 'Резервная копия при сохранении',
     backupHint: 'Рядом с файлом создаётся копия .bak',
     view: 'Просмотр',
@@ -566,7 +570,63 @@ export const ru = {
     soon: 'Появится в следующих версиях',
     linkBlocked: 'Открытие этого адреса не разрешено',
     dropFailed: 'Не удалось определить путь к файлу'
-  }
+  },
+  a11y: {
+    tabs: 'Документы',
+    commands: 'Команды',
+    document: 'Документ',
+    page: (n: number) => `Страница ${n}`,
+    close: 'Закрыть'
+  },
+  units: {
+    pt: 'пт',
+    mm: 'мм',
+    bytes: (n: number) => `${n}\u00a0Б`,
+    kb: (n: string) => `${n}\u00a0КБ`,
+    mb: (n: string) => `${n}\u00a0МБ`
+  },
+  errors: {
+    notPdf: 'Файл не является PDF или повреждён.',
+    openCancelled: 'Открытие отменено.',
+    openFailed: (message: string) => `Не удалось открыть файл: ${message}`,
+    encodeImage: 'Не удалось закодировать картинку',
+    webp: 'Не удалось перекодировать WebP'
+  },
+  shortcuts: [
+    { keys: 'Ctrl + N', action: 'Новое окно' },
+    { keys: 'Ctrl + O', action: 'Открыть файл' },
+    { keys: 'Ctrl + S', action: 'Сохранить' },
+    { keys: 'Ctrl + Shift + S', action: 'Сохранить как' },
+    { keys: 'Ctrl + P', action: 'Печать' },
+    { keys: 'Ctrl + W', action: 'Закрыть документ' },
+    { keys: 'Ctrl + Z / Ctrl + Y', action: 'Отменить / повторить операцию или правку разметки' },
+    { keys: 'Delete, Esc', action: 'Удалить выбранный объект разметки или документа, снять выбор' },
+    { keys: 'Ctrl + G', action: 'Режим «Страницы»' },
+    {
+      keys: 'Delete, Ctrl + A, Esc',
+      action: 'В режиме «Страницы»: удалить, выбрать все, снять выбор'
+    },
+    { keys: 'Ctrl + F', action: 'Поиск в документе' },
+    { keys: 'Ctrl + «+» / «−» / 0', action: 'Масштаб больше / меньше / 100%' },
+    { keys: 'Ctrl + 1 / 2', action: 'По ширине / страница целиком' },
+    { keys: 'Ctrl + R', action: 'Повернуть вид' },
+    { keys: 'Ctrl + колесо', action: 'Масштаб' },
+    { keys: 'Ctrl + B', action: 'Боковая панель' },
+    { keys: 'Ctrl + Shift + B', action: 'Панель свойств' },
+    { keys: 'Ctrl + ,', action: 'Параметры' },
+    { keys: 'PageUp / PageDown', action: 'Предыдущая / следующая страница' },
+    {
+      keys: 'V, E, H, M, P, U, T, S',
+      action: 'Инструменты: выделение, правка, рука, маркер, перо, фигуры, текст, подпись'
+    }
+  ]
 } as const
 
-export type Strings = typeof ru
+/** Тип словаря: те же ключи, строки любые — так английский словарь проверяется по форме русского. */
+type Widen<T> = T extends string
+  ? string
+  : T extends (...args: infer A) => string
+    ? (...args: A) => string
+    : { readonly [K in keyof T]: Widen<T[K]> }
+
+export type Strings = Widen<typeof ru>

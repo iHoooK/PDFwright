@@ -13,6 +13,7 @@ import { applyHighlights, type PageHighlight } from '@renderer/pdf-engine/highli
 import { cx } from '@renderer/components/cx'
 import { FormLayerController, type FormLayerCallbacks } from '@renderer/features/forms/form-layer'
 import s from './pdf-page.module.css'
+import { t } from '@renderer/i18n'
 
 interface Props {
   doc: PdfDocument
@@ -176,7 +177,7 @@ export const PdfPageView = memo(function PdfPageView({
       className={s.page}
       style={{ width: cssWidth, height: cssHeight }}
       data-page={pageNumber}
-      aria-label={`Страница ${pageNumber}`}
+      aria-label={t.a11y.page(pageNumber)}
     >
       <canvas ref={canvasRef} className={s.canvas} />
       <div ref={textRef} className="textLayer" />

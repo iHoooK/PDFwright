@@ -1,3 +1,4 @@
+import { m } from './messages'
 /**
  * Внешние ссылки, которые приложение разрешает открывать в системном браузере.
  * Любой другой адрес из renderer отклоняется в main — это защита от открытия
@@ -9,10 +10,18 @@ export const PROJECT_REPOSITORY = 'iHoooK/PDFwright'
 export const RELEASES_PAGE = `https://github.com/${PROJECT_REPOSITORY}/releases`
 
 export const DEVELOPER_LINKS = [
-  { id: 'site', label: 'Сайт Promptix', url: 'https://promptix.ru/' },
+  {
+    id: 'site',
+    label: m({ ru: 'Сайт Promptix', en: 'Promptix website' }),
+    url: 'https://promptix.ru/'
+  },
   { id: 'youtube', label: 'YouTube · Promptix', url: 'https://www.youtube.com/@promptix' },
   { id: 'telegram', label: 'Telegram · Promptix', url: 'https://t.me/promptix_ru' },
-  { id: 'telegram-artel', label: 'Telegram · Кодовая Артель', url: 'https://t.me/codeartel' },
+  {
+    id: 'telegram-artel',
+    label: m({ ru: 'Telegram · Кодовая Артель', en: 'Telegram · Kodovaya Artel' }),
+    url: 'https://t.me/codeartel'
+  },
   {
     id: 'donationalerts',
     label: 'DonationAlerts',

@@ -9,6 +9,7 @@ export const IpcChannels = {
   appGetInfo: 'app:get-info',
   appTakeStartup: 'app:take-startup',
   appSetDirty: 'app:set-dirty',
+  appApplyLanguage: 'app:apply-language',
   windowSetTabs: 'window:set-tabs',
   windowOpenFile: 'window:open-file',
   settingsGet: 'settings:get',
@@ -119,6 +120,13 @@ export interface WriteManyItem {
   bytes: ArrayBuffer
 }
 
+/** Итог смены языка: окна перезагружены или ждут сохранения документов. */
+export interface LanguageApplyResult {
+  applied: boolean
+  /** Несохранённые документы во всех окнах (если не применено). */
+  dirty: number
+}
+
 /** Что открыть в новом окне: файлы вкладок, активная вкладка, пропавшие файлы сеанса. */
 export interface StartupFiles {
   files: string[]
@@ -196,6 +204,8 @@ export interface PdfwrightApi {
   setDirtyCount: (count: number) => Promise<void>
   /** Файлы, с которыми открыто окно (аргументы запуска, сеанс, «Открыть в новом окне»); отдаются один раз. */
   takeStartupFiles: () => Promise<StartupFiles>
+  /** Перезагружает окна на языке из настроек; вкладки открываются снова. */
+  applyLanguage: () => Promise<LanguageApplyResult>
   /** Вкладки окна: main запоминает их для сеанса и для выбора окна под файл. */
   setWindowTabs: (tabs: WindowTabs) => Promise<void>
   /** Открывает файл в новом окне программы. */
@@ -219,6 +229,7 @@ export interface IpcHandlers {
   [IpcChannels.appGetInfo]: () => AppInfo | Promise<AppInfo>
   [IpcChannels.appTakeStartup]: () => StartupFiles
   [IpcChannels.appSetDirty]: (count: number) => void
+  [IpcChannels.appApplyLanguage]: () => LanguageApplyResult
   [IpcChannels.windowSetTabs]: (tabs: WindowTabs) => void
   [IpcChannels.windowOpenFile]: (path: string) => void
   [IpcChannels.settingsGet]: () => AppSettings | Promise<AppSettings>

@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import fontkit from '@pdf-lib/fontkit'
 import {
   PDFCheckBox,
@@ -129,7 +130,13 @@ function setButton(form: PDFForm, field: PDFCheckBox | PDFRadioGroup, value: str
     field.check()
     return
   }
-  if (!state) throw new PdfOpsError(`У поля «${field.getName()}» нет варианта «${value}».`)
+  if (!state)
+    throw new PdfOpsError(
+      m({
+        ru: `У поля «${field.getName()}» нет варианта «${value}».`,
+        en: `Field "${field.getName()}" has no option "${value}".`
+      })
+    )
   field.acroField.setValue(state.on)
   form.markFieldAsDirty(field.ref)
 }
@@ -203,7 +210,10 @@ export async function applyFormValues(
   const form = doc.getForm()
   for (const [name, value] of Object.entries(values)) {
     const field = form.getFieldMaybe(name)
-    if (!field) throw new PdfOpsError(`В документе нет поля «${name}».`)
+    if (!field)
+      throw new PdfOpsError(
+        m({ ru: `В документе нет поля «${name}».`, en: `The document has no field "${name}".` })
+      )
     if (!field.isReadOnly()) setValue(form, field, value)
   }
   let font: PDFFont | null = null

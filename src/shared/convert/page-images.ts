@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import { expandRange, parsePageRanges } from '../pdf-ops/ranges'
 
 /**
@@ -55,5 +56,8 @@ export function pageImageName(
   format: PageImageFormat
 ): string {
   const number = String(page).padStart(String(total).length, '0')
-  return `${base}_стр${number}.${format === 'png' ? 'png' : 'jpg'}`
+  return m({
+    ru: `${base}_стр${number}.${format === 'png' ? 'png' : 'jpg'}`,
+    en: `${base}_p${number}.${format === 'png' ? 'png' : 'jpg'}`
+  })
 }

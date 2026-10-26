@@ -35,7 +35,7 @@ async function webpToEmbeddable(bytes: Uint8Array): Promise<Uint8Array> {
     const blob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob(resolve, transparent ? 'image/png' : 'image/jpeg', 0.92)
     })
-    if (!blob) throw new Error('Не удалось перекодировать WebP')
+    if (!blob) throw new Error(t.errors.webp)
     return new Uint8Array(await blob.arrayBuffer())
   } finally {
     bitmap.close()

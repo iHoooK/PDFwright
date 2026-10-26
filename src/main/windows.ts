@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import {
   APP_OPEN_FILE_CHANNEL,
   UPDATE_PROGRESS_CHANNEL,
+  type LanguageApplyResult,
   type StartupFiles,
   type UpdateProgress,
   type WindowTabs
@@ -11,6 +12,7 @@ import { isAllowedExternalUrl } from '@shared/external-links'
 import { UPDATE_DIRTY_ERROR } from '@shared/update-messages'
 import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, type SessionWindow } from '@shared/settings-schema'
 import { rendererIndexUrl } from './protocol'
+import { mainStrings } from './strings'
 import type { SettingsStore } from './services/settings-store'
 import { cascadeFrame, fitFrameToScreens, pickWindowForFile, type WindowFrame } from './window-plan'
 
@@ -146,13 +148,35 @@ export class WindowManager {
       this.entries.delete(id)
     })
 
+    void window.loadURL(this.pageUrl())
+    return window
+  }
+
+  /** Адрес интерфейса на языке из настроек (dev-сервер или протокол app://). */
+  private pageUrl(): string {
+    const language = this.settings.get().general.language
     const devServerUrl = process.env.ELECTRON_RENDERER_URL
     if (!app.isPackaged && devServerUrl) {
-      void window.loadURL(devServerUrl)
-    } else {
-      void window.loadURL(rendererIndexUrl())
+      const url = new URL(devServerUrl)
+      url.searchParams.set('lang', language)
+      return url.toString()
     }
-    return window
+    return rendererIndexUrl(language)
+  }
+
+  /**
+   * Новый язык интерфейса: каждое окно загружается заново и открывает те же
+   * вкладки. Если где-то есть несохранённые правки, ничего не перезагружается —
+   * язык сменится при следующем запуске или после сохранения.
+   */
+  applyLanguage(): LanguageApplyResult {
+    const dirty = [...this.entries.values()].reduce((sum, entry) => sum + entry.dirty, 0)
+    if (dirty > 0) return { applied: false, dirty }
+    for (const entry of this.entries.values()) {
+      entry.startup = { files: [...entry.tabs.paths], active: entry.tabs.active, missing: [] }
+      void entry.window.loadURL(this.pageUrl())
+    }
+    return { applied: true, dirty: 0 }
   }
 
   /** «Файл → Новое окно»: пустое окно со сдвигом от активного. */
@@ -263,18 +287,13 @@ export class WindowManager {
   }
 
   private confirmClose(entry: WindowEntry): boolean {
+    const s = mainStrings(this.settings.get().general.language).close
     const choice = dialog.showMessageBoxSync(entry.window, {
       type: 'warning',
       title: 'PDFwright',
-      message:
-        entry.dirty === 1
-          ? 'В документе есть несохранённые изменения.'
-          : `Несохранённые изменения в документах: ${entry.dirty}.`,
-      detail:
-        this.entries.size > 1 && !this.quitting
-          ? 'Закрыть окно без сохранения? Изменения будут потеряны.'
-          : 'Закрыть программу без сохранения? Изменения будут потеряны.',
-      buttons: ['Закрыть без сохранения', 'Отмена'],
+      message: entry.dirty === 1 ? s.oneDirty : s.manyDirty(entry.dirty),
+      detail: this.entries.size > 1 && !this.quitting ? s.closeWindow : s.quitApp,
+      buttons: [s.discard, s.cancel],
       defaultId: 1,
       cancelId: 1,
       noLink: true

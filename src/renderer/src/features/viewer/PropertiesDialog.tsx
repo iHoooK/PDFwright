@@ -3,18 +3,18 @@ import { METADATA_FIELDS, type DocumentMetadata } from '@shared/pdf-ops'
 import { Button } from '@renderer/components/controls'
 import { Dialog } from '@renderer/components/Dialog'
 import { activeDoc, useStore } from '@renderer/app/store'
-import { t } from '@renderer/i18n'
+import { locale, t } from '@renderer/i18n'
 import { createCancelToken, type DocumentProperties } from '@renderer/pdf-engine/engine'
 import s from '@renderer/components/dialog.module.css'
 
 function formatBytes(size: number): string {
-  if (size < 1024) return `${size} Б`
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} КБ`
-  return `${(size / 1024 / 1024).toFixed(1)} МБ`
+  if (size < 1024) return t.units.bytes(size)
+  if (size < 1024 * 1024) return t.units.kb((size / 1024).toFixed(1))
+  return t.units.mb((size / 1024 / 1024).toFixed(1))
 }
 
 function formatDate(date: Date | null): string {
-  return date ? date.toLocaleString('ru-RU') : '—'
+  return date ? date.toLocaleString(locale) : '—'
 }
 
 const EMPTY_META: DocumentMetadata = {
@@ -70,7 +70,7 @@ export function PropertiesDialog(): React.JSX.Element | null {
     [t.properties.path, tab.path],
     [t.properties.size, formatBytes(tab.fileSize)],
     [t.properties.pages, String(tab.pages)],
-    [t.properties.pageSize, `${mm(size.width)} × ${mm(size.height)} мм`]
+    [t.properties.pageSize, `${mm(size.width)} × ${mm(size.height)} ${t.units.mm}`]
   ]
   const labels: Record<keyof DocumentMetadata, string> = {
     title: t.properties.title,

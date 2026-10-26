@@ -84,7 +84,7 @@ export function ViewerScreen(): React.JSX.Element {
         state.pagesMode && s.pagesMode
       )}
     >
-      <div className={s.cmdbar} role="toolbar" aria-label="Команды">
+      <div className={s.cmdbar} role="toolbar" aria-label={t.a11y.commands}>
         <Command
           icon={<IconSave />}
           label={t.cmd.save}
@@ -294,7 +294,7 @@ export function ViewerScreen(): React.JSX.Element {
           {readyDoc ? (
             <DocumentView tab={readyDoc.tab} doc={readyDoc.doc} />
           ) : (
-            <section className={cx(s.canvas, s.canvasEmpty)} aria-label="Документ">
+            <section className={cx(s.canvas, s.canvasEmpty)} aria-label={t.a11y.document}>
               {tab?.status === 'loading' ? (
                 <>
                   <h2>{t.viewer.loading}</h2>
@@ -343,7 +343,7 @@ export function ViewerScreen(): React.JSX.Element {
                   {tab.name}
                   <br />
                   {ready
-                    ? `${tab.pages} ${t.start.pages}`
+                    ? t.start.pageCount(tab.pages)
                     : tab.status === 'loading'
                       ? t.viewer.loading
                       : t.viewer.errorTitle}

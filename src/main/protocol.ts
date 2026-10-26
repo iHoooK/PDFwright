@@ -43,8 +43,9 @@ export function installAppProtocol(rendererDir: string, csp: string): void {
   })
 }
 
-export function rendererIndexUrl(): string {
-  return `${RENDERER_ORIGIN}/index.html`
+/** Адрес интерфейса; язык передаётся параметром ?lang= (его читает renderer при загрузке). */
+export function rendererIndexUrl(language: string): string {
+  return `${RENDERER_ORIGIN}/index.html?lang=${language}`
 }
 
 export function rendererDirFromMain(mainDir: string): string {

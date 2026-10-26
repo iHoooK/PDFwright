@@ -1,3 +1,4 @@
+import { m } from '../messages'
 /**
  * Чистые вычисления над номерами страниц (с 1), без pdf-lib:
  * разбор диапазонов для разделения, порядок после перетаскивания,
@@ -22,23 +23,40 @@ export function parsePageRanges(spec: string, total: number): [number, number][]
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
   if (parts.length === 0)
-    throw new PageRangeError('Укажите хотя бы один диапазон, например 1-3, 5, 7-.')
+    throw new PageRangeError(
+      m({
+        ru: 'Укажите хотя бы один диапазон, например 1-3, 5, 7-.',
+        en: 'Enter at least one range, for example 1-3, 5, 7-.'
+      })
+    )
   const ranges: [number, number][] = []
   for (const part of parts) {
     const match = /^(\d+)?\s*(-\s*(\d+)?)?$/.exec(part)
     if (!match || (match[1] === undefined && match[3] === undefined)) {
       throw new PageRangeError(
-        `Не удалось разобрать «${part}». Используйте числа и дефис: 1-3, 5, 7-.`
+        m({
+          ru: `Не удалось разобрать «${part}». Используйте числа и дефис: 1-3, 5, 7-.`,
+          en: `Could not read "${part}". Use numbers and hyphens: 1-3, 5, 7-.`
+        })
       )
     }
     const from = match[1] === undefined ? 1 : Number(match[1])
     const to = match[2] === undefined ? from : match[3] === undefined ? total : Number(match[3])
     if (from < 1 || to > total) {
       throw new PageRangeError(
-        `Диапазон «${part}» выходит за пределы документа (страниц: ${total}).`
+        m({
+          ru: `Диапазон «${part}» выходит за пределы документа (страниц: ${total}).`,
+          en: `Range "${part}" is outside the document (${total} pages).`
+        })
       )
     }
-    if (from > to) throw new PageRangeError(`В диапазоне «${part}» начало больше конца.`)
+    if (from > to)
+      throw new PageRangeError(
+        m({
+          ru: `В диапазоне «${part}» начало больше конца.`,
+          en: `In range "${part}" the start is greater than the end.`
+        })
+      )
     ranges.push([from, to])
   }
   return ranges
@@ -52,7 +70,12 @@ export function expandRange([from, to]: [number, number]): number[] {
 /** Режет 1..total на пакеты по n страниц: [[1,n],[n+1,2n],…]. */
 export function chunkEveryN(total: number, n: number): [number, number][] {
   if (!Number.isInteger(n) || n < 1)
-    throw new PageRangeError('Число страниц в части должно быть целым и больше нуля.')
+    throw new PageRangeError(
+      m({
+        ru: 'Число страниц в части должно быть целым и больше нуля.',
+        en: 'The number of pages per part must be a whole number greater than zero.'
+      })
+    )
   const chunks: [number, number][] = []
   for (let from = 1; from <= total; from += n) chunks.push([from, Math.min(total, from + n - 1)])
   return chunks

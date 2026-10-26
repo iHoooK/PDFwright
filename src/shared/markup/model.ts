@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import {
   apply,
   arrowHead,
@@ -266,7 +267,12 @@ export function newMarkupId(): string {
 export function decodeImageDataUrl(src: string): { format: 'png' | 'jpeg'; bytes: Uint8Array } {
   const match = /^data:image\/(png|jpeg|jpg);base64,([A-Za-z0-9+/=\s]+)$/i.exec(src)
   if (!match?.[1] || match[2] === undefined) {
-    throw new Error('Поддерживаются только картинки PNG и JPEG')
+    throw new Error(
+      m({
+        ru: 'Поддерживаются только картинки PNG и JPEG',
+        en: 'Only PNG and JPEG images are supported'
+      })
+    )
   }
   const binary = atob(match[2].replace(/\s+/g, ''))
   const bytes = new Uint8Array(binary.length)

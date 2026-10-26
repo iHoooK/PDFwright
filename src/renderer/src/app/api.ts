@@ -84,6 +84,11 @@ function createBrowserMock(): PdfwrightApi {
   return {
     getAppInfo: () => Promise.resolve(info),
     getSettings: () => Promise.resolve(settings),
+    applyLanguage: () => {
+      // В браузере язык меняется перезагрузкой страницы с ?lang=.
+      window.location.search = `?lang=${settings.general.language}`
+      return Promise.resolve({ applied: true, dirty: 0 })
+    },
     updateSettings: (patch) => {
       settings = applySettingsPatch(settings, patch)
       persist()

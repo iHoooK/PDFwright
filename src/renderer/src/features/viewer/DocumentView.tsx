@@ -11,6 +11,7 @@ import { ContentLayer } from '@renderer/features/content/ContentLayer'
 import { selectionToPageRects } from '@renderer/features/markup/text-selection'
 import { PdfPageView, type PageForms } from './PdfPageView'
 import s from './viewer.module.css'
+import { t } from '@renderer/i18n'
 
 const NO_MARKUP: readonly MarkupObject[] = []
 
@@ -224,7 +225,7 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
       )}
       onScroll={onScroll}
       onPointerUp={onPointerUp}
-      aria-label="Документ"
+      aria-label={t.a11y.document}
       data-tool={tool}
     >
       {pageNumbers.map((n) => (

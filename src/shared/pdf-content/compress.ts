@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import type { PDFDocument as MuDocument, PDFObject } from 'mupdf'
 import { loadMupdf, type Mupdf } from './mupdf'
 import { openPdf } from './open'
@@ -172,7 +173,10 @@ export async function compressPdf(
   const doc = openPdf(
     mupdf,
     bytes,
-    'Документ зашифрован. Сжатие защищённых паролем файлов появится в следующих версиях.'
+    m({
+      ru: 'Документ зашифрован. Сжатие защищённых паролем файлов появится в следующих версиях.',
+      en: 'The document is encrypted. Compressing password-protected files will come in a future version.'
+    })
   )
   try {
     const maxPixels = Math.ceil((largestPageSide(doc) / 72) * preset.dpi)

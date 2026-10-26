@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { IconClose } from '@renderer/icons'
 import { IconButton } from './controls'
 import s from './dialog.module.css'
+import { t } from '@renderer/i18n'
 
 interface Props {
   open: boolean
@@ -44,7 +45,7 @@ export function Dialog({
     >
       <div className={s.head}>
         <h2 className={s.title}>{title}</h2>
-        <IconButton label="Закрыть" small onClick={onClose}>
+        <IconButton label={t.a11y.close} small onClick={onClose}>
           <IconClose />
         </IconButton>
       </div>

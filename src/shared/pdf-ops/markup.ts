@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import fontkit from '@pdf-lib/fontkit'
 import {
   appendBezierCurve,
@@ -225,7 +226,10 @@ async function buildAppearance(ctx: Context, o: MarkupObject): Promise<Appearanc
       break
     case 'text': {
       const { font, measure } = ctx
-      if (!font || !measure) throw new PdfOpsError('Нет шрифта для текстовых блоков.')
+      if (!font || !measure)
+        throw new PdfOpsError(
+          m({ ru: 'Нет шрифта для текстовых блоков.', en: 'No font for text boxes.' })
+        )
       const box = boxMatrixYUp(o)
       const layout = layoutTextObject(o, measure)
       resources.Font = { F1: font.ref }
@@ -307,7 +311,9 @@ function annotationDict(
       dict.BS = { W: 0 }
       break
     case 'image':
-      dict.Contents = PDFHexString.fromText(o.signature ? 'Подпись' : 'Изображение')
+      dict.Contents = PDFHexString.fromText(
+        m({ ru: o.signature ? 'Подпись' : 'Изображение', en: o.signature ? 'Signature' : 'Image' })
+      )
       break
   }
   return dict
@@ -327,13 +333,21 @@ export async function applyMarkup(
   const total = doc.getPageCount()
   for (const o of objects) {
     if (!Number.isInteger(o.page) || o.page < 1 || o.page > total) {
-      throw new PdfOpsError(`Страницы ${o.page} нет в документе (всего ${total}).`)
+      throw new PdfOpsError(
+        m({
+          ru: `Страницы ${o.page} нет в документе (всего ${total}).`,
+          en: `Page ${o.page} is not in the document (${total} in total).`
+        })
+      )
     }
   }
   let font: PDFFont | null = null
   let measure: MeasureText | null = null
   if (objects.some((o) => o.kind === 'text')) {
-    if (!options.font) throw new PdfOpsError('Нет шрифта для текстовых блоков.')
+    if (!options.font)
+      throw new PdfOpsError(
+        m({ ru: 'Нет шрифта для текстовых блоков.', en: 'No font for text boxes.' })
+      )
     doc.registerFontkit(fontkit)
     font = await doc.embedFont(options.font, { subset: true })
     measure = fontMeasure(fontkit.create(options.font))

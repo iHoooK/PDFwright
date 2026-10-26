@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import type { Font, PDFDocument as MuDocument, PDFObject } from 'mupdf'
 import type { Mupdf } from './mupdf'
 import { fontFamily, parseToUnicode, sameFamily, type CharCodes } from './to-unicode'
@@ -324,7 +325,12 @@ export class FontPalette {
       }
     }
     if (missing.size > 0) {
-      throw new PdfContentError(`В шрифтах нет символов: ${[...missing].join(' ')}`)
+      throw new PdfContentError(
+        m({
+          ru: `В шрифтах нет символов: ${[...missing].join(' ')}`,
+          en: `The fonts have no characters: ${[...missing].join(' ')}`
+        })
+      )
     }
     return result
   }

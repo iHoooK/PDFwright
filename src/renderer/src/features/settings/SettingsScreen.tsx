@@ -1,3 +1,4 @@
+import type { Language } from '@shared/settings-schema'
 import { useState, type ReactNode } from 'react'
 import {
   IconBack,
@@ -59,6 +60,12 @@ const SCROLL_LABELS: Record<ScrollMode, string> = {
   single: t.settings.scrollSingle,
   spread: t.settings.scrollSpread
 }
+
+/** Языки показываются своими названиями — их узнают, даже не читая текущий язык. */
+const LANGUAGE_OPTIONS: readonly { value: Language; label: string }[] = [
+  { value: 'ru', label: 'Русский' },
+  { value: 'en', label: 'English' }
+]
 
 export function SettingsScreen(): React.JSX.Element {
   const { state, actions, api } = useStore()
@@ -157,10 +164,11 @@ export function SettingsScreen(): React.JSX.Element {
             >
               <SelectField
                 label={t.settings.language}
-                value="ru"
-                options={[{ value: 'ru', label: t.settings.languageRu }]}
-                onChange={() => undefined}
-                disabled
+                value={settings.general.language}
+                options={LANGUAGE_OPTIONS}
+                onChange={(language) => {
+                  actions.setLanguage(language)
+                }}
               />
             </SettingCard>
             <SettingCard icon={<IconSave />} title={t.settings.backup} hint={t.settings.backupHint}>

@@ -1,3 +1,4 @@
+import { m } from '../messages'
 import type { PDFDocument as MuDocument } from 'mupdf'
 import type { Mupdf } from './mupdf'
 import { PdfContentError } from './types'
@@ -9,7 +10,10 @@ export function openPdf(mupdf: Mupdf, bytes: Uint8Array, encryptedMessage: strin
     doc = new mupdf.PDFDocument(bytes)
   } catch (error) {
     throw new PdfContentError(
-      `Не удалось разобрать PDF: ${error instanceof Error ? error.message : String(error)}`
+      m({
+        ru: `Не удалось разобрать PDF: ${error instanceof Error ? error.message : String(error)}`,
+        en: `Could not parse the PDF: ${error instanceof Error ? error.message : String(error)}`
+      })
     )
   }
   if (doc.needsPassword()) {

@@ -3,6 +3,8 @@ import { stat } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import { registerIpcHandlers } from './ipc'
 import { installApplicationMenu } from './menu'
+import { mainStrings } from './strings'
+import { setMessageLanguage } from '@shared/messages'
 import { extractPdfPath } from './open-args'
 import { installAppProtocol, registerAppScheme, rendererDirFromMain } from './protocol'
 import { isPortableBuild } from './services/app-paths'
@@ -51,13 +53,23 @@ async function bootstrap(startupFile: string | null): Promise<void> {
     windows,
     updates: new UpdateService(isPortableBuild(), (progress) => {
       windows.sendUpdateProgress(progress)
-    })
-  })
-  installApplicationMenu({
-    newWindow: () => {
-      windows.newWindow()
+    }),
+    onLanguageChange: () => {
+      applyLanguage()
     }
   })
+  // Меню и сообщения общего кода — на языке из настроек; при смене языка ставятся заново.
+  const applyLanguage = (): void => {
+    const language = settings.get().general.language
+    setMessageLanguage(language)
+    installApplicationMenu({
+      newWindow: () => {
+        windows.newWindow()
+      },
+      strings: mainStrings(language)
+    })
+  }
+  applyLanguage()
 
   await openStartupWindows(windows, settings, startupFile)
 

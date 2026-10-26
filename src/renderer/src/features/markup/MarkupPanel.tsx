@@ -3,7 +3,7 @@ import { type MarkupObject, type ShapeKind, type TextMarkKind } from '@shared/ma
 import { fitTextBox } from '@shared/markup/text-layout'
 import type { MarkupSaveMode } from '@shared/settings-schema'
 import { IconAdd, IconDelete, IconImage } from '@renderer/icons'
-import { t } from '@renderer/i18n'
+import { locale, t } from '@renderer/i18n'
 import {
   Button,
   Command,
@@ -79,7 +79,7 @@ function StyleFields({ idPrefix, colors, value, onChange }: StyleFieldsProps): R
       {value.width !== undefined && (
         <div className={v.field}>
           <label htmlFor={`${idPrefix}-width`}>
-            {t.props.width} · {value.width.toLocaleString('ru-RU')} пт
+            {t.props.width} · {value.width.toLocaleString(locale)} {t.units.pt}
           </label>
           <Range
             id={`${idPrefix}-width`}
@@ -96,7 +96,7 @@ function StyleFields({ idPrefix, colors, value, onChange }: StyleFieldsProps): R
       {value.fontSize !== undefined && (
         <div className={v.field}>
           <label htmlFor={`${idPrefix}-size`}>
-            {t.props.fontSize} · {Math.round(value.fontSize)} пт
+            {t.props.fontSize} · {Math.round(value.fontSize)} {t.units.pt}
           </label>
           <Range
             id={`${idPrefix}-size`}

@@ -9,6 +9,7 @@ import type {
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { parsePdfDate } from '@shared/pdf-date'
 import { normalizeTurn, type PageBox, type PageGeometry } from '@shared/markup/geometry'
+import { t } from '@renderer/i18n'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -290,13 +291,13 @@ function toLoadError(error: unknown): PdfLoadError {
   const name =
     typeof error === 'object' && error !== null && 'name' in error ? String(error.name) : ''
   if (name === 'InvalidPDFException' || name === 'MissingPDFException' || name === 'FormatError') {
-    return new PdfLoadError('invalid', 'Файл не является PDF или повреждён.')
+    return new PdfLoadError('invalid', t.errors.notPdf)
   }
   if (name === 'PasswordException' || name === 'AbortException') {
-    return new PdfLoadError('cancelled', 'Открытие отменено.')
+    return new PdfLoadError('cancelled', t.errors.openCancelled)
   }
   const message = error instanceof Error ? error.message : String(error)
-  return new PdfLoadError('unknown', `Не удалось открыть файл: ${message}`)
+  return new PdfLoadError('unknown', t.errors.openFailed(message))
 }
 
 export interface RenderHandle {

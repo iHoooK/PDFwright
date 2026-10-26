@@ -12,6 +12,8 @@
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
+    "src/renderer/src/i18n/ru.ts",
+    "src/renderer/src/i18n/en.ts",
     "tests/unit/**/*.ts",
     "tests/e2e/**/*.ts"
   ]
