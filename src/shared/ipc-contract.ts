@@ -17,6 +17,8 @@ export const IpcChannels = {
   dialogOpenPdfs: 'dialog:open-pdfs',
   dialogSavePdf: 'dialog:save-pdf',
   dialogChooseFolder: 'dialog:choose-folder',
+  dialogOpenImages: 'dialog:open-images',
+  dialogSaveText: 'dialog:save-text',
   fileRead: 'file:read',
   fileWrite: 'file:write',
   fileWriteMany: 'file:write-many',
@@ -46,6 +48,10 @@ export const APP_COMMANDS = [
   'edit.undo',
   'edit.redo',
   'edit.find',
+  'tools.toImages',
+  'tools.fromImages',
+  'tools.extractText',
+  'tools.compress',
   'tools.merge',
   'tools.split',
   'app.settings',
@@ -110,6 +116,13 @@ export interface WriteManyItem {
   bytes: ArrayBuffer
 }
 
+/** Картинка, выбранная в диалоге «Изображения в PDF»: main сразу читает её байты. */
+export interface PickedImage {
+  path: string
+  name: string
+  bytes: ArrayBuffer
+}
+
 export interface SaveDialogOptions {
   title?: string
   defaultPath?: string
@@ -152,6 +165,10 @@ export interface PdfwrightApi {
   openPdfsDialog: () => Promise<OpenedPdfFile[]>
   savePdfDialog: (options: SaveDialogOptions) => Promise<string | null>
   chooseFolderDialog: (defaultPath?: string) => Promise<string | null>
+  /** Выбор картинок PNG/JPEG/WebP; файлы не попадают в «Недавние». */
+  openImagesDialog: () => Promise<PickedImage[]>
+  /** Путь для сохранения текста; расширение .txt добавляется само. */
+  saveTextDialog: (options: SaveDialogOptions) => Promise<string | null>
   readFile: (path: string) => Promise<FileReadResult>
   writeFile: (request: WriteFileRequest) => Promise<void>
   writeFiles: (files: WriteManyItem[]) => Promise<void>
@@ -189,6 +206,8 @@ export interface IpcHandlers {
   [IpcChannels.dialogOpenPdfs]: () => Promise<OpenedPdfFile[]>
   [IpcChannels.dialogSavePdf]: (options: SaveDialogOptions) => Promise<string | null>
   [IpcChannels.dialogChooseFolder]: (defaultPath?: string) => Promise<string | null>
+  [IpcChannels.dialogOpenImages]: () => Promise<PickedImage[]>
+  [IpcChannels.dialogSaveText]: (options: SaveDialogOptions) => Promise<string | null>
   [IpcChannels.fileRead]: (path: string) => Promise<FileReadResult>
   [IpcChannels.fileWrite]: (request: WriteFileRequest) => Promise<void>
   [IpcChannels.fileWriteMany]: (files: WriteManyItem[]) => Promise<void>

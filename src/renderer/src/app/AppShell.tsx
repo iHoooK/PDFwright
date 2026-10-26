@@ -13,6 +13,7 @@ import { StartScreen } from '@renderer/features/start/StartScreen'
 import { ViewerScreen } from '@renderer/features/viewer/ViewerScreen'
 import { SettingsScreen } from '@renderer/features/settings/SettingsScreen'
 import { KitScreen } from '@renderer/features/kit/KitScreen'
+import { ConvertDialogs } from '@renderer/features/convert/ConvertDialogs'
 import logo from '../assets/logo.svg'
 import { activeDoc, useStore, type DocTab } from './store'
 import { useHotkeys } from './hotkeys'
@@ -144,6 +145,7 @@ export function AppShell(): React.JSX.Element {
           ))}
       </footer>
 
+      <ConvertDialogs />
       <Toast message={state.toast} />
     </div>
   )

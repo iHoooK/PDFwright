@@ -25,6 +25,14 @@ const PDF_FILTERS: Electron.FileFilter[] = [
   { name: 'Все файлы', extensions: ['*'] }
 ]
 
+const IMAGE_FILTERS: Electron.FileFilter[] = [
+  { name: 'Картинки', extensions: ['png', 'jpg', 'jpeg', 'webp'] },
+  { name: 'Все файлы', extensions: ['*'] }
+]
+
+/** Предел размера одной картинки для «Изображения в PDF». */
+const IMAGE_MAX_BYTES = 200 * 1024 * 1024
+
 /**
  * Регистрирует все обработчики IPC. Каждый обработчик проверяет входные
  * данные сам: renderer — отдельный процесс, и его аргументам нельзя
@@ -111,6 +119,45 @@ export function registerIpcHandlers({
       ...(typeof defaultPath === 'string' && defaultPath.length > 0 ? { defaultPath } : {})
     })
     return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
+
+  handle(IpcChannels.dialogOpenImages, async () => {
+    const result = await showOpen({
+      title: 'Выберите картинки',
+      properties: ['openFile', 'multiSelections'],
+      filters: IMAGE_FILTERS
+    })
+    if (result.canceled) return []
+    const picked = []
+    for (const path of result.filePaths) {
+      const info = await stat(path)
+      if (info.size > IMAGE_MAX_BYTES) {
+        throw new Error(`Файл «${basename(path)}» больше 200 МБ`)
+      }
+      const buffer = await readFile(path)
+      const bytes = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      picked.push({ path, name: basename(path), bytes })
+    }
+    return picked
+  })
+
+  handle(IpcChannels.dialogSaveText, async (options) => {
+    const value: unknown = options
+    const opts =
+      typeof value === 'object' && value !== null
+        ? (value as { title?: unknown; defaultPath?: unknown })
+        : {}
+    const owner = BrowserWindow.getFocusedWindow()
+    const dialogOptions: Electron.SaveDialogOptions = {
+      title: typeof opts.title === 'string' ? opts.title : 'Сохранить текст',
+      filters: [{ name: 'Текст', extensions: ['txt'] }],
+      ...(typeof opts.defaultPath === 'string' ? { defaultPath: opts.defaultPath } : {})
+    }
+    const result = owner
+      ? await dialog.showSaveDialog(owner, dialogOptions)
+      : await dialog.showSaveDialog(dialogOptions)
+    if (result.canceled || !result.filePath) return null
+    return /\.txt$/i.test(result.filePath) ? result.filePath : `${result.filePath}.txt`
   })
 
   handle(IpcChannels.fileRead, async (path) => {

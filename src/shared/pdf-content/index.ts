@@ -13,4 +13,12 @@ export {
   replaceText
 } from './engine'
 export { loadMupdf } from './mupdf'
+export { extractText, linesToText, type TextLineBox } from './extract-text'
+export {
+  compressPdf,
+  COMPRESS_PRESETS,
+  type CompressLevel,
+  type CompressPreset,
+  type CompressResult
+} from './compress'
 export * from './types'

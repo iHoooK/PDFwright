@@ -79,10 +79,21 @@ type ContentEditKind = keyof typeof t.content.done
 export type SidebarTab = 'thumbs' | 'outline' | 'search'
 export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author'
 export type ZoomMode = 'fit-width' | 'fit-page' | 'custom'
-export type ToolDialog = 'merge' | 'split' | null
+/** Диалоги конвертации (фаза 6). */
+export type ConvertDialog = 'toImages' | 'fromImages' | 'extractText' | 'compress'
+export type ToolDialog = 'merge' | 'split' | ConvertDialog | null
 export type SelectMode = 'single' | 'toggle' | 'range'
 /** Инструменты со своим цветом, непрозрачностью и толщиной в панели свойств. */
 export type StyledTool = 'marker' | 'pen' | 'shapes' | 'text'
+
+/** Документ-источник для конвертации: байты с записанной несохранённой разметкой. */
+export interface ConvertSource {
+  name: string
+  /** Путь файла; пустой у нового несохранённого документа. */
+  path: string
+  bytes: Uint8Array
+  pages: number
+}
 
 export interface ToolStyle {
   color: string
@@ -659,6 +670,13 @@ export interface Actions {
   save: () => Promise<boolean>
   saveAs: () => Promise<boolean>
   openTool: (dialog: ToolDialog) => void
+  // Конвертация
+  /** Активный документ как источник: байты с записанной несохранённой разметкой. */
+  convertSource: () => Promise<ConvertSource | null>
+  /** Открывает готовые байты новой несохранённой вкладкой («Сохранить» спросит путь). */
+  openNewDocument: (name: string, bytes: Uint8Array) => Promise<boolean>
+  /** Заменяет байты активного документа шагом истории: Ctrl+Z возвращает прежние. */
+  replaceDocument: (bytes: Uint8Array, message: string) => Promise<boolean>
   checkUpdates: () => void
   downloadUpdate: () => void
   cancelUpdate: () => void
@@ -999,13 +1017,20 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
   const save = useCallback(async (): Promise<boolean> => {
     const tab = activeDoc(stateRef.current)
     if (tab?.status !== 'ready' || tab.busy) return false
+    if (tab.path === '') {
+      const path = await api.savePdfDialog({ title: t.ops.saveAsTitle, defaultPath: tab.name })
+      return path === null ? false : writeTab(tab, path)
+    }
     return writeTab(tab, tab.path)
-  }, [writeTab])
+  }, [api, writeTab])
 
   const saveAs = useCallback(async (): Promise<boolean> => {
     const tab = activeDoc(stateRef.current)
     if (tab?.status !== 'ready' || tab.busy) return false
-    const path = await api.savePdfDialog({ title: t.ops.saveAsTitle, defaultPath: tab.path })
+    const path = await api.savePdfDialog({
+      title: t.ops.saveAsTitle,
+      defaultPath: tab.path || tab.name
+    })
     if (path === null) return false
     return writeTab(tab, path)
   }, [api, writeTab])
@@ -1539,6 +1564,55 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       openTool: (dialog) => {
         dispatch({ type: 'toolDialog', dialog })
       },
+      // Конвертация
+      convertSource: async () => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready' || !tab.bytes) return null
+        return { name: tab.name, path: tab.path, pages: tab.pages, bytes: await bakeMarkup(tab) }
+      },
+      openNewDocument: async (name, bytes) => {
+        docCounter += 1
+        const id = `doc-${docCounter}`
+        dispatch({
+          type: 'docOpen',
+          doc: {
+            id,
+            name,
+            path: '',
+            status: 'loading',
+            doc: null,
+            pages: 0,
+            fileSize: 0,
+            error: null,
+            sizesVersion: 0,
+            bytes: null,
+            dirty: true,
+            markup: [],
+            history: [],
+            future: [],
+            coalesce: null,
+            busy: false
+          }
+        })
+        try {
+          const doc = await loadPdfDocument(bytes, { askPassword: () => Promise.resolve(null) })
+          if (!stateRef.current.docs.some((d) => d.id === id)) {
+            doc.destroy()
+            return false
+          }
+          dispatch({ type: 'docReady', id, doc, bytes, fileSize: bytes.length })
+          void doc.loadSizes(() => {
+            dispatch({ type: 'docSizes', id })
+          })
+          return true
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          dispatch({ type: 'docError', id, error: message })
+          return false
+        }
+      },
+      replaceDocument: (bytes, message) =>
+        applyOperation(() => Promise.resolve(bytes), { message }),
       checkUpdates: () => {
         dispatch({
           type: 'update',
@@ -1667,6 +1741,18 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           break
         case 'edit.find':
           actions.focusSearch()
+          break
+        case 'tools.toImages':
+          actions.openTool('toImages')
+          break
+        case 'tools.fromImages':
+          actions.openTool('fromImages')
+          break
+        case 'tools.extractText':
+          actions.openTool('extractText')
+          break
+        case 'tools.compress':
+          actions.openTool('compress')
           break
         case 'tools.merge':
           actions.openTool('merge')
