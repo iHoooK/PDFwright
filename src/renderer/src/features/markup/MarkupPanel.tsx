@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
-import { resizeBoxKeepingOrigin } from '@shared/markup/geometry'
 import { type MarkupObject, type ShapeKind, type TextMarkKind } from '@shared/markup/model'
-import { layoutText } from '@shared/markup/text-layout'
+import { fitTextBox } from '@shared/markup/text-layout'
 import type { MarkupSaveMode } from '@shared/settings-schema'
 import { IconAdd, IconDelete, IconImage } from '@renderer/icons'
 import { t } from '@renderer/i18n'
@@ -146,12 +145,8 @@ function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
     if (patch.width !== undefined && hasWidth && 'width' in next)
       next = { ...next, width: patch.width }
     if (patch.fontSize !== undefined && next.kind === 'text') {
-      const layout = layoutText(next.text, patch.fontSize, measureText)
-      next = {
-        ...next,
-        fontSize: patch.fontSize,
-        rect: resizeBoxKeepingOrigin(next.rect, next.rotate, layout.width, layout.height)
-      }
+      // Кегль меняется только здесь; рамка заданной ширины остаётся, текст переносится в ней.
+      next = fitTextBox({ ...next, fontSize: patch.fontSize }, measureText)
     }
     actions.updateMarkup(next, key)
   }
@@ -166,19 +161,8 @@ function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
             value={object.text}
             rows={Math.min(6, Math.max(2, object.text.split('\n').length))}
             onChange={(event) => {
-              const text = event.target.value
-              const layout = layoutText(text, object.fontSize, measureText)
               actions.updateMarkup(
-                {
-                  ...object,
-                  text,
-                  rect: resizeBoxKeepingOrigin(
-                    object.rect,
-                    object.rotate,
-                    layout.width,
-                    layout.height
-                  )
-                },
+                fitTextBox({ ...object, text: event.target.value }, measureText),
                 'text'
               )
             }}

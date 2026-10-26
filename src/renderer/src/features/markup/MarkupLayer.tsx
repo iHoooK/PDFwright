@@ -6,7 +6,6 @@ import {
   invert,
   normalizeTurn,
   rectFromPoints,
-  resizeBoxKeepingOrigin,
   simplifyPath,
   textLineStroke,
   transformRect,
@@ -21,11 +20,8 @@ import {
   geometryBounds,
   isBoxObject,
   isMovable,
-  keepsAspect,
-  MIN_OBJECT_SIZE,
   moveObject,
   newMarkupId,
-  resizeObject,
   visualBounds,
   type ImageObject,
   type LineObject,
@@ -33,8 +29,10 @@ import {
   type ShapeKind,
   type TextObject
 } from '@shared/markup/model'
+import { FRAME_HANDLES, handlePoint, resizeInView, type FrameHandle } from '@shared/markup/resize'
 import {
-  layoutText,
+  fitTextBox,
+  layoutTextObject,
   LINE_HEIGHT,
   MARKUP_FONT_FAMILY,
   TEXT_PADDING
@@ -96,14 +94,9 @@ function boxPlacement(
   }
 }
 
-function textLayoutOf(o: TextObject): ReturnType<typeof layoutText> {
-  return layoutText(o.text, o.fontSize, measureText)
-}
-
-/** Текст нового содержания: рамка растёт от начала текста. */
+/** Текст нового содержания: рамка подгоняется от начала текста (см. fitTextBox). */
 function withText(o: TextObject, text: string): TextObject {
-  const layout = layoutText(text, o.fontSize, measureText)
-  return { ...o, text, rect: resizeBoxKeepingOrigin(o.rect, o.rotate, layout.width, layout.height) }
+  return fitTextBox({ ...o, text }, measureText)
 }
 
 /** Векторные объекты рисуются в координатах страницы внутри группы с матрицей вида. */
@@ -224,7 +217,7 @@ function BoxObject({
             preserveAspectRatio="none"
             className={s.textSvg}
           >
-            {textLayoutOf(o).lines.map((line, i) => (
+            {layoutTextObject(o, measureText).lines.map((line, i) => (
               <text
                 key={i}
                 x={line.x}
@@ -258,6 +251,9 @@ function TextEditor({
 }): React.JSX.Element {
   const { object } = editing
   const { frame, width, height, turn } = placement
+  const wraps = object.fixedWidth === true
+  // Рамка редактора — 1 px, поэтому поле на пиксель меньше: текст стоит там же, где на слое.
+  const padding = Math.max(0, object.fontSize * TEXT_PADDING * scale - 1)
   return (
     <div
       className={s.box}
@@ -269,20 +265,21 @@ function TextEditor({
         style={{ width, height, transform: `translate(-50%, -50%) rotate(${turn}deg)` }}
       >
         <textarea
-          className={s.editor}
+          className={cx(s.editor, wraps && s.editorWrap)}
           aria-label={t.props.text}
           placeholder={t.markup.textPlaceholder}
           value={object.text}
           autoFocus
-          wrap="off"
+          // В рамке заданной ширины строки переносятся так же, как в layoutText.
+          wrap={wraps ? 'soft' : 'off'}
           spellCheck={false}
           style={{
             fontFamily: `'${MARKUP_FONT_FAMILY}'`,
             fontSize: object.fontSize * scale,
             lineHeight: LINE_HEIGHT,
-            padding: object.fontSize * TEXT_PADDING * scale,
+            padding,
             color: object.color,
-            width: Math.max(width, object.fontSize * scale * 2),
+            width: wraps ? width : Math.max(width, object.fontSize * scale * 2),
             height
           }}
           onChange={(event) => {
@@ -535,37 +532,23 @@ export const MarkupLayer = memo(function MarkupLayer({
     }
   }
 
-  // Изменение размера за угол (в пикселях вида, чтобы угол шёл за указателем при любом повороте).
-  const startCorner = (event: React.PointerEvent, object: MarkupObject, corner: number): void => {
+  // Изменение размера за угол или сторону (в пикселях вида, чтобы ручка шла за указателем
+  // при любом повороте). Углы картинок сохраняют пропорции, с Shift — свободно.
+  const startResize = (
+    event: React.PointerEvent,
+    object: MarkupObject,
+    handle: FrameHandle
+  ): void => {
     event.preventDefault()
     event.stopPropagation()
-    const frame = transformRect(matrix, geometryBounds(object))
-    const corners: Point[] = [
-      { x: frame.x, y: frame.y },
-      { x: frame.x + frame.width, y: frame.y },
-      { x: frame.x + frame.width, y: frame.y + frame.height },
-      { x: frame.x, y: frame.y + frame.height }
-    ]
-    const fixed = corners[(corner + 2) % 4] ?? corners[0] ?? { x: 0, y: 0 }
-    const min = MIN_OBJECT_SIZE * scale
     let result: MarkupObject | null = null
     gesture(
       (e) => {
-        const q = viewPoint(e.clientX, e.clientY)
-        let w = Math.max(min, Math.abs(q.x - fixed.x))
-        let h = Math.max(min, Math.abs(q.y - fixed.y))
-        if (keepsAspect(object) && frame.width > 0 && frame.height > 0) {
-          const k = Math.max(w / frame.width, h / frame.height)
-          w = frame.width * k
-          h = frame.height * k
-        }
-        const view: Rect = {
-          x: q.x < fixed.x ? fixed.x - w : fixed.x,
-          y: q.y < fixed.y ? fixed.y - h : fixed.y,
-          width: w,
-          height: h
-        }
-        result = resizeObject(object, transformRect(inverse, view))
+        result = resizeInView(object, handle, viewPoint(e.clientX, e.clientY), e.shiftKey, {
+          matrix,
+          scale,
+          measure: measureText
+        })
         setPreview(result)
       },
       () => {
@@ -627,25 +610,20 @@ export const MarkupLayer = memo(function MarkupLayer({
       }
     } else if (interactive) {
       const g = transformRect(matrix, geometryBounds(selected))
-      const corners = [
-        { x: g.x, y: g.y, cursor: 'nwse-resize' },
-        { x: g.x + g.width, y: g.y, cursor: 'nesw-resize' },
-        { x: g.x + g.width, y: g.y + g.height, cursor: 'nwse-resize' },
-        { x: g.x, y: g.y + g.height, cursor: 'nesw-resize' }
-      ]
-      corners.forEach((c, i) => {
+      for (const handle of FRAME_HANDLES) {
+        const p = handlePoint(g, handle)
         handles.push(
           <span
-            key={i}
+            key={handle.id}
             className={s.handle}
-            data-markup-handle={i}
-            style={{ left: c.x, top: c.y, cursor: c.cursor }}
+            data-markup-handle={handle.id}
+            style={{ left: p.x, top: p.y, cursor: handle.cursor }}
             onPointerDown={(e) => {
-              startCorner(e, selected, i)
+              startResize(e, selected, handle)
             }}
           />
         )
-      })
+      }
     }
     frame = (
       <>

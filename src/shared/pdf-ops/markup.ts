@@ -52,7 +52,7 @@ import {
   type MarkupObject,
   type TextObject
 } from '../markup/model'
-import { layoutText } from '../markup/text-layout'
+import { fontMeasure, layoutTextObject, type MeasureText } from '../markup/text-layout'
 import type { MarkupSaveMode } from '../settings-schema'
 import { load, PdfOpsError, save } from './document'
 
@@ -76,6 +76,8 @@ export interface ApplyMarkupOptions {
 interface Context {
   doc: PDFDocument
   font: PDFFont | null
+  /** Ширины строк тем же fontkit, что и на экране: перенос в рамке совпадает. */
+  measure: MeasureText | null
   images: Map<string, PDFImage>
 }
 
@@ -222,12 +224,10 @@ async function buildAppearance(ctx: Context, o: MarkupObject): Promise<Appearanc
       body.push(stroke())
       break
     case 'text': {
-      const font = ctx.font
-      if (!font) throw new PdfOpsError('Нет шрифта для текстовых блоков.')
+      const { font, measure } = ctx
+      if (!font || !measure) throw new PdfOpsError('Нет шрифта для текстовых блоков.')
       const box = boxMatrixYUp(o)
-      const layout = layoutText(o.text, o.fontSize, (line, size) =>
-        font.widthOfTextAtSize(line, size)
-      )
+      const layout = layoutTextObject(o, measure)
       resources.Font = { F1: font.ref }
       body.push(cm(box.matrix), fillColor(o.color), beginText(), setFontAndSize('F1', o.fontSize))
       for (const line of layout.lines) {
@@ -331,12 +331,14 @@ export async function applyMarkup(
     }
   }
   let font: PDFFont | null = null
+  let measure: MeasureText | null = null
   if (objects.some((o) => o.kind === 'text')) {
     if (!options.font) throw new PdfOpsError('Нет шрифта для текстовых блоков.')
     doc.registerFontkit(fontkit)
     font = await doc.embedFont(options.font, { subset: true })
+    measure = fontMeasure(fontkit.create(options.font))
   }
-  const ctx: Context = { doc, font, images: new Map() }
+  const ctx: Context = { doc, font, measure, images: new Map() }
 
   const pages = [...new Set(objects.map((o) => o.page))].sort((a, b) => a - b)
   for (const pageNumber of pages) {
