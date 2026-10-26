@@ -267,7 +267,7 @@ describe('PDFwright (собранное приложение)', () => {
     expect(settings.markup.signatures[0]?.src).toMatch(/^data:image\/png;base64,/)
   })
 
-  it('правит содержимое: удаляет и заменяет строку, двигает и удаляет картинку, ластик', async () => {
+  it('правит содержимое: абзацы, ширина, новый текст, картинка, ластик', async () => {
     // Страница 595×842 пт: три строки и картинка 200×200 с левым нижним углом в (72, 300).
     const source = await PDFDocument.create()
     const font = await source.embedFont(StandardFonts.Helvetica)
@@ -290,22 +290,34 @@ describe('PDFwright (собранное приложение)', () => {
     await tool(page, 'Правка').click()
     await page.locator('[data-content-layer="1"][data-content-ready="4"]').waitFor()
 
-    // Щелчок выбирает строку, Delete вырезает её из документа.
+    const handleTo = async (handle: string, fxTo: number, fyTo: number): Promise<void> => {
+      const box = await page.locator(`[data-content-handle="${handle}"]`).boundingBox()
+      if (!box) throw new Error(`нет ручки ${handle}`)
+      const to = await pagePoint(page, 1, fxTo, fyTo, false)
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(to.x, to.y, { steps: 6 })
+      await page.mouse.up()
+    }
+    const ready = (): Promise<void> =>
+      page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
+
+    // Щелчок выбирает абзац (здесь — из одной строки), Delete вырезает его из документа.
     await clickPage(page, 1, fx(110), fy(767))
-    await page.locator('[data-content-selected="text"]').waitFor()
-    await page.locator('[data-content-props="text"]').waitFor()
+    await page.locator('[data-content-selected="block"]').waitFor()
+    await page.locator('[data-content-props="block"]').waitFor()
     await page.keyboard.press('Delete')
     await expect.poll(layerText, { timeout: 20_000 }).not.toContain('Delete this line')
     expect(await statusText(page)).toContain('Не сохранено')
 
-    // Двойной щелчок открывает правку строки на месте.
-    await page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
+    // Двойной щелчок открывает правку абзаца на месте, Ctrl+Enter — готово.
+    await ready()
     const p = await pagePoint(page, 1, fx(110), fy(707))
     await page.mouse.dblclick(p.x, p.y)
     const editor = page.locator('[data-content-editor]')
     await editor.waitFor()
     await editor.fill('Fixed typo here')
-    await editor.press('Enter')
+    await editor.press('Control+Enter')
     await expect.poll(layerText, { timeout: 20_000 }).toContain('Fixed typo here')
     await shot(page, 'content-replaced')
 
@@ -315,27 +327,49 @@ describe('PDFwright (собранное приложение)', () => {
     await page.keyboard.press('Control+y')
     await expect.poll(layerText, { timeout: 20_000 }).toContain('Fixed typo here')
 
-    // Картинку перетаскиваем вправо на 100 пт, затем выбираем на новом месте и удаляем.
-    await page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
+    // Ширина абзаца: правая ручка сужает колонку, текст переносится на две строки.
+    await ready()
+    await clickPage(page, 1, fx(110), fy(647))
+    await page.locator('[data-content-selected="block"]').waitFor()
+    await handleTo('end', fx(167), fy(647))
+    await expect.poll(layerText, { timeout: 20_000 }).not.toContain('Keep this line')
+
+    // Картинку перетаскиваем вправо на 100 пт, затем тянем правую ручку: только ширина.
     await drag(page, 1, [fx(172), fy(400)], [fx(272), fy(400)])
     await expect.poll(() => page.locator('[data-content-selected]').count()).toBe(0)
-    await page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
-    await clickPage(page, 1, fx(340), fy(400))
+    await ready()
+    await clickPage(page, 1, fx(272), fy(400))
     await page.locator('[data-content-selected="image"]').waitFor()
     await page.locator('[data-content-props="image"]').waitFor()
-    await page.keyboard.press('Delete')
-    await expect.poll(() => page.locator('[data-content-ready="2"]').count()).toBe(1)
+    await handleTo('e', fx(422), fy(400))
+    await expect
+      .poll(() => page.locator('[data-content-selected]').count(), { timeout: 20_000 })
+      .toBe(0)
+    await shot(page, 'content-resized')
 
-    // Ластик: рамка вокруг третьей строки вырезает её.
+    // Новый текст шрифтом документа: щелчок по странице и набор.
+    await ready()
+    await page.getByRole('radio', { name: 'Новый текст' }).click()
+    await clickPage(page, 1, fx(72), fy(570))
+    await editor.waitFor()
+    await page.keyboard.type('Added line')
+    await page.keyboard.press('Control+Enter')
+    await expect.poll(layerText, { timeout: 20_000 }).toContain('Added line')
+
+    // Ластик: рамка вокруг нового текста вырезает его.
     await page.getByRole('radio', { name: 'Ластик области' }).click()
-    await drag(page, 1, [fx(60), fy(668)], [fx(260), fy(632)])
-    await expect.poll(layerText, { timeout: 20_000 }).not.toContain('Keep this line')
+    await drag(page, 1, [fx(60), fy(575)], [fx(220), fy(540)])
+    await expect.poll(layerText, { timeout: 20_000 }).not.toContain('Added line')
 
     await page.keyboard.press('Control+s')
     await expect.poll(() => statusText(page), { timeout: 20_000 }).toContain('Сохранено')
 
     const objects = await listPageObjects(new Uint8Array(await readFile(target)), 0)
-    expect(objects.lines.map((line) => line.text)).toEqual(['Fixed typo here'])
-    expect(objects.images).toHaveLength(0)
+    expect(objects.lines.map((line) => line.text).sort()).toEqual(
+      ['Fixed typo here', 'Keep this', 'line'].sort()
+    )
+    expect(objects.images).toHaveLength(1)
+    expect(objects.images[0]?.rect.width).toBeCloseTo(250, -1)
+    expect(objects.images[0]?.rect.height).toBeCloseTo(200, -1)
   })
 })

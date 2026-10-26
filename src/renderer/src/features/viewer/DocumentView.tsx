@@ -248,6 +248,7 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
                     rotation={rotation}
                     bytes={tab.bytes}
                     mode={state.contentMode}
+                    textStyle={state.contentTextStyle}
                     selected={selectedContent?.page === n ? selectedContent : null}
                     actions={actions}
                   />

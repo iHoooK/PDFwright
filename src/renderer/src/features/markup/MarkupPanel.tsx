@@ -363,7 +363,11 @@ export function MarkupPanel({ toolLabel }: { toolLabel: string }): React.JSX.Ele
   const content = state.selection?.source === 'content' ? state.selection : null
   const tool = state.tool
   const hint =
-    tool === 'edit' && state.contentMode === 'erase' ? t.content.eraseHint : t.markup.hint[tool]
+    tool === 'edit' && state.contentMode === 'erase'
+      ? t.content.eraseHint
+      : tool === 'edit' && state.contentMode === 'text'
+        ? t.content.textHint
+        : t.markup.hint[tool]
   const showSaveMode = isStyled(tool) || tool === 'sign' || (tab?.markup.length ?? 0) > 0
   return (
     <>

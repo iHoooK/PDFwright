@@ -15,7 +15,10 @@ export default defineConfig(
       'coverage/**',
       'scripts/**',
       'docs/**',
-      'src/renderer/public/**'
+      'src/renderer/public/**',
+      // Рабочие папки параллельных сессий и старый вывод сборки.
+      '.claude/**',
+      'release/**'
     ]
   },
   js.configs.recommended,

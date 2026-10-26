@@ -51,7 +51,16 @@ import {
   type TextMarkKind
 } from '@shared/markup/model'
 import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
-import type { PageImage, PageTextLine, PdfSpaceRect } from '@shared/pdf-content/types'
+import type {
+  PageGraphic,
+  PageImage,
+  PageTextBlock,
+  PageTextLine,
+  PdfSpacePoint,
+  PdfSpaceRect,
+  TextStyle,
+  TextStylePatch
+} from '@shared/pdf-content/types'
 import {
   loadPdfDocument,
   PdfLoadError,
@@ -65,6 +74,7 @@ import { imageSize, readImageBytes, readImageFile } from '@renderer/features/mar
 import {
   sameTarget,
   selectedMarkupId,
+  type PageContentObject,
   type SelectionTarget
 } from '@renderer/features/markup/selection'
 import { pdfContent } from '@renderer/pdf-content/client'
@@ -73,8 +83,8 @@ import { applyTheme, resolvedTheme } from './theme'
 
 export type Screen = 'start' | 'viewer' | 'settings' | 'kit'
 export type Tool = 'select' | 'edit' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'sign'
-/** Инструмент «Правка»: выбор строк и картинок документа или ластик области. */
-export type ContentMode = 'objects' | 'erase'
+/** Инструмент «Правка»: выбор объектов документа, новый текст или ластик области. */
+export type ContentMode = 'objects' | 'text' | 'erase'
 type ContentEditKind = keyof typeof t.content.done
 export type SidebarTab = 'thumbs' | 'outline' | 'search'
 export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author'
@@ -210,6 +220,8 @@ export interface State {
   shapeKind: ShapeKind
   activeSignature: string | null
   contentMode: ContentMode
+  /** Стиль нового текста в «Правке»: берётся у последнего выбранного текста документа. */
+  contentTextStyle: TextStyle | null
   selection: SelectionTarget | null
   pagesMode: boolean
   page: number
@@ -278,6 +290,7 @@ type Action =
   | { type: 'shapeKind'; kind: ShapeKind }
   | { type: 'activeSignature'; id: string | null }
   | { type: 'contentMode'; mode: ContentMode }
+  | { type: 'contentTextStyle'; patch: Partial<TextStyle> }
   | { type: 'select'; target: SelectionTarget | null }
   | { type: 'pagesMode'; on?: boolean }
   | { type: 'page'; page: number; scroll: boolean }
@@ -321,6 +334,7 @@ const initial: State = {
   shapeKind: 'rect',
   activeSignature: null,
   contentMode: 'objects',
+  contentTextStyle: null,
   selection: null,
   pagesMode: false,
   page: 1,
@@ -374,6 +388,13 @@ function keepSelection(
 ): SelectionTarget | null {
   if (target?.source === 'content') return target
   return target && markup.some((o) => o.id === target.id) ? target : null
+}
+
+function textStyleOf(object: PageContentObject): TextStyle | null {
+  if (object.kind === 'block') return object.style
+  if (object.kind !== 'text') return null
+  const { fontName, fontSize, color, bold, italic } = object
+  return { fontName, fontSize, color, bold, italic }
 }
 
 /** Какой выбор имеет смысл в инструменте: разметка — в «Выделении», документ — в «Правке». */
@@ -551,12 +572,22 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         contentMode: action.mode,
-        selection: action.mode === 'erase' ? null : state.selection
+        selection: action.mode === 'objects' ? state.selection : null
       }
-    case 'select':
-      return sameTarget(state.selection, action.target)
-        ? state
-        : { ...state, selection: action.target }
+    case 'contentTextStyle':
+      return state.contentTextStyle
+        ? { ...state, contentTextStyle: { ...state.contentTextStyle, ...action.patch } }
+        : state
+    case 'select': {
+      if (sameTarget(state.selection, action.target)) return state
+      // Выбранный текст документа задаёт стиль нового текста в «Правке».
+      const style = action.target?.source === 'content' ? textStyleOf(action.target.object) : null
+      return {
+        ...state,
+        selection: action.target,
+        contentTextStyle: style ?? state.contentTextStyle
+      }
+    }
     case 'pagesMode':
       return { ...state, pagesMode: action.on ?? !state.pagesMode }
     case 'page':
@@ -624,8 +655,29 @@ export interface Actions {
   setContentMode: (mode: ContentMode) => void
   /** Delete: удаляет выбранный объект разметки или объект документа. */
   removeSelected: () => void
-  replaceContentText: (page: number, line: PageTextLine, text: string) => void
-  removeContent: (page: number, object: PageTextLine | PageImage) => void
+  replaceContentText: (
+    page: number,
+    line: PageTextLine,
+    text: string,
+    style?: TextStylePatch
+  ) => void
+  /** Переписывает абзац: текст, ширина колонки, новое начало, стиль. */
+  replaceContentBlock: (
+    page: number,
+    block: PageTextBlock,
+    text: string,
+    options?: { width?: number; origin?: PdfSpacePoint; style?: TextStylePatch }
+  ) => void
+  insertContentText: (
+    page: number,
+    origin: PdfSpacePoint,
+    text: string,
+    style: TextStyle,
+    options?: { width?: number; direction?: PdfSpacePoint }
+  ) => void
+  setContentTextStyle: (patch: Partial<TextStyle>) => void
+  removeContent: (page: number, object: PageContentObject) => void
+  moveContentGraphic: (page: number, graphic: PageGraphic, rect: PdfSpaceRect) => void
   replaceContentImage: (page: number, image: PageImage, file: File) => void
   moveContentImage: (page: number, image: PageImage, rect: PdfSpaceRect) => void
   eraseContent: (page: number, rect: PdfSpaceRect) => void
@@ -1126,12 +1178,26 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         select: null
       })
     }
-    const removeContentObject = (page: number, object: PageTextLine | PageImage): void => {
-      void editContent(object.kind === 'text' ? 'removeLine' : 'removeImage', (bytes) =>
-        object.kind === 'text'
-          ? pdfContent.removeTextLine(bytes, page - 1, object)
-          : pdfContent.removeImage(bytes, page - 1, object)
-      )
+    const removeContentObject = (page: number, object: PageContentObject): void => {
+      const index = page - 1
+      switch (object.kind) {
+        case 'text':
+          void editContent('removeLine', (bytes) => pdfContent.removeTextLine(bytes, index, object))
+          break
+        case 'block':
+          void editContent('removeBlock', (bytes) =>
+            pdfContent.replaceBlock(bytes, index, { lines: object.refs }, '')
+          )
+          break
+        case 'image':
+          void editContent('removeImage', (bytes) => pdfContent.removeImage(bytes, index, object))
+          break
+        case 'graphic':
+          void editContent('removeGraphic', (bytes) =>
+            pdfContent.removeGraphic(bytes, index, object)
+          )
+          break
+      }
     }
 
     return {
@@ -1318,12 +1384,49 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         if (target?.source === 'content') removeContentObject(target.page, target.object)
         else if (target) removeMarkupObject(target.id)
       },
-      replaceContentText: (page, line, text) => {
-        if (text === line.text) return
+      replaceContentText: (page, line, text, style) => {
+        if (text === line.text && style === undefined) return
         void editContent(text.trim().length === 0 ? 'removeLine' : 'replaceText', async (bytes) => {
           const fallbackFont = (await loadMarkupFont()).bytes
-          return pdfContent.replaceText(bytes, page - 1, line, text, { fallbackFont })
+          return pdfContent.replaceText(bytes, page - 1, line, text, {
+            fallbackFont,
+            ...(style ? { style } : {})
+          })
         })
+      },
+      replaceContentBlock: (page, block, text, options = {}) => {
+        const unchanged =
+          text === block.text &&
+          options.width === undefined &&
+          options.origin === undefined &&
+          options.style === undefined
+        if (unchanged) return
+        const kind =
+          text.trim().length === 0
+            ? 'removeBlock'
+            : options.origin !== undefined && text === block.text
+              ? 'moveBlock'
+              : 'replaceBlock'
+        void editContent(kind, async (bytes) => {
+          const fallbackFont = (await loadMarkupFont()).bytes
+          return pdfContent.replaceBlock(bytes, page - 1, { lines: block.refs }, text, {
+            ...options,
+            fallbackFont
+          })
+        })
+      },
+      insertContentText: (page, origin, text, style, options = {}) => {
+        if (text.trim().length === 0) return
+        void editContent('insertText', async (bytes) => {
+          const fallbackFont = (await loadMarkupFont()).bytes
+          return pdfContent.insertText(bytes, page - 1, origin, text, style, {
+            ...options,
+            fallbackFont
+          })
+        })
+      },
+      setContentTextStyle: (patch) => {
+        dispatch({ type: 'contentTextStyle', patch })
       },
       removeContent: removeContentObject,
       replaceContentImage: (page, image, file) => {
@@ -1342,6 +1445,11 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       },
       moveContentImage: (page, image, rect) => {
         void editContent('moveImage', (bytes) => pdfContent.moveImage(bytes, page - 1, image, rect))
+      },
+      moveContentGraphic: (page, graphic, rect) => {
+        void editContent('moveGraphic', (bytes) =>
+          pdfContent.moveGraphic(bytes, page - 1, graphic, rect)
+        )
       },
       eraseContent: (page, rect) => {
         void editContent('erase', (bytes) => pdfContent.eraseRegions(bytes, page - 1, [rect]))

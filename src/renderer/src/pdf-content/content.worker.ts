@@ -1,9 +1,13 @@
 import {
   eraseRegions,
+  insertText,
   listPageObjects,
+  moveGraphic,
   moveImage,
+  removeGraphic,
   removeImage,
   removeTextLine,
+  replaceBlock,
   replaceImage,
   replaceText
 } from '@shared/pdf-content'
@@ -29,7 +33,11 @@ const api: ContentApi = {
   removeTextLine,
   removeImage,
   replaceImage,
-  moveImage
+  moveImage,
+  replaceBlock,
+  insertText,
+  removeGraphic,
+  moveGraphic
 }
 
 async function run(request: ContentRequest): Promise<unknown> {

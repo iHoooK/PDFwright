@@ -4,3 +4,5 @@ dist
 build
 coverage
 package-lock.json
+.claude
+release

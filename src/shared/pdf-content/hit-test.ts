@@ -1,11 +1,11 @@
-import type { PageImage, PageTextLine, PdfSpacePoint } from './types'
+import type { PdfSpacePoint, PdfSpaceRect } from './types'
 
 /**
  * Объект страницы под точкой (пространство PDF, допуск в пунктах). Из всех
  * рамок под точкой берётся самая маленькая: строка поверх картинки
  * выбирается раньше картинки.
  */
-export function pickPageObject<T extends PageTextLine | PageImage>(
+export function pickPageObject<T extends { readonly rect: PdfSpaceRect }>(
   objects: readonly T[],
   point: PdfSpacePoint,
   tolerance: number

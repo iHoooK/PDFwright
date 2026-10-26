@@ -1,9 +1,13 @@
 import type {
   eraseRegions,
+  insertText,
   listPageObjects,
+  moveGraphic,
   moveImage,
+  removeGraphic,
   removeImage,
   removeTextLine,
+  replaceBlock,
   replaceImage,
   replaceText
 } from '@shared/pdf-content/engine'
@@ -17,6 +21,10 @@ export interface ContentApi {
   removeImage: typeof removeImage
   replaceImage: typeof replaceImage
   moveImage: typeof moveImage
+  replaceBlock: typeof replaceBlock
+  insertText: typeof insertText
+  removeGraphic: typeof removeGraphic
+  moveGraphic: typeof moveGraphic
 }
 
 export type ContentMethod = keyof ContentApi

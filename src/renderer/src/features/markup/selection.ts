@@ -1,10 +1,10 @@
 import type { Point } from '@shared/markup/geometry'
 import { hitTest, type MarkupObject } from '@shared/markup/model'
 import { pickPageObject } from '@shared/pdf-content/hit-test'
-import type { PageImage, PageTextLine } from '@shared/pdf-content/types'
+import type { PageGraphic, PageImage, PageTextBlock, PageTextLine } from '@shared/pdf-content/types'
 
-/** Строка текста или картинка самого документа (из MuPDF, `listPageObjects`). */
-export type PageContentObject = PageTextLine | PageImage
+/** Абзац, строка, картинка или векторный контур самого документа (из MuPDF, `listPageObjects`). */
+export type PageContentObject = PageTextLine | PageTextBlock | PageImage | PageGraphic
 
 /**
  * Что выбрано.

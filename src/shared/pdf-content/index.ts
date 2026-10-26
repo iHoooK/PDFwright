@@ -5,10 +5,14 @@
  */
 export {
   eraseRegions,
+  insertText,
   listPageObjects,
+  moveGraphic,
   moveImage,
+  removeGraphic,
   removeImage,
   removeTextLine,
+  replaceBlock,
   replaceImage,
   replaceText
 } from './engine'

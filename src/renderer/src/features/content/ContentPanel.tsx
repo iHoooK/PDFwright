@@ -1,10 +1,19 @@
 import { useRef, useState } from 'react'
-import type { PageImage, PageTextLine } from '@shared/pdf-content/types'
+import type {
+  PageGraphic,
+  PageImage,
+  PageTextBlock,
+  PageTextLine,
+  RgbColor,
+  TextStyle,
+  TextStylePatch
+} from '@shared/pdf-content/types'
+import { fontFamily } from '@shared/pdf-content/to-unicode'
 import { IconDelete, IconImage } from '@renderer/icons'
 import { t } from '@renderer/i18n'
-import { Button, RadioGroup } from '@renderer/components/controls'
-import { activeDoc, useStore, type ContentMode } from '@renderer/app/store'
-import type { SelectionTarget } from '@renderer/features/markup/selection'
+import { Button, RadioGroup, SelectField, Swatches } from '@renderer/components/controls'
+import { activeDoc, INK_COLORS, useStore, type ContentMode } from '@renderer/app/store'
+import { contentId, type SelectionTarget } from '@renderer/features/markup/selection'
 import v from '@renderer/features/viewer/viewer.module.css'
 import { usePageObjects } from './page-objects'
 import s from './content.module.css'
@@ -13,22 +22,115 @@ type ContentTarget = Extract<SelectionTarget, { source: 'content' }>
 
 const MODES: readonly { value: ContentMode; label: string }[] = [
   { value: 'objects', label: t.content.modeObjects },
+  { value: 'text', label: t.content.modeText },
   { value: 'erase', label: t.content.modeErase }
 ]
 
-/** Имя шрифта без префикса подмножества (ABCDEF+). */
-function fontLabel(name: string): string {
-  return name.replace(/^[A-Z]{6}\+/, '') || '—'
+function toHex([r, g, b]: RgbColor): string {
+  const part = (c: number): string =>
+    Math.round(Math.min(1, Math.max(0, c)) * 255)
+      .toString(16)
+      .padStart(2, '0')
+  return `#${part(r)}${part(g)}${part(b)}`
 }
 
-function rgbToCss([r, g, b]: readonly [number, number, number]): string {
-  return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`
+function fromHex(hex: string): RgbColor {
+  const n = Number.parseInt(hex.slice(1), 16)
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
-function LineCard({ page, line }: { page: number; line: PageTextLine }): React.JSX.Element {
+/**
+ * Шрифт, кегль и цвет текста документа. Шрифты — семейства из самого файла,
+ * поэтому новый и изменённый текст набирается тем же шрифтом, что остальной.
+ */
+function TextStyleFields({
+  idPrefix,
+  style,
+  fonts,
+  onChange
+}: {
+  idPrefix: string
+  style: TextStyle
+  fonts: readonly string[]
+  onChange: (patch: TextStylePatch) => void
+}): React.JSX.Element {
+  const current = fontFamily(style.fontName)
+  const known = fonts.find((f) => f.startsWith(current) || current.startsWith(f)) ?? current
+  const options = [...new Set([known, ...fonts])].map((f) => ({ value: f, label: f }))
+  const color = toHex(style.color)
+  const colors = [...new Set([color, ...INK_COLORS])]
+  const [size, setSize] = useState(String(Math.round(style.fontSize * 10) / 10))
+  const commitSize = (): void => {
+    const value = Number(size.replace(',', '.'))
+    if (
+      Number.isFinite(value) &&
+      value >= 4 &&
+      value <= 144 &&
+      Math.abs(value - style.fontSize) > 0.05
+    ) {
+      onChange({ fontSize: value })
+    } else {
+      setSize(String(Math.round(style.fontSize * 10) / 10))
+    }
+  }
+  return (
+    <>
+      <div className={v.field}>
+        <label htmlFor={`${idPrefix}-font`}>{t.content.fontFamily}</label>
+        <SelectField
+          id={`${idPrefix}-font`}
+          value={known}
+          options={options}
+          label={t.content.fontFamily}
+          onChange={(fontName) => {
+            if (fontName !== known) onChange({ fontName, bold: /bold/i.test(fontName) })
+          }}
+        />
+      </div>
+      <div className={v.field}>
+        <label htmlFor={`${idPrefix}-size`}>{t.content.fontSizeLabel}</label>
+        <input
+          id={`${idPrefix}-size`}
+          className={s.lineField}
+          inputMode="decimal"
+          value={size}
+          onChange={(event) => {
+            setSize(event.target.value)
+          }}
+          onBlur={commitSize}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') commitSize()
+          }}
+        />
+      </div>
+      <div className={v.field}>
+        <span className={v.fieldLabel}>{t.content.colorLabel}</span>
+        <Swatches
+          colors={colors}
+          value={color}
+          label={t.content.colorLabel}
+          onChange={(hex) => {
+            if (hex !== color) onChange({ color: fromHex(hex) })
+          }}
+        />
+      </div>
+    </>
+  )
+}
+
+function LineCard({
+  page,
+  line,
+  block,
+  fonts
+}: {
+  page: number
+  line: PageTextLine
+  block: PageTextBlock | null
+  fonts: readonly string[]
+}): React.JSX.Element {
   const { actions } = useStore()
   const [text, setText] = useState(line.text)
-  const size = Math.round(line.fontSize * 10) / 10
   return (
     <div className={v.pcard} data-content-props="text">
       <div className={v.field}>
@@ -49,21 +151,14 @@ function LineCard({ page, line }: { page: number; line: PageTextLine }): React.J
           }}
         />
       </div>
-      <p className={s.info}>
-        <span
-          aria-hidden="true"
-          style={{
-            display: 'inline-block',
-            width: 10,
-            height: 10,
-            marginRight: 6,
-            borderRadius: 2,
-            verticalAlign: 'middle',
-            background: rgbToCss(line.color)
-          }}
-        />
-        {t.content.font}: {t.content.fontInfo(fontLabel(line.fontName), size)}
-      </p>
+      <TextStyleFields
+        idPrefix="content-line"
+        style={line}
+        fonts={fonts}
+        onChange={(patch) => {
+          actions.replaceContentText(page, line, text, patch)
+        }}
+      />
       <div className={s.row}>
         <Button
           variant="primary"
@@ -74,6 +169,15 @@ function LineCard({ page, line }: { page: number; line: PageTextLine }): React.J
         >
           {t.content.apply}
         </Button>
+        {block && block.lines.length > 1 && (
+          <Button
+            onClick={() => {
+              actions.select({ source: 'content', id: contentId(page, block), page, object: block })
+            }}
+          >
+            {t.content.wholeBlock}
+          </Button>
+        )}
         <Button
           icon={<IconDelete />}
           onClick={() => {
@@ -87,12 +191,74 @@ function LineCard({ page, line }: { page: number; line: PageTextLine }): React.J
   )
 }
 
+function BlockCard({
+  page,
+  block,
+  fonts
+}: {
+  page: number
+  block: PageTextBlock
+  fonts: readonly string[]
+}): React.JSX.Element {
+  const { actions } = useStore()
+  const [text, setText] = useState(block.text)
+  const apply = (): void => {
+    actions.replaceContentBlock(page, block, text)
+  }
+  return (
+    <div className={v.pcard} data-content-props="block">
+      <div className={v.field}>
+        <label htmlFor="content-block">{t.content.blockText}</label>
+        <textarea
+          id="content-block"
+          className={s.lineField}
+          value={text}
+          spellCheck={false}
+          rows={Math.min(10, Math.max(3, Math.ceil(text.length / 40)))}
+          onChange={(event) => {
+            setText(event.target.value)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && event.ctrlKey) {
+              event.preventDefault()
+              apply()
+            }
+          }}
+        />
+      </div>
+      <TextStyleFields
+        idPrefix="content-block"
+        style={block.style}
+        fonts={fonts}
+        onChange={(style) => {
+          actions.replaceContentBlock(page, block, text, { style })
+        }}
+      />
+      <p className={s.warning}>{t.content.blockHint}</p>
+      <div className={s.row}>
+        <Button variant="primary" disabled={text === block.text} onClick={apply}>
+          {t.content.applyBlock}
+        </Button>
+        <Button
+          icon={<IconDelete />}
+          onClick={() => {
+            actions.removeContent(page, block)
+          }}
+        >
+          {t.content.removeBlock}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function ImageCard({ page, image }: { page: number; image: PageImage }): React.JSX.Element {
   const { actions } = useStore()
   const fileRef = useRef<HTMLInputElement | null>(null)
   return (
     <div className={v.pcard} data-content-props="image">
       <p className={s.info}>{t.content.pixels(image.pixelWidth, image.pixelHeight)}</p>
+      <p className={s.warning}>{t.content.imageHint}</p>
       <div className={s.row}>
         <Button
           icon={<IconImage />}
@@ -127,21 +293,56 @@ function ImageCard({ page, image }: { page: number; image: PageImage }): React.J
   )
 }
 
-/** Карточка выбранной строки или картинки документа. */
-export function ContentCard({ target }: { target: ContentTarget }): React.JSX.Element {
-  return target.object.kind === 'text' ? (
-    <LineCard key={target.id} page={target.page} line={target.object} />
-  ) : (
-    <ImageCard key={target.id} page={target.page} image={target.object} />
+function GraphicCard({ page, graphic }: { page: number; graphic: PageGraphic }): React.JSX.Element {
+  const { actions } = useStore()
+  return (
+    <div className={v.pcard} data-content-props="graphic">
+      <p className={s.warning}>{t.content.graphicHint}</p>
+      <div className={s.row}>
+        <Button
+          icon={<IconDelete />}
+          onClick={() => {
+            actions.removeContent(page, graphic)
+          }}
+        >
+          {t.content.removeGraphic}
+        </Button>
+      </div>
+    </div>
   )
 }
 
-/** Настройки инструмента «Правка»: режим щелчка, состояние страницы и предупреждение. */
+/** Карточка выбранного объекта документа. */
+export function ContentCard({ target }: { target: ContentTarget }): React.JSX.Element {
+  const { state } = useStore()
+  const objects = usePageObjects(activeDoc(state)?.bytes ?? null, target.page, true)
+  const fonts = objects?.fonts ?? []
+  const { object, page } = target
+  switch (object.kind) {
+    case 'text': {
+      const block = objects?.blocks.find((b) => b.lines.includes(object.index)) ?? null
+      return <LineCard key={target.id} page={page} line={object} block={block} fonts={fonts} />
+    }
+    case 'block':
+      return <BlockCard key={target.id} page={page} block={object} fonts={fonts} />
+    case 'image':
+      return <ImageCard key={target.id} page={page} image={object} />
+    case 'graphic':
+      return <GraphicCard key={target.id} page={page} graphic={object} />
+  }
+}
+
+/** Настройки инструмента «Правка»: режим щелчка, стиль нового текста, предупреждение. */
 export function EditToolCard(): React.JSX.Element {
   const { state, actions } = useStore()
   const tab = activeDoc(state)
   const objects = usePageObjects(tab?.bytes ?? null, state.page, true)
-  const empty = objects !== null && objects.lines.length === 0 && objects.images.length === 0
+  const empty =
+    objects !== null &&
+    objects.blocks.length === 0 &&
+    objects.images.length === 0 &&
+    objects.graphics.length === 0
+  const style = state.contentTextStyle
   return (
     <div className={v.pcard}>
       <div className={v.field}>
@@ -153,6 +354,20 @@ export function EditToolCard(): React.JSX.Element {
           onChange={actions.setContentMode}
         />
       </div>
+      {state.contentMode === 'text' &&
+        (style ? (
+          <TextStyleFields
+            key={`${style.fontName}:${style.fontSize}`}
+            idPrefix="content-new"
+            style={style}
+            fonts={objects?.fonts ?? []}
+            onChange={(patch) => {
+              actions.setContentTextStyle(patch)
+            }}
+          />
+        ) : (
+          <p className={s.info}>{t.content.noStyle}</p>
+        ))}
       {objects === null ? (
         <p className={s.info}>{t.content.loading}</p>
       ) : (

@@ -100,6 +100,22 @@ export class PdfContentClient {
     return this.call('moveImage', ...args)
   }
 
+  replaceBlock(...args: Parameters<ContentApi['replaceBlock']>) {
+    return this.call('replaceBlock', ...args)
+  }
+
+  insertText(...args: Parameters<ContentApi['insertText']>) {
+    return this.call('insertText', ...args)
+  }
+
+  removeGraphic(...args: Parameters<ContentApi['removeGraphic']>) {
+    return this.call('removeGraphic', ...args)
+  }
+
+  moveGraphic(...args: Parameters<ContentApi['moveGraphic']>) {
+    return this.call('moveGraphic', ...args)
+  }
+
   /** Останавливает worker; незавершённые вызовы получают ошибку. */
   dispose(): void {
     this.fail(new Error('Движок правки содержимого закрыт.'))

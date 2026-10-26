@@ -18,6 +18,9 @@
 .erase {
   cursor: crosshair;
 }
+.textMode {
+  cursor: text;
+}
 .outline,
 .frame,
 .preview,
@@ -62,8 +65,8 @@
   background: #fff;
   color: #1b1b1b;
   font-family: 'PT Sans', sans-serif;
-  line-height: 1;
   outline: none;
+  white-space: pre-wrap;
   box-shadow: var(--shadow);
 }
 /* Во время перетаскивания текст под указателем не выделяется. */
