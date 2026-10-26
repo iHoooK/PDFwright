@@ -98,7 +98,7 @@ export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author
 export type ZoomMode = 'fit-width' | 'fit-page' | 'custom'
 /** Диалоги конвертации (фаза 6). */
 export type ConvertDialog = 'toImages' | 'fromImages' | 'extractText' | 'compress'
-export type ToolDialog = 'merge' | 'split' | ConvertDialog | null
+export type ToolDialog = 'merge' | 'split' | ConvertDialog | 'ocr' | null
 export type SelectMode = 'single' | 'toggle' | 'range'
 /** Инструменты со своим цветом, непрозрачностью и толщиной в панели свойств. */
 export type StyledTool = 'marker' | 'pen' | 'shapes' | 'text'
@@ -820,6 +820,15 @@ export interface Actions {
   compareWith: () => void
   /** Закрывает сравнение и возвращает к документу. */
   closeCompare: () => void
+  // Распознавание текста
+  /**
+   * Дописывает к активному документу невидимый текстовый слой шагом истории:
+   * нумерация страниц не меняется, несохранённая разметка остаётся объектами.
+   */
+  applyTextLayer: (
+    run: (bytes: Uint8Array) => Promise<Uint8Array>,
+    message: string
+  ) => Promise<boolean>
   openTool: (dialog: ToolDialog) => void
   // Конвертация
   /** Активный документ как источник: байты с записанной несохранённой разметкой. */
@@ -1925,6 +1934,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           session.doc.destroy()
         }, 0)
       },
+      // Распознавание текста
+      applyTextLayer: (run, message) => applyOperation(run, { keepMarkup: true, message }),
       openTool: (dialog) => {
         dispatch({ type: 'toolDialog', dialog })
       },
@@ -2126,6 +2137,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           break
         case 'tools.extractText':
           actions.openTool('extractText')
+          break
+        case 'tools.ocr':
+          actions.openTool('ocr')
           break
         case 'tools.compress':
           actions.openTool('compress')

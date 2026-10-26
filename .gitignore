@@ -3,6 +3,7 @@ node_modules/
 
 # build output
 src/renderer/public/pdfjs/
+src/renderer/public/ocr/
 out/
 dist/
 build/

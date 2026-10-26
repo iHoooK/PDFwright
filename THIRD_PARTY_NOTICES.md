@@ -14,6 +14,8 @@
 | electron-updater                                 | Проверка и установка обновлений с GitHub Releases                             | MIT; [electron-userland/electron-builder](https://github.com/electron-userland/electron-builder)                                                                                                                                                                                               |
 | pdf.js (`pdfjs-dist`)                            | Рендеринг PDF, текстовый слой, поиск, закладки                                | Apache-2.0; [mozilla/pdf.js](https://github.com/mozilla/pdf.js). В поставку входят CMaps, стандартные шрифты (Foxit, Liberation) и WASM-декодеры OpenJPEG/JBIG2 из того же пакета, их лицензии лежат в `pdfjs/wasm/LICENSE_*` рядом с программой.                                              |
 | Шрифт PT Sans (ParaType)                         | Текстовые блоки разметки с кириллицей: показ на странице и встраивание в PDF  | SIL Open Font License 1.1; файл `fonts/PTSans-Regular.ttf` и текст лицензии `fonts/OFL.txt` лежат в ресурсах программы; источник [google/fonts](https://github.com/google/fonts/tree/main/ofl/ptsans). Шрифт не изменяется; в сохранённые PDF встраивается подмножество использованных знаков. |
+| tesseract.js, tesseract.js-core                  | Распознавание текста сканов (OCR)                                             | Apache-2.0; [naptha/tesseract.js](https://github.com/naptha/tesseract.js). Ядро — Tesseract OCR (Apache-2.0) и Leptonica (BSD-2-Clause) в WebAssembly; лицензии — в `ocr/LICENSE-*.txt` рядом с программой.                                                                                    |
+| Языковые данные `rus`, `eng` (Tesseract)         | Распознавание русского и английского (`ocr/lang`)                             | Apache-2.0: модели 4.0.0_best_int из [naptha/tessdata](https://github.com/naptha/tessdata) на основе [tesseract-ocr/tessdata_best](https://github.com/tesseract-ocr/tessdata_best); npm-пакеты — MIT.                                                                                          |
 
 Планируется добавить при реализации соответствующих фаз:
 
@@ -27,47 +29,62 @@ NSIS используется только как инструмент сбор�
 
 <!-- deps:start -->
 
-Сгенерировано `node scripts/third-party.mjs` из `package-lock.json`: 38 пакетов.
+Сгенерировано `node scripts/third-party.mjs` из `package-lock.json`: 53 пакетов.
 
-| Пакет                   | Версия  | Лицензия          |
-| ----------------------- | ------- | ----------------- |
-| @babel/runtime          | 7.29.10 | MIT               |
-| @emotion/hash           | 0.9.2   | MIT               |
-| @fluentui/react-icons   | 2.0.344 | MIT               |
-| @griffel/core           | 1.21.4  | MIT               |
-| @griffel/react          | 1.7.8   | MIT               |
-| @griffel/style-types    | 1.4.3   | MIT               |
-| @pdf-lib/fontkit        | 1.1.1   | MIT               |
-| @pdf-lib/standard-fonts | 1.0.0   | MIT               |
-| @pdf-lib/upng           | 1.0.1   | MIT               |
-| argparse                | 2.0.1   | Python-2.0        |
-| builder-util-runtime    | 9.7.0   | MIT               |
-| csstype                 | 3.2.3   | MIT               |
-| debug                   | 4.4.3   | MIT               |
-| electron                | 45.0.0  | MIT               |
-| electron-updater        | 6.8.11  | MIT               |
-| fs-extra                | 10.1.0  | MIT               |
-| graceful-fs             | 4.2.11  | ISC               |
-| js-yaml                 | 4.3.2   | MIT               |
-| jsonfile                | 6.2.1   | MIT               |
-| lazy-val                | 1.0.5   | MIT               |
-| lodash.escaperegexp     | 4.1.2   | MIT               |
-| lodash.isequal          | 4.5.0   | MIT               |
-| ms                      | 2.1.3   | MIT               |
-| mupdf                   | 1.28.1  | AGPL-3.0-or-later |
-| pako                    | 1.0.11  | (MIT AND Zlib)    |
-| pdf-lib                 | 1.17.1  | MIT               |
-| pdfjs-dist              | 6.4.299 | Apache-2.0        |
-| react                   | 19.3.1  | MIT               |
-| react-dom               | 19.3.1  | MIT               |
-| rtl-css-js              | 1.16.1  | MIT               |
-| sax                     | 1.6.1   | BlueOak-1.0.0     |
-| scheduler               | 0.28.0  | MIT               |
-| semver                  | 7.7.4   | ISC               |
-| stylis                  | 4.4.0   | MIT               |
-| tiny-typed-emitter      | 2.1.0   | MIT               |
-| tslib                   | 1.14.1  | 0BSD              |
-| tslib                   | 2.8.1   | 0BSD              |
-| universalify            | 2.0.1   | MIT               |
+| Пакет                      | Версия  | Лицензия          |
+| -------------------------- | ------- | ----------------- |
+| @babel/runtime             | 7.29.10 | MIT               |
+| @emotion/hash              | 0.9.2   | MIT               |
+| @fluentui/react-icons      | 2.0.344 | MIT               |
+| @griffel/core              | 1.21.4  | MIT               |
+| @griffel/react             | 1.7.8   | MIT               |
+| @griffel/style-types       | 1.4.3   | MIT               |
+| @pdf-lib/fontkit           | 1.1.1   | MIT               |
+| @pdf-lib/standard-fonts    | 1.0.0   | MIT               |
+| @pdf-lib/upng              | 1.0.1   | MIT               |
+| @tesseract.js-data/eng     | 1.0.0   | MIT               |
+| @tesseract.js-data/rus     | 1.0.0   | MIT               |
+| argparse                   | 2.0.1   | Python-2.0        |
+| bmp-js                     | 0.1.0   | MIT               |
+| builder-util-runtime       | 9.7.0   | MIT               |
+| csstype                    | 3.2.3   | MIT               |
+| debug                      | 4.4.3   | MIT               |
+| electron                   | 45.0.0  | MIT               |
+| electron-updater           | 6.8.11  | MIT               |
+| fs-extra                   | 10.1.0  | MIT               |
+| graceful-fs                | 4.2.11  | ISC               |
+| idb-keyval                 | 6.3.0   | Apache-2.0        |
+| is-url                     | 1.2.4   | MIT               |
+| js-yaml                    | 4.3.2   | MIT               |
+| jsonfile                   | 6.2.1   | MIT               |
+| lazy-val                   | 1.0.5   | MIT               |
+| lodash.escaperegexp        | 4.1.2   | MIT               |
+| lodash.isequal             | 4.5.0   | MIT               |
+| ms                         | 2.1.3   | MIT               |
+| mupdf                      | 1.28.1  | AGPL-3.0-or-later |
+| node-fetch                 | 2.7.0   | MIT               |
+| opencollective-postinstall | 2.0.3   | MIT               |
+| pako                       | 1.0.11  | (MIT AND Zlib)    |
+| pdf-lib                    | 1.17.1  | MIT               |
+| pdfjs-dist                 | 6.4.299 | Apache-2.0        |
+| react                      | 19.3.1  | MIT               |
+| react-dom                  | 19.3.1  | MIT               |
+| regenerator-runtime        | 0.13.11 | MIT               |
+| rtl-css-js                 | 1.16.1  | MIT               |
+| sax                        | 1.6.1   | BlueOak-1.0.0     |
+| scheduler                  | 0.28.0  | MIT               |
+| semver                     | 7.7.4   | ISC               |
+| stylis                     | 4.4.0   | MIT               |
+| tesseract.js               | 7.0.0   | Apache-2.0        |
+| tesseract.js-core          | 7.0.0   | Apache-2.0        |
+| tiny-typed-emitter         | 2.1.0   | MIT               |
+| tr46                       | 0.0.3   | MIT               |
+| tslib                      | 1.14.1  | 0BSD              |
+| tslib                      | 2.8.1   | 0BSD              |
+| universalify               | 2.0.1   | MIT               |
+| wasm-feature-detect        | 1.9.0   | Apache-2.0        |
+| webidl-conversions         | 3.0.1   | BSD-2-Clause      |
+| whatwg-url                 | 5.0.0   | MIT               |
+| zlibjs                     | 0.3.1   | MIT               |
 
 <!-- deps:end -->
