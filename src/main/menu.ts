@@ -64,7 +64,12 @@ export function installApplicationMenu({ newWindow }: MenuHandlers): void {
         item('Разделить документ…', 'tools.split'),
         item('Сравнить с…', 'tools.compare'),
         { type: 'separator' },
-        item('Режим «Страницы»', 'view.pages', 'CmdOrCtrl+G')
+        item('Режим «Страницы»', 'view.pages', 'CmdOrCtrl+G'),
+        { type: 'separator' },
+        item('PDF в изображения…', 'tools.toImages'),
+        item('Изображения в PDF…', 'tools.fromImages'),
+        item('Извлечь текст…', 'tools.extractText'),
+        item('Сжать PDF…', 'tools.compress')
       ]
     },
     {

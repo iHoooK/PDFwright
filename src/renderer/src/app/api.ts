@@ -141,6 +141,30 @@ function createBrowserMock(): PdfwrightApi {
       return Promise.resolve(`C:\\Браузер\\${name}`)
     },
     chooseFolderDialog: () => Promise.resolve('C:\\Браузер'),
+    openImagesDialog: () =>
+      new Promise((resolve) => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'image/png,image/jpeg,image/webp'
+        input.multiple = true
+        input.onchange = () => {
+          void Promise.all(
+            Array.from(input.files ?? []).map(async (file) => ({
+              path: pathFor(file),
+              name: file.name,
+              bytes: await file.arrayBuffer()
+            }))
+          ).then(resolve)
+        }
+        input.oncancel = () => {
+          resolve([])
+        }
+        input.click()
+      }),
+    saveTextDialog: (options) => {
+      const name = options.defaultPath ? basenameOf(options.defaultPath) : 'text.txt'
+      return Promise.resolve(`C:\\Браузер\\${name}`)
+    },
     writeFile: (request) => {
       // В браузере «сохранение» — скачивание файла.
       const blob = new Blob([request.bytes], { type: 'application/pdf' })

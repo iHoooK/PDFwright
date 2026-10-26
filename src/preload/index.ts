@@ -23,6 +23,8 @@ const api: PdfwrightApi = {
   savePdfDialog: (options) => ipcRenderer.invoke(IpcChannels.dialogSavePdf, options),
   chooseFolderDialog: (defaultPath) =>
     ipcRenderer.invoke(IpcChannels.dialogChooseFolder, defaultPath),
+  openImagesDialog: () => ipcRenderer.invoke(IpcChannels.dialogOpenImages),
+  saveTextDialog: (options) => ipcRenderer.invoke(IpcChannels.dialogSaveText, options),
   readFile: (path) => ipcRenderer.invoke(IpcChannels.fileRead, path),
   writeFile: (request) => ipcRenderer.invoke(IpcChannels.fileWrite, request),
   writeFiles: (files) => ipcRenderer.invoke(IpcChannels.fileWriteMany, files),

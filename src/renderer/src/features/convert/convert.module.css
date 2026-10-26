@@ -1,0 +1,209 @@
+/* Диалоги конвертации: общие поля берутся из tools.module.css, здесь — своё. */
+
+.inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.inline [role='radiogroup'] {
+  display: flex;
+  gap: 4px 16px;
+  flex-wrap: wrap;
+}
+.number {
+  width: 96px;
+}
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Прогресс долгой операции */
+.progress {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--motion);
+}
+.done {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* Список картинок «Изображения в PDF» */
+.images {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  max-height: 264px;
+  min-height: 72px;
+  overflow: auto;
+  transition: border-color var(--motion);
+}
+.dropping {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.image {
+  display: grid;
+  grid-template-columns: 20px 20px 44px 1fr auto auto auto;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+.image:first-child {
+  border-top: 0;
+}
+.image[data-dragging='true'] {
+  opacity: 0.45;
+}
+.image[data-over='before'] {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.image[data-over='after'] {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.grip {
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  cursor: grab;
+}
+.grip:active {
+  cursor: grabbing;
+}
+.thumb {
+  width: 44px;
+  height: 36px;
+  object-fit: contain;
+  background: var(--layer-solid);
+  border-radius: 2px;
+}
+
+/* Текст */
+.text {
+  width: 100%;
+  height: 200px;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-s);
+  background: var(--layer-solid);
+  color: var(--ink);
+  font: 12.5px/1.45 var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+}
+
+/* Сжатие: «было → станет» */
+.sizes {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 4px 16px;
+  align-items: end;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--layer-solid);
+  font-variant-numeric: tabular-nums;
+}
+.sizes small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sizes b {
+  font-size: 18px;
+  font-weight: 600;
+}
+.arrow {
+  color: var(--ink-3);
+  padding-bottom: 3px;
+}
+.gain {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success);
+  padding-bottom: 3px;
+}
+.warning {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--mark);
+  background: var(--layer-solid);
+  border-radius: var(--r-s);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+/* Плитки стартового экрана */
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.tile {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 2px 12px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  text-align: left;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition:
+    border-color var(--motion),
+    box-shadow var(--motion);
+}
+.tile:hover {
+  border-color: var(--line-2);
+  box-shadow: var(--shadow);
+}
+.tile svg {
+  grid-row: span 2;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+.tile b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.tile small {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+@media (max-width: 900px) {
+  .tiles {
+    grid-template-columns: 1fr;
+  }
+}

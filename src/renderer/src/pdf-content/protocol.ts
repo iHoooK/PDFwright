@@ -11,6 +11,8 @@ import type {
   replaceImage,
   replaceText
 } from '@shared/pdf-content/engine'
+import type { extractText } from '@shared/pdf-content/extract-text'
+import type { compressPdf } from '@shared/pdf-content/compress'
 
 /** Операции движка pdf-content, доступные через worker. */
 export interface ContentApi {
@@ -25,6 +27,8 @@ export interface ContentApi {
   insertText: typeof insertText
   removeGraphic: typeof removeGraphic
   moveGraphic: typeof moveGraphic
+  extractText: typeof extractText
+  compressPdf: typeof compressPdf
 }
 
 export type ContentMethod = keyof ContentApi

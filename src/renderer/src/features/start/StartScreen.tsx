@@ -5,6 +5,7 @@ import { IconButton } from '@renderer/components/controls'
 import { useStore } from '@renderer/app/store'
 import { MergeDialog } from '@renderer/features/tools/MergeDialog'
 import { SplitDialog } from '@renderer/features/tools/SplitDialog'
+import { ConvertTiles } from '@renderer/features/convert/ConvertDialogs'
 import s from './start.module.css'
 
 function formatOpened(ms: number): string {
@@ -19,9 +20,6 @@ function formatOpened(ms: number): string {
 
 export function StartScreen(): React.JSX.Element {
   const { state, actions } = useStore()
-  const soon = (): void => {
-    actions.toast(t.start.soon)
-  }
 
   return (
     <div className={s.wrap}>
@@ -65,12 +63,20 @@ export function StartScreen(): React.JSX.Element {
             <b>{t.start.split}</b>
             <small>{t.start.splitHint}</small>
           </button>
-          <button type="button" className={s.tile} onClick={soon}>
+          <button
+            type="button"
+            className={s.tile}
+            onClick={() => {
+              actions.openTool('fromImages')
+            }}
+          >
             <IconImage />
             <b>{t.start.images}</b>
             <small>{t.start.imagesHint}</small>
           </button>
         </div>
+
+        <ConvertTiles />
 
         <section>
           <h2 className={s.sectionTitle}>{t.start.recent}</h2>

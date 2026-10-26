@@ -116,6 +116,16 @@ export class PdfContentClient {
     return this.call('moveGraphic', ...args)
   }
 
+  /** Текст страниц (номера с 0) в видимом порядке строк, по строке на страницу. */
+  extractText(...args: Parameters<ContentApi['extractText']>) {
+    return this.call('extractText', ...args)
+  }
+
+  /** Пересжатие картинок и пересохранение со сжатием потоков. */
+  compressPdf(...args: Parameters<ContentApi['compressPdf']>) {
+    return this.call('compressPdf', ...args)
+  }
+
   /** Останавливает worker; незавершённые вызовы получают ошибку. */
   dispose(): void {
     this.fail(new Error('Движок правки содержимого закрыт.'))

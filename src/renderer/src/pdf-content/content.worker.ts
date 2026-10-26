@@ -1,6 +1,8 @@
 import {
+  compressPdf,
   eraseRegions,
   insertText,
+  extractText,
   listPageObjects,
   moveGraphic,
   moveImage,
@@ -37,7 +39,19 @@ const api: ContentApi = {
   replaceBlock,
   insertText,
   removeGraphic,
-  moveGraphic
+  moveGraphic,
+  extractText,
+  compressPdf
+}
+
+/** Байты результата (сами или поле bytes, как у сжатия) передаются без копирования. */
+function transferOf(result: unknown): Transferable[] {
+  if (result instanceof Uint8Array) return [result.buffer as ArrayBuffer]
+  if (typeof result === 'object' && result !== null && 'bytes' in result) {
+    const { bytes } = result
+    if (bytes instanceof Uint8Array) return [bytes.buffer]
+  }
+  return []
 }
 
 async function run(request: ContentRequest): Promise<unknown> {
@@ -49,7 +63,7 @@ scope.onmessage = (event) => {
   const { id } = event.data
   run(event.data).then(
     (result) => {
-      const transfer = result instanceof Uint8Array ? [result.buffer as ArrayBuffer] : []
+      const transfer = transferOf(result)
       scope.postMessage({ id, ok: true, result }, transfer)
     },
     (error: unknown) => {
