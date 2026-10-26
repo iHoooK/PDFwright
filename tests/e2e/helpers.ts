@@ -215,9 +215,13 @@ export async function quitApp(): Promise<void> {
       }, 0)
     })
     .catch(() => undefined)
-  await Promise.race([exited, new Promise((r) => setTimeout(r, 15_000))])
+  // На раннере CI запись сеанса и закрытие окон бывают заметно медленнее, чем локально.
+  await Promise.race([exited, new Promise((r) => setTimeout(r, 45_000))])
   if (child.exitCode === null && child.signalCode === null) {
-    throw new Error('программа не завершилась после команды выхода')
+    const windows = await app
+      .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
+      .catch(() => 'неизвестно')
+    throw new Error(`программа не завершилась после команды выхода (окон: ${String(windows)})`)
   }
   ctx.app = null
 }
