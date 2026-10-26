@@ -1,11 +1,17 @@
 import fontkit from '@pdf-lib/fontkit'
-import { MARKUP_FONT_FAMILY, MARKUP_FONT_FILE, type MeasureText } from '@shared/markup/text-layout'
+import {
+  fontMeasure,
+  MARKUP_FONT_FAMILY,
+  MARKUP_FONT_FILE,
+  type MeasureText
+} from '@shared/markup/text-layout'
 
 /**
  * Шрифт текстовых блоков — PT Sans (OFL 1.1) из public/fonts. Один и тот же
  * файл встраивается в PDF при сохранении, рисует текст на overlay-слое
  * (FontFace из байтов, без отдельного url в CSS) и меряет ширину строк через
- * fontkit — так же, как это делает pdf-lib, поэтому размеры совпадают.
+ * fontkit той же функцией fontMeasure, что и запись в PDF, поэтому размеры
+ * и перенос строк совпадают.
  */
 
 interface LoadedFont {
@@ -24,10 +30,7 @@ export function loadMarkupFont(): Promise<LoadedFont> {
     const response = await fetch(new URL(MARKUP_FONT_FILE, document.baseURI))
     if (!response.ok) throw new Error(`Шрифт не загружен: ${response.status}`)
     const bytes = new Uint8Array(await response.arrayBuffer())
-    const font = fontkit.create(bytes)
-    const unitsPerEm = font.unitsPerEm
-    const measure: MeasureText = (text, size) =>
-      text.length === 0 ? 0 : (font.layout(text).advanceWidth / unitsPerEm) * size
+    const measure = fontMeasure(fontkit.create(bytes))
     const face = new FontFace(MARKUP_FONT_FAMILY, bytes.slice().buffer)
     document.fonts.add(await face.load())
     loaded = { bytes, measure }

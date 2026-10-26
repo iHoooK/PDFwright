@@ -70,6 +70,11 @@ export interface TextObject extends MarkupBase {
   rotate: QuarterTurn
   text: string
   fontSize: number
+  /**
+   * Ширину рамки задал пользователь (потянул за ручку): строки переносятся по
+   * словам внутри неё. Без признака (по умолчанию) блок растёт по тексту.
+   */
+  fixedWidth?: boolean
 }
 
 export interface ImageObject extends MarkupBase {
@@ -97,14 +102,17 @@ export function isBoxObject(o: MarkupObject): o is TextObject | ImageObject {
   return o.kind === 'text' || o.kind === 'image'
 }
 
-/** Можно ли объект двигать и тянуть за углы (пометки текста привязаны к тексту). */
+/** Можно ли объект двигать и тянуть за ручки (пометки текста привязаны к тексту). */
 export function isMovable(o: MarkupObject): boolean {
   return !isTextMark(o)
 }
 
-/** Сохраняет ли объект пропорции при изменении размера. */
+/**
+ * Сохраняет ли объект пропорции, когда его тянут за угол (с Shift — свободно).
+ * Картинки и подписи — да; рамка текста меняется свободно, кегль не трогается.
+ */
 export function keepsAspect(o: MarkupObject): boolean {
-  return isBoxObject(o)
+  return o.kind === 'image'
 }
 
 /** Геометрические границы без учёта толщины линии: их тянут за углы. */
@@ -158,12 +166,8 @@ export function transformObject<T extends MarkupObject>(o: T, m: Matrix): T {
     case 'rect':
     case 'ellipse':
     case 'image':
+    case 'text':
       return { ...o, rect: transformRect(m, o.rect) }
-    case 'text': {
-      const rect = transformRect(m, o.rect)
-      const ratio = o.rect.height === 0 ? 1 : rect.height / o.rect.height
-      return { ...o, rect, fontSize: Math.max(1, o.fontSize * ratio) }
-    }
     case 'line':
     case 'arrow':
       return { ...o, from: mapPoint(m, o.from), to: mapPoint(m, o.to) }
@@ -174,9 +178,14 @@ export function moveObject<T extends MarkupObject>(o: T, dx: number, dy: number)
   return transformObject(o, [1, 0, 0, 1, dx, dy])
 }
 
-/** Переводит объект в новые геометрические границы (изменение размера за угол). */
+/**
+ * Переводит объект в новые геометрические границы (изменение размера за
+ * ручку). У текста меняется только рамка — она становится рамкой заданной
+ * ширины, кегль прежний; высоту под текст подгоняет resizeInView (resize.ts).
+ */
 export function resizeObject<T extends MarkupObject>(o: T, bounds: Rect): T {
-  return transformObject(o, rectToRectMatrix(geometryBounds(o), bounds))
+  const resized = transformObject(o, rectToRectMatrix(geometryBounds(o), bounds))
+  return resized.kind === 'text' ? { ...resized, fixedWidth: true } : resized
 }
 
 /**

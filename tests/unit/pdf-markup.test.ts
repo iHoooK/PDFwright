@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import fontkit from '@pdf-lib/fontkit'
 import { resolve } from 'node:path'
 import * as mupdf from 'mupdf'
 import {
@@ -14,7 +15,8 @@ import {
 } from 'pdf-lib'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { applyMarkup, PdfOpsError } from '@shared/pdf-ops'
-import type { MarkupObject } from '@shared/markup/model'
+import type { MarkupObject, TextObject } from '@shared/markup/model'
+import { fontMeasure, layoutTextObject } from '@shared/markup/text-layout'
 
 const ROOT = resolve(import.meta.dirname, '../..')
 const PNG_1PX =
@@ -245,6 +247,54 @@ describe('applyMarkup', () => {
     }
     expect((word.at(-1)?.x ?? 0) > (word[0]?.x ?? 0)).toBe(true)
   })
+
+  it.each(['annotation', 'content'] as const)(
+    'рамка заданной ширины: строки перенесены как на экране, кегль прежний (%s)',
+    async (mode) => {
+      const block: TextObject = {
+        ...base,
+        id: 'w',
+        page: 1,
+        kind: 'text',
+        rect: { x: 300, y: 300, width: 110, height: 120 },
+        rotate: 0,
+        text: 'Перенос по словам внутри рамки',
+        fontSize: 14,
+        fixedWidth: true
+      }
+      const expected = layoutTextObject(block, fontMeasure(fontkit.create(font)))
+        .lines.map((l) => l.text)
+        .filter((l) => l.length > 0)
+      expect(expected.length).toBeGreaterThanOrEqual(2)
+      const out = await applyMarkup(fixture, [block], { mode, font })
+      const doc = mupdf.Document.openDocument(out, 'application/pdf')
+      const page = doc.loadPage(0)
+      const top = page.getBounds()[3]
+      const lines: { text: string; y: number }[] = []
+      const chars: { x: number; y: number; size: number }[] = []
+      // Список отображения с аннотациями: текст FreeText виден так же, как впечатанный.
+      page
+        .toDisplayList(true)
+        .toStructuredText('preserve-whitespace')
+        .walk({
+          onChar: (c, origin, _font, size) => {
+            // Только символы внутри рамки (в координатах MuPDF ось Y вниз).
+            const [x, y] = origin
+            if (x < 295 || x > 415 || y < top - 425 || y > top - 295) return
+            chars.push({ x, y, size })
+            const line = lines.find((l) => Math.abs(l.y - y) < 1)
+            if (line) line.text += c
+            else lines.push({ text: c, y })
+          }
+        })
+      expect(lines.map((l) => l.text.trim())).toEqual(expected)
+      for (const c of chars) {
+        expect(c.x).toBeGreaterThanOrEqual(300)
+        expect(c.x).toBeLessThanOrEqual(410)
+        expect(c.size).toBeCloseTo(14, 1)
+      }
+    }
+  )
 
   it('без шрифта текстовый блок не записывается', async () => {
     await expect(

@@ -85,11 +85,14 @@ describe('модель разметки', () => {
     expect(ink.paths[0]?.[0]).toEqual({ x: 100, y: 100 })
   })
 
-  it('увеличение текстового блока увеличивает кегль', () => {
+  it('изменение размера текстового блока меняет только рамку, кегль прежний', () => {
     const text = objects[5]
     if (text?.kind !== 'text') throw new Error('fixture')
     const bigger = resizeObject(text, { x: 400, y: 100, width: 160, height: 40 })
-    expect(bigger.fontSize).toBeCloseTo(24)
+    expect(bigger.fontSize).toBe(12)
+    expect(bigger.rect).toEqual({ x: 400, y: 100, width: 160, height: 40 })
+    expect(bigger.fixedWidth).toBe(true)
+    expect(moveObject(text, 5, 5).fixedWidth).toBeUndefined()
   })
 
   it('видимые границы включают толщину линии и наконечник стрелки', () => {

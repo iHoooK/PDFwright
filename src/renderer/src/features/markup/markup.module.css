@@ -58,6 +58,11 @@
   white-space: pre;
   pointer-events: auto;
 }
+/* Рамка заданной ширины: перенос по словам, длинное слово рвётся по буквам (как layoutText). */
+.editorWrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .frame {
   position: absolute;
   border: 1px solid var(--accent);

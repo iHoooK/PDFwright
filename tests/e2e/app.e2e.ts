@@ -120,7 +120,8 @@ describe('PDFwright (собранное приложение)', () => {
     // Перемещение за контур, изменение размера за угол, Delete и отмена удаления.
     const rect = page.locator('[data-markup-layer="1"] svg rect')
     const before = await rect.boundingBox()
-    await drag(page, 1, [0.2, 0.47], [0.3, 0.5])
+    // Не за середину стороны: там ручка изменения ширины.
+    await drag(page, 1, [0.2, 0.44], [0.3, 0.47])
     const moved = await rect.boundingBox()
     const pageWidth = (await page.locator('[data-page="1"]').boundingBox())?.width ?? 0
     expect((moved?.x ?? 0) - (before?.x ?? 0)).toBeGreaterThan(pageWidth * 0.08)
