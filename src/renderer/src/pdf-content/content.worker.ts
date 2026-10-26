@@ -13,6 +13,7 @@ import {
   replaceImage,
   replaceText
 } from '@shared/pdf-content'
+import { inspectProtection, protectPdf, relockPdf, unlockPdf } from '@shared/pdf-content/protect'
 import type { ContentApi, ContentRequest, ContentResponse } from './protocol'
 
 /**
@@ -41,7 +42,12 @@ const api: ContentApi = {
   removeGraphic,
   moveGraphic,
   extractText,
-  compressPdf
+  compressPdf,
+  // Защита паролем
+  protectPdf,
+  unlockPdf,
+  relockPdf,
+  inspectProtection
 }
 
 /** Байты результата (сами или поле bytes, как у сжатия) передаются без копирования. */

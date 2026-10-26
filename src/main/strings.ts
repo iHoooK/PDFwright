@@ -1,8 +1,9 @@
-import type { Language } from '@shared/settings-schema'
+import type { InterfaceLanguage } from '@shared/settings-schema'
 
 /**
  * Строки процесса main: меню, системные диалоги, подтверждение закрытия.
- * Язык — из настроек (general.language); при его смене меню собирается заново.
+ * Язык — из настроек (general.language, «как в системе» — по языку Windows);
+ * при его смене меню собирается заново.
  */
 const ru = {
   menu: {
@@ -13,6 +14,7 @@ const ru = {
     saveAs: 'Сохранить как…',
     print: 'Печать…',
     properties: 'Свойства документа',
+    protect: 'Защита паролем…',
     close: 'Закрыть документ',
     quit: 'Выход',
     edit: 'Правка',
@@ -82,6 +84,7 @@ const en: MainStrings = {
     saveAs: 'Save as…',
     print: 'Print…',
     properties: 'Document properties',
+    protect: 'Password protection…',
     close: 'Close document',
     quit: 'Exit',
     edit: 'Edit',
@@ -140,6 +143,6 @@ const en: MainStrings = {
   printFailed: 'Printing failed'
 }
 
-export function mainStrings(language: Language): MainStrings {
+export function mainStrings(language: InterfaceLanguage): MainStrings {
   return language === 'en' ? en : ru
 }

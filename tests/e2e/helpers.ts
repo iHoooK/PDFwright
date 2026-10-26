@@ -26,10 +26,14 @@ export function useElectronApp(): void {
   beforeEach(async () => {
     ctx.work = await mkdtemp(join(tmpdir(), 'pdfwright-e2e-'))
     // Окно как на раннере CI (экран 1024×768): масштаб и раскладка не зависят от машины.
+    // Язык русский явно: по умолчанию он «как в системе», а система раннера английская.
     await mkdir(join(ctx.work, 'userData'), { recursive: true })
     await writeFile(
       join(ctx.work, 'userData', 'settings.json'),
-      JSON.stringify({ window: { width: 1024, height: 768, maximized: false } })
+      JSON.stringify({
+        general: { language: 'ru' },
+        window: { width: 1024, height: 768, maximized: false }
+      })
     )
   })
 

@@ -14,6 +14,7 @@ import { isPortableBuild } from '../services/app-paths'
 import { toBuffer, writeAtomicBytes } from '../services/fs-utils'
 import { printPdfFile } from '../services/print-service'
 import { mainStrings, type MainStrings } from '../strings'
+import { interfaceLanguage } from '../language'
 import type { RecentFilesStore } from '../services/recent-files'
 import type { SettingsStore } from '../services/settings-store'
 import type { UpdateService } from '../services/update-service'
@@ -69,7 +70,7 @@ export function registerIpcHandlers({
   updates,
   onLanguageChange
 }: IpcDependencies): void {
-  const text = (): MainStrings => mainStrings(settings.get().general.language)
+  const text = (): MainStrings => mainStrings(interfaceLanguage(settings))
   handle(IpcChannels.appGetInfo, () => getAppInfo())
   handleFrom(IpcChannels.appTakeStartup, (sender) => windows.takeStartup(sender))
   handleFrom(IpcChannels.appSetDirty, (sender, count) => {

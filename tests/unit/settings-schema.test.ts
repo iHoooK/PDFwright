@@ -5,6 +5,7 @@ import {
   normalizeSessionWindows,
   normalizeSettings,
   RECENT_LIMIT_MAX,
+  resolveLanguage,
   SESSION_TABS_MAX,
   SESSION_WINDOWS_MAX,
   SETTINGS_SCHEMA_VERSION,
@@ -31,7 +32,7 @@ describe('normalizeSettings', () => {
     })
 
     expect(result.schemaVersion).toBe(SETTINGS_SCHEMA_VERSION)
-    expect(result.general).toEqual({ theme: 'dark', language: 'ru' })
+    expect(result.general).toEqual({ theme: 'dark', language: 'system' })
     expect(result.viewer).toEqual({ defaultZoom: 'fit-page', scrollMode: 'continuous' })
     expect(result.files).toEqual({ backupOnSave: true, recentLimit: 10 })
     expect(result.window).toEqual({ width: 1280, height: 1000, maximized: false })
@@ -147,5 +148,29 @@ describe('сеанс в настройках', () => {
     const next = applySettingsPatch(current, { session: { restore: false } })
     expect(next.session.restore).toBe(false)
     expect(next.session.windows).toHaveLength(1)
+  })
+})
+
+describe('язык «как в системе»', () => {
+  it('по умолчанию у новых установок, выбранный язык прежних настроек не меняется', () => {
+    expect(createDefaultSettings().general.language).toBe('system')
+    expect(normalizeSettings({}).general.language).toBe('system')
+    expect(normalizeSettings({ general: { language: 'ru' } }).general.language).toBe('ru')
+    expect(normalizeSettings({ general: { language: 'en' } }).general.language).toBe('en')
+    expect(normalizeSettings({ general: { language: 'system' } }).general.language).toBe('system')
+  })
+
+  it('русский для русской локали системы, иначе английский', () => {
+    for (const locale of ['ru', 'ru-RU', 'RU', 'ru_UA', ' ru-by ']) {
+      expect(resolveLanguage('system', locale)).toBe('ru')
+    }
+    for (const locale of ['en-US', 'en', 'de-DE', 'uk-UA', 'be', '', 'kru']) {
+      expect(resolveLanguage('system', locale)).toBe('en')
+    }
+  })
+
+  it('явно выбранный язык не зависит от системы', () => {
+    expect(resolveLanguage('ru', 'en-US')).toBe('ru')
+    expect(resolveLanguage('en', 'ru-RU')).toBe('en')
   })
 })

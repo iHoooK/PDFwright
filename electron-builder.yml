@@ -11,10 +11,24 @@ directories:
   buildResources: installer
   output: build
 
+# В упаковку идут только собранные out/ и package.json (все зависимости — в бандле).
+# Исключены карты кода и ресурсы pdf.js, которые программа не загружает: запасные
+# JS-декодеры на случай, когда WebAssembly недоступен (в Electron он есть), и
+# QuickJS для скриптов PDF (скрипты выключены).
 files:
   - out/**
   - package.json
   - '!**/*.map'
+  - '!out/renderer/pdfjs/wasm/*_nowasm_fallback.js'
+  - '!out/renderer/pdfjs/wasm/quickjs-eval.*'
+
+# Интерфейс только на русском и английском: остальные языки Chromium (~49 МБ) не нужны.
+electronLanguages:
+  - ru
+  - en-US
+
+# Наибольшее сжатие установщика (LZMA, solid): сборка дольше, файл меньше.
+compression: maximum
 
 # Документы рядом с программой, как у ЛовиКадра.
 extraFiles:

@@ -13,6 +13,7 @@ import { UPDATE_DIRTY_ERROR } from '@shared/update-messages'
 import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH, type SessionWindow } from '@shared/settings-schema'
 import { rendererIndexUrl } from './protocol'
 import { mainStrings } from './strings'
+import { interfaceLanguage } from './language'
 import type { SettingsStore } from './services/settings-store'
 import { cascadeFrame, fitFrameToScreens, pickWindowForFile, type WindowFrame } from './window-plan'
 
@@ -154,7 +155,7 @@ export class WindowManager {
 
   /** Адрес интерфейса на языке из настроек (dev-сервер или протокол app://). */
   private pageUrl(): string {
-    const language = this.settings.get().general.language
+    const language = interfaceLanguage(this.settings)
     const devServerUrl = process.env.ELECTRON_RENDERER_URL
     if (!app.isPackaged && devServerUrl) {
       const url = new URL(devServerUrl)
@@ -170,9 +171,16 @@ export class WindowManager {
    * язык сменится при следующем запуске или после сохранения.
    */
   applyLanguage(): LanguageApplyResult {
+    const language = interfaceLanguage(this.settings)
+    // «Как в системе» вместо того же языка: окна уже на нём, перезагрузка не нужна.
+    const stale = [...this.entries.values()].filter((entry) => {
+      const url = URL.parse(entry.window.webContents.getURL())
+      return url?.searchParams.get('lang') !== language
+    })
+    if (stale.length === 0) return { applied: true, dirty: 0 }
     const dirty = [...this.entries.values()].reduce((sum, entry) => sum + entry.dirty, 0)
     if (dirty > 0) return { applied: false, dirty }
-    for (const entry of this.entries.values()) {
+    for (const entry of stale) {
       entry.startup = { files: [...entry.tabs.paths], active: entry.tabs.active, missing: [] }
       void entry.window.loadURL(this.pageUrl())
     }
@@ -287,7 +295,7 @@ export class WindowManager {
   }
 
   private confirmClose(entry: WindowEntry): boolean {
-    const s = mainStrings(this.settings.get().general.language).close
+    const s = mainStrings(interfaceLanguage(this.settings)).close
     const choice = dialog.showMessageBoxSync(entry.window, {
       type: 'warning',
       title: 'PDFwright',

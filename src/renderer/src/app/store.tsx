@@ -85,6 +85,7 @@ import {
   type SelectionTarget
 } from '@renderer/features/markup/selection'
 import { pdfContent } from '@renderer/pdf-content/client'
+import type { ProtectionInfo, ProtectOptions } from '@shared/pdf-content/protect'
 import { getApi } from './api'
 import { applyTheme, resolvedTheme } from './theme'
 
@@ -98,7 +99,7 @@ export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author
 export type ZoomMode = 'fit-width' | 'fit-page' | 'custom'
 /** Диалоги конвертации (фаза 6). */
 export type ConvertDialog = 'toImages' | 'fromImages' | 'extractText' | 'compress'
-export type ToolDialog = 'merge' | 'split' | ConvertDialog | null
+export type ToolDialog = 'merge' | 'split' | 'protect' | ConvertDialog | null
 export type SelectMode = 'single' | 'toggle' | 'range'
 /** Инструменты со своим цветом, непрозрачностью и толщиной в панели свойств. */
 export type StyledTool = 'marker' | 'pen' | 'shapes' | 'text'
@@ -130,6 +131,75 @@ export interface ToolStyle {
 export type TabSnapshot = Snapshot<Uint8Array, readonly MarkupObject[]> & {
   /** Несохранённые значения полей формы на этом шаге. */
   forms?: FormValues
+  /** Защита паролем на этом шаге; нет поля — та же, что сейчас. */
+  protection?: DocProtection | null | undefined
+}
+
+// Защита паролем
+/**
+ * Защита документа вкладки. Байты вкладки всегда расшифрованы (их понимают
+ * pdf-lib, MuPDF и pdf.js), а шифрование возвращается при записи файла.
+ * Пароли живут только в памяти вкладки: в настройки, сеанс и журнал не попадают.
+ */
+export type DocProtection =
+  | {
+      /** Файл, открытый паролем: записывается с прежним ключом, оба пароля сохраняются. */
+      kind: 'file'
+      original: Uint8Array
+      /** Расшифрованная копия файла: без правок записывается сам исходный файл. */
+      plain: Uint8Array
+      password: string
+      info: ProtectionInfo
+    }
+  | {
+      /** Новый пароль: файл шифруется AES-256 при записи. */
+      kind: 'new'
+      options: ProtectOptions
+    }
+
+/** Байты для записи файла: расшифрованная копия вкладки снова шифруется. */
+async function lockForWrite(
+  protection: DocProtection | null | undefined,
+  bytes: Uint8Array
+): Promise<Uint8Array> {
+  if (!protection) return bytes
+  if (protection.kind === 'new') return pdfContent.protectPdf(bytes, protection.options)
+  if (bytes === protection.plain) return protection.original
+  return pdfContent.relockPdf(protection.original, protection.password, bytes)
+}
+
+/**
+ * Документ, открытый паролем (или зашифрованный без пароля на открытие),
+ * расшифровывается для правки; если MuPDF не справился, вкладка остаётся с
+ * зашифрованными байтами, как раньше.
+ */
+async function unlockOpened(
+  doc: PdfDocument,
+  bytes: Uint8Array,
+  password: string | null
+): Promise<{ bytes: Uint8Array; protection: DocProtection | null }> {
+  if (password === null && !(await doc.getProperties()).encrypted) {
+    return { bytes, protection: null }
+  }
+  try {
+    const result = await pdfContent.unlockPdf(bytes, password ?? '')
+    if (!result.info) return { bytes, protection: null }
+    return {
+      bytes: result.bytes,
+      protection: {
+        kind: 'file',
+        original: bytes,
+        plain: result.bytes,
+        password: password ?? '',
+        info: result.info
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `[pdfwright] зашифрованный документ не расшифрован для правки: ${error instanceof Error ? error.message : String(error)}`
+    )
+    return { bytes, protection: null }
+  }
 }
 
 const NO_FORMS: FormValues = {}
@@ -163,6 +233,8 @@ export interface DocTab {
   /** Ключ последней правки: подряд идущие правки с тем же ключом (ползунок) — один шаг отмены. */
   coalesce: string | null
   busy: boolean
+  /** Защита паролем, которая будет записана в файл; нет — документ без пароля. */
+  protection?: DocProtection | null | undefined
 }
 
 export interface ZoomState {
@@ -291,7 +363,14 @@ type Action =
   | { type: 'screen'; screen: Screen }
   | { type: 'settingsSection'; section: SettingsSection }
   | { type: 'docOpen'; doc: DocTab }
-  | { type: 'docReady'; id: string; doc: PdfDocument; bytes: Uint8Array; fileSize: number }
+  | {
+      type: 'docReady'
+      id: string
+      doc: PdfDocument
+      bytes: Uint8Array
+      fileSize: number
+      protection?: DocProtection | null | undefined
+    }
   | { type: 'docError'; id: string; error: string }
   | { type: 'docSizes'; id: string }
   | { type: 'docBusy'; id: string; busy: boolean }
@@ -306,6 +385,7 @@ type Action =
       future: TabSnapshot[]
       dirty: boolean
       selectedPages: ReadonlySet<number>
+      protection?: DocProtection | null | undefined
     }
   | {
       type: 'markup'
@@ -322,6 +402,7 @@ type Action =
       forms?: FormValues
       history: TabSnapshot[]
       future: TabSnapshot[]
+      protection?: DocProtection | null | undefined
     }
   | {
       type: 'forms'
@@ -359,6 +440,8 @@ type Action =
   | { type: 'compareClose' }
   | { type: 'toolDialog'; dialog: ToolDialog }
   | { type: 'update'; patch: Partial<UpdateState> }
+  // Защита паролем
+  | { type: 'protection'; id: string; protection: DocProtection | null }
 
 const EMPTY_SEARCH: SearchState = { query: '', matches: [], active: 0, running: false }
 
@@ -498,7 +581,8 @@ function reducer(state: State, action: Action): State {
         pages: action.doc.numPages,
         bytes: action.bytes,
         fileSize: action.fileSize,
-        error: null
+        error: null,
+        protection: action.protection ?? null
       }))
     case 'docError':
       return updateDoc(state, action.id, (d) => ({ ...d, status: 'error', error: action.error }))
@@ -519,7 +603,8 @@ function reducer(state: State, action: Action): State {
         coalesce: null,
         dirty: action.dirty,
         busy: false,
-        sizesVersion: d.sizesVersion + 1
+        sizesVersion: d.sizesVersion + 1,
+        protection: action.protection === undefined ? d.protection : action.protection
       }))
       const page = Math.min(state.page, action.doc.numPages)
       return {
@@ -580,7 +665,8 @@ function reducer(state: State, action: Action): State {
         history: action.history,
         future: action.future,
         coalesce: null,
-        dirty: true
+        dirty: true,
+        protection: action.protection === undefined ? d.protection : action.protection
       }))
       return { ...next, selection: keepSelection(state.selection, action.markup) }
     }
@@ -703,6 +789,26 @@ function reducer(state: State, action: Action): State {
       return { ...state, toolDialog: action.dialog }
     case 'update':
       return { ...state, update: { ...state.update, ...action.patch } }
+    // Защита паролем
+    case 'protection': {
+      const tab = state.docs.find((d) => d.id === action.id)
+      const bytes = tab?.bytes
+      if (!tab || !bytes || tab.busy) return state
+      const snapshot: TabSnapshot = {
+        bytes,
+        markup: tab.markup,
+        forms: tab.forms,
+        protection: tab.protection ?? null
+      }
+      return updateDoc(state, action.id, (d) => ({
+        ...d,
+        protection: action.protection,
+        history: pushSnapshot(d.history, snapshot),
+        future: [],
+        coalesce: null,
+        dirty: true
+      }))
+    }
   }
 }
 
@@ -828,6 +934,11 @@ export interface Actions {
   openNewDocument: (name: string, bytes: Uint8Array) => Promise<boolean>
   /** Заменяет байты активного документа шагом истории: Ctrl+Z возвращает прежние. */
   replaceDocument: (bytes: Uint8Array, message: string) => Promise<boolean>
+  // Защита паролем
+  /** Задаёт пароль документа шагом истории; файл шифруется при записи. */
+  setProtection: (options: ProtectOptions) => void
+  /** Снимает защиту шагом истории: файл запишется без пароля. */
+  removeProtection: () => void
   checkUpdates: () => void
   downloadUpdate: () => void
   cancelUpdate: () => void
@@ -918,6 +1029,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           busy: false
         }
       })
+      // Пароль, которым открыт документ, нужен для записи с тем же шифрованием.
+      let typed: string | null = null
       const askPassword = (reason: PasswordReason): Promise<string | null> =>
         new Promise((resolve) => {
           dispatch({
@@ -927,6 +1040,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
               reason,
               resolve: (password) => {
                 dispatch({ type: 'password', request: null })
+                typed = password
                 resolve(password)
               }
             }
@@ -935,13 +1049,13 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       void (async () => {
         try {
           const file = await api.readFile(path)
-          const bytes = new Uint8Array(file.bytes)
-          const doc = await loadPdfDocument(bytes, { askPassword })
+          const doc = await loadPdfDocument(new Uint8Array(file.bytes), { askPassword })
+          const { bytes, protection } = await unlockOpened(doc, new Uint8Array(file.bytes), typed)
           if (!stateRef.current.docs.some((d) => d.id === id)) {
             doc.destroy()
             return
           }
-          dispatch({ type: 'docReady', id, doc, bytes, fileSize: file.size })
+          dispatch({ type: 'docReady', id, doc, bytes, fileSize: file.size, protection })
           console.info(`[pdfwright] документ открыт: ${name}, страниц: ${doc.numPages}`)
           void doc.loadSizes(() => {
             dispatch({ type: 'docSizes', id })
@@ -1103,7 +1217,12 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       const source = direction === 'undo' ? tab.history : tab.future
       const snapshot = source[source.length - 1]
       if (!snapshot) return
-      const current: TabSnapshot = { bytes: tab.bytes, markup: tab.markup, forms: tab.forms }
+      const current: TabSnapshot = {
+        bytes: tab.bytes,
+        markup: tab.markup,
+        forms: tab.forms,
+        protection: tab.protection ?? null
+      }
       const history = direction === 'undo' ? tab.history.slice(0, -1) : [...tab.history, current]
       const future = direction === 'undo' ? [...tab.future, current] : tab.future.slice(0, -1)
       // Шаг разметки: байты те же, документ не перезагружаем.
@@ -1114,8 +1233,13 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           markup: snapshot.markup,
           forms: snapshot.forms ?? NO_FORMS,
           history,
-          future
+          future,
+          protection: snapshot.protection
         })
+        // Шаг защиты паролем ничего не меняет на экране — сообщаем о нём.
+        if (snapshot.protection !== undefined && snapshot.protection !== (tab.protection ?? null)) {
+          toast(direction === 'undo' ? t.ops.undone : t.ops.redone)
+        }
         return
       }
       const { bytes } = snapshot
@@ -1133,7 +1257,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           history,
           future,
           dirty: true,
-          selectedPages: new Set()
+          selectedPages: new Set(),
+          protection: snapshot.protection
         })
         previous?.destroy()
         void doc.loadSizes(() => {
@@ -1186,9 +1311,11 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
             throw error
           }
         }
+        // Защита паролем: в файл идут зашифрованные байты.
+        const output = await lockForWrite(tab.protection, bytes)
         await api.writeFile({
           path,
-          bytes: toArrayBuffer(bytes),
+          bytes: toArrayBuffer(output),
           backup: stateRef.current.settings.files.backupOnSave
         })
         dispatch({ type: 'docSaved', id: tab.id, path })
@@ -1978,6 +2105,19 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       },
       replaceDocument: (bytes, message) =>
         applyOperation(() => Promise.resolve(bytes), { message }),
+      // Защита паролем
+      setProtection: (options) => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready' || tab.busy) return
+        dispatch({ type: 'protection', id: tab.id, protection: { kind: 'new', options } })
+        toast(t.protect.applied)
+      },
+      removeProtection: () => {
+        const tab = activeDoc(stateRef.current)
+        if (tab?.status !== 'ready' || tab.busy || !tab.protection) return
+        dispatch({ type: 'protection', id: tab.id, protection: null })
+        toast(t.protect.removed)
+      },
       checkUpdates: () => {
         dispatch({
           type: 'update',
@@ -2109,6 +2249,16 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         case 'file.properties':
           actions.openProperties()
           break
+        case 'file.protect': {
+          const tab = activeDoc(stateRef.current)
+          if (tab?.status !== 'ready') {
+            actions.toast(t.protect.needDoc)
+            break
+          }
+          actions.activateDoc(tab.id)
+          actions.openTool('protect')
+          break
+        }
         case 'edit.undo':
           actions.undo()
           break

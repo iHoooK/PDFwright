@@ -48,6 +48,7 @@ export const APP_COMMANDS = [
   'file.print',
   'file.close',
   'file.properties',
+  'file.protect',
   'edit.undo',
   'edit.redo',
   'edit.find',

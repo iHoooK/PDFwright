@@ -41,6 +41,7 @@ export function installApplicationMenu({ newWindow, strings }: MenuHandlers): vo
         { type: 'separator' },
         item(s.print, 'file.print', 'CmdOrCtrl+P'),
         item(s.properties, 'file.properties'),
+        { ...item(s.protect, 'file.protect'), id: 'file.protect' },
         { type: 'separator' },
         item(s.close, 'file.close', 'CmdOrCtrl+W'),
         { type: 'separator' },

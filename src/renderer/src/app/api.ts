@@ -10,6 +10,7 @@ import {
   applySettingsPatch,
   createDefaultSettings,
   normalizeSettings,
+  resolveLanguage,
   type AppSettings
 } from '@shared/settings-schema'
 import { basenameOf } from '@shared/paths'
@@ -86,7 +87,7 @@ function createBrowserMock(): PdfwrightApi {
     getSettings: () => Promise.resolve(settings),
     applyLanguage: () => {
       // В браузере язык меняется перезагрузкой страницы с ?lang=.
-      window.location.search = `?lang=${settings.general.language}`
+      window.location.search = `?lang=${resolveLanguage(settings.general.language, navigator.language)}`
       return Promise.resolve({ applied: true, dirty: 0 })
     },
     updateSettings: (patch) => {

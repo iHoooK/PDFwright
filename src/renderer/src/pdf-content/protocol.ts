@@ -13,6 +13,12 @@ import type {
 } from '@shared/pdf-content/engine'
 import type { extractText } from '@shared/pdf-content/extract-text'
 import type { compressPdf } from '@shared/pdf-content/compress'
+import type {
+  inspectProtection,
+  protectPdf,
+  relockPdf,
+  unlockPdf
+} from '@shared/pdf-content/protect'
 
 /** Операции движка pdf-content, доступные через worker. */
 export interface ContentApi {
@@ -29,6 +35,11 @@ export interface ContentApi {
   moveGraphic: typeof moveGraphic
   extractText: typeof extractText
   compressPdf: typeof compressPdf
+  // Защита паролем
+  protectPdf: typeof protectPdf
+  unlockPdf: typeof unlockPdf
+  relockPdf: typeof relockPdf
+  inspectProtection: typeof inspectProtection
 }
 
 export type ContentMethod = keyof ContentApi

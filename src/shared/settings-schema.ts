@@ -10,8 +10,17 @@ export const SETTINGS_SCHEMA_VERSION = 1
 export const THEMES = ['system', 'light', 'dark'] as const
 export type Theme = (typeof THEMES)[number]
 
-export const LANGUAGES = ['ru', 'en'] as const
+/** system — язык Windows: русский для русской системы, иначе английский. */
+export const LANGUAGES = ['system', 'ru', 'en'] as const
 export type Language = (typeof LANGUAGES)[number]
+/** Язык, на котором программа показывает интерфейс. */
+export type InterfaceLanguage = Exclude<Language, 'system'>
+
+/** Язык интерфейса по настройке; «как в системе» — по локали ОС (app.getLocale(), navigator.language). */
+export function resolveLanguage(language: Language, systemLocale: string): InterfaceLanguage {
+  if (language !== 'system') return language
+  return systemLocale.trim().toLowerCase().startsWith('ru') ? 'ru' : 'en'
+}
 
 export const ZOOM_MODES = ['fit-width', 'fit-page', 'actual'] as const
 export type ZoomMode = (typeof ZOOM_MODES)[number]
@@ -106,7 +115,7 @@ export const RECENT_LIMIT_MAX = 50
 export function createDefaultSettings(): AppSettings {
   return {
     schemaVersion: SETTINGS_SCHEMA_VERSION,
-    general: { theme: 'system', language: 'ru' },
+    general: { theme: 'system', language: 'system' },
     viewer: { defaultZoom: 'fit-width', scrollMode: 'continuous' },
     files: { backupOnSave: false, recentLimit: 10 },
     markup: { saveMode: 'annotation', signatures: [] },

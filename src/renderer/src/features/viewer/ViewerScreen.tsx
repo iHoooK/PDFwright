@@ -38,6 +38,7 @@ import { DocumentView } from './DocumentView'
 import { PagesGrid } from './PagesGrid'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
+import { ProtectDialog } from '@renderer/features/protect/ProtectDialog'
 import { OutlinePanel, SearchPanel, ThumbsPanel } from './SidebarPanels'
 import s from './viewer.module.css'
 
@@ -377,6 +378,7 @@ export function ViewerScreen(): React.JSX.Element {
       )}
       <PasswordDialog />
       <PropertiesDialog />
+      <ProtectDialog />
       <MergeDialog />
       <SplitDialog />
       <ConfirmDialog

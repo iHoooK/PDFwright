@@ -448,6 +448,39 @@ export const en: Strings = {
     applied: (before: string, after: string) => `Document compressed: ${before} → ${after}`,
     compressSaved: (name: string) => `Saved: ${name}`
   },
+  protect: {
+    title: 'Password protection',
+    open: 'Protection…',
+    leadNone:
+      'The document is not protected. An open password encrypts the file (AES‑256); a separate owner password lets you block printing and copying.',
+    leadFile: (method: string) => `The document is password-protected (${method}).`,
+    leadNew: 'The new password will be written to the file when you save.',
+    leadUser:
+      'The document was opened with its open password. To change or remove protection, enter the owner password.',
+    noPrint: 'Printing is not allowed.',
+    noCopy: 'Copying is not allowed.',
+    current: 'Owner password',
+    user: 'Open password',
+    repeat: 'Repeat password',
+    owner: 'Owner password (optional)',
+    ownerHint: 'Restrictions apply only when the owner password differs from the open password.',
+    allowPrint: 'Allow printing',
+    allowCopy: 'Allow copying text and images',
+    yes: 'Yes',
+    no: 'No',
+    set: 'Set password',
+    change: 'Change password',
+    remove: 'Remove protection',
+    cancel: 'Cancel',
+    userRequired: 'Enter the open password.',
+    mismatch: 'The passwords do not match.',
+    ownerRequired: 'Enter the owner password of the document.',
+    ownerWrong: 'This is not the owner password of the document.',
+    applied: 'Password set: it will be written to the file when you save',
+    removed: 'Protection removed: the file will be saved without a password',
+    needDoc: 'Open a document to protect it with a password',
+    pending: (method: string) => `${method}, written on save`
+  },
   settings: {
     title: 'Settings',
     back: 'Back to document',
@@ -459,6 +492,7 @@ export const en: Strings = {
     themeLight: 'Light',
     themeDark: 'Dark',
     language: 'Display language',
+    languageSystem: 'Match system',
     languageHint: 'The interface reloads in the selected language and open documents reopen.',
     languageLater: (n: number) =>
       `The language will change after you save your documents (${n} unsaved) or the next time PDFwright starts.`,

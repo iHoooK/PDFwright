@@ -63,6 +63,7 @@ const SCROLL_LABELS: Record<ScrollMode, string> = {
 
 /** Языки показываются своими названиями — их узнают, даже не читая текущий язык. */
 const LANGUAGE_OPTIONS: readonly { value: Language; label: string }[] = [
+  { value: 'system', label: t.settings.languageSystem },
   { value: 'ru', label: 'Русский' },
   { value: 'en', label: 'English' }
 ]
