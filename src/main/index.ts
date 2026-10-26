@@ -4,6 +4,7 @@ import { isAbsolute } from 'node:path'
 import { registerIpcHandlers } from './ipc'
 import { installApplicationMenu } from './menu'
 import { mainStrings } from './strings'
+import { interfaceLanguage } from './language'
 import { setMessageLanguage } from '@shared/messages'
 import { extractPdfPath } from './open-args'
 import { installAppProtocol, registerAppScheme, rendererDirFromMain } from './protocol'
@@ -60,7 +61,7 @@ async function bootstrap(startupFile: string | null): Promise<void> {
   })
   // Меню и сообщения общего кода — на языке из настроек; при смене языка ставятся заново.
   const applyLanguage = (): void => {
-    const language = settings.get().general.language
+    const language = interfaceLanguage(settings)
     setMessageLanguage(language)
     installApplicationMenu({
       newWindow: () => {

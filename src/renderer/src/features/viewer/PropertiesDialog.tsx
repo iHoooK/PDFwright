@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { METADATA_FIELDS, type DocumentMetadata } from '@shared/pdf-ops'
 import { Button } from '@renderer/components/controls'
 import { Dialog } from '@renderer/components/Dialog'
-import { activeDoc, useStore } from '@renderer/app/store'
+import { activeDoc, useStore, type DocTab } from '@renderer/app/store'
 import { locale, t } from '@renderer/i18n'
 import { createCancelToken, type DocumentProperties } from '@renderer/pdf-engine/engine'
 import s from '@renderer/components/dialog.module.css'
@@ -15,6 +15,15 @@ function formatBytes(size: number): string {
 
 function formatDate(date: Date | null): string {
   return date ? date.toLocaleString(locale) : '—'
+}
+
+/** Шифрование: защита вкладки (будет записана в файл) или сведения pdf.js. */
+function encryption(tab: DocTab, props: DocumentProperties | null): string {
+  const protection = tab.protection ?? null
+  if (protection?.kind === 'file') return protection.info.method
+  if (protection?.kind === 'new') return t.protect.pending('AES-256')
+  if (!props) return '—'
+  return props.encrypted ? t.properties.yes : t.properties.no
 }
 
 const EMPTY_META: DocumentMetadata = {
@@ -84,7 +93,7 @@ export function PropertiesDialog(): React.JSX.Element | null {
     [t.properties.created, formatDate(props?.created ?? null)],
     [t.properties.modified, formatDate(props?.modified ?? null)],
     [t.properties.version, props?.pdfVersion ? `PDF ${props.pdfVersion}` : '—'],
-    [t.properties.encrypted, props ? (props.encrypted ? t.properties.yes : t.properties.no) : '—']
+    [t.properties.encrypted, encryption(tab, props)]
   ]
   const apply = (): void => {
     const patch: Partial<DocumentMetadata> = {}
@@ -120,6 +129,16 @@ export function PropertiesDialog(): React.JSX.Element | null {
             }}
           >
             {t.forms.metaClear}
+          </Button>
+          <Button
+            variant="subtle"
+            disabled={busy}
+            onClick={() => {
+              actions.closeProperties()
+              actions.openTool('protect')
+            }}
+          >
+            {t.protect.open}
           </Button>
           <Button onClick={actions.closeProperties}>
             {changed ? t.forms.metaCancel : t.properties.close}

@@ -128,6 +128,27 @@ export class PdfContentClient {
     return this.call('compressPdf', ...args)
   }
 
+  // Защита паролем
+  /** Шифрует документ AES-256 паролем на открытие и (по желанию) паролем владельца. */
+  protectPdf(...args: Parameters<ContentApi['protectPdf']>) {
+    return this.call('protectPdf', ...args)
+  }
+
+  /** Расшифровывает документ паролем; у незашифрованного возвращает байты и info: null. */
+  unlockPdf(...args: Parameters<ContentApi['unlockPdf']>) {
+    return this.call('unlockPdf', ...args)
+  }
+
+  /** Записывает правленую расшифрованную копию с исходным шифрованием документа. */
+  relockPdf(...args: Parameters<ContentApi['relockPdf']>) {
+    return this.call('relockPdf', ...args)
+  }
+
+  /** Какие права даёт пароль и какие ограничения у документа. */
+  inspectProtection(...args: Parameters<ContentApi['inspectProtection']>) {
+    return this.call('inspectProtection', ...args)
+  }
+
   /** Останавливает worker; незавершённые вызовы получают ошибку. */
   dispose(): void {
     this.fail(
