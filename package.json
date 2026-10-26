@@ -1,7 +1,7 @@
 {
   "name": "pdfwright",
   "productName": "PDFwright",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "PDFwright: local Windows app to view, edit and process PDF files.",
   "author": {
     "name": "Promptix",
