@@ -91,14 +91,17 @@ async function bootstrap(startupFile: string | null): Promise<void> {
     windows.beginQuit()
   })
 
-  // Сеанс пишется при закрытии окон; выход ждёт, пока запись дойдёт до диска.
+  // Сеанс пишется при закрытии окон; выход ждёт, пока запись дойдёт до диска,
+  // но не дольше нескольких секунд, и завершается напрямую: окна уже закрыты,
+  // а повторный app.quit() изредка оставлял процесс висеть без окон.
   let flushed = false
   app.on('will-quit', (event) => {
     if (flushed) return
     flushed = true
     event.preventDefault()
-    void settings.flush().finally(() => {
-      app.quit()
+    const limit = new Promise((resolve) => setTimeout(resolve, 5_000))
+    void Promise.race([settings.flush(), limit]).finally(() => {
+      app.exit(0)
     })
   })
 }
