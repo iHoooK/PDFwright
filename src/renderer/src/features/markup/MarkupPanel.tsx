@@ -24,7 +24,7 @@ import {
 import v from '@renderer/features/viewer/viewer.module.css'
 import { measureText } from './font'
 import { readImageFile } from './images'
-import { ContentCard, EditToolCard } from '@renderer/features/content/ContentPanel'
+import { ContentCard, EditToolCard, GroupCard } from '@renderer/features/content/ContentPanel'
 import { selectedMarkupId } from './selection'
 import { SignatureDialog } from './SignatureDialog'
 import s from './markup.module.css'
@@ -345,6 +345,7 @@ export function MarkupPanel({ toolLabel }: { toolLabel: string }): React.JSX.Ele
   const markupId = selectedMarkupId(state.selection)
   const selected = tab?.markup.find((o) => o.id === markupId) ?? null
   const content = state.selection?.source === 'content' ? state.selection : null
+  const group = state.contentGroup.length
   const tool = state.tool
   const hint =
     tool === 'edit' && state.contentMode === 'erase'
@@ -358,12 +359,14 @@ export function MarkupPanel({ toolLabel }: { toolLabel: string }): React.JSX.Ele
       <h3>
         {selected
           ? objectName(selected)
-          : content
-            ? t.content.objects[content.object.kind]
-            : toolLabel}
+          : group > 1
+            ? t.content.groupTitle(group)
+            : content
+              ? t.content.objects[content.object.kind]
+              : toolLabel}
       </h3>
       {selected && <ObjectCard key={selected.id} object={selected} />}
-      {content && <ContentCard target={content} />}
+      {group > 1 ? <GroupCard /> : content && <ContentCard target={content} />}
       {tool === 'edit' && <EditToolCard />}
       {!selected && isStyled(tool) && <ToolCard tool={tool} />}
       {tool === 'sign' && <SignaturesCard />}

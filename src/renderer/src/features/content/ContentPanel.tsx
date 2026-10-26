@@ -12,13 +12,25 @@ import { fontFamily } from '@shared/pdf-content/to-unicode'
 import { IconDelete, IconImage } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { Button, RadioGroup, SelectField, Swatches } from '@renderer/components/controls'
-import { activeDoc, INK_COLORS, useStore, type ContentMode } from '@renderer/app/store'
+import {
+  activeDoc,
+  INK_COLORS,
+  useStore,
+  type ContentMode,
+  type ContentShift
+} from '@renderer/app/store'
 import { contentId, type SelectionTarget } from '@renderer/features/markup/selection'
 import v from '@renderer/features/viewer/viewer.module.css'
 import { usePageObjects } from './page-objects'
 import s from './content.module.css'
 
 type ContentTarget = Extract<SelectionTarget, { source: 'content' }>
+
+const SHIFTS: readonly { value: ContentShift; label: string }[] = [
+  { value: 'page', label: t.content.shiftPage },
+  { value: 'column', label: t.content.shiftColumn },
+  { value: 'none', label: t.content.shiftNone }
+]
 
 const MODES: readonly { value: ContentMode; label: string }[] = [
   { value: 'objects', label: t.content.modeObjects },
@@ -354,6 +366,18 @@ export function EditToolCard(): React.JSX.Element {
           onChange={actions.setContentMode}
         />
       </div>
+      {state.contentMode === 'objects' && (
+        <div className={v.field}>
+          <span className={v.fieldLabel}>{t.content.shiftLabel}</span>
+          <RadioGroup
+            value={state.contentShift}
+            options={SHIFTS}
+            label={t.content.shiftLabel}
+            onChange={actions.setContentShift}
+          />
+          <p className={s.warning}>{t.content.shiftHint}</p>
+        </div>
+      )}
       {state.contentMode === 'text' &&
         (style ? (
           <TextStyleFields
@@ -374,6 +398,21 @@ export function EditToolCard(): React.JSX.Element {
         empty && <p className={s.info}>{t.content.empty}</p>
       )}
       <p className={s.warning}>{t.content.warning}</p>
+    </div>
+  )
+}
+
+/** Карточка группы объектов документа: сколько выбрано и удаление всех сразу. */
+export function GroupCard(): React.JSX.Element {
+  const { actions } = useStore()
+  return (
+    <div className={v.pcard} data-content-props="group">
+      <p className={s.warning}>{t.content.groupHint}</p>
+      <div className={s.row}>
+        <Button icon={<IconDelete />} onClick={actions.removeSelected}>
+          {t.content.removeAll}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -163,6 +163,11 @@ export interface WriteTextOptions extends ReplaceTextOptions {
   /** Новое начало базовой линии первой строки (перенос абзаца). */
   readonly origin?: PdfSpacePoint
   readonly style?: TextStylePatch
+  /**
+   * Сдвиг содержимого под абзацем, если он стал выше или ниже: вся ширина
+   * страницы (по умолчанию), только колонка абзаца или без сдвига.
+   */
+  readonly shift?: 'page' | 'column' | 'none'
 }
 
 export interface InsertTextOptions extends ReplaceTextOptions {

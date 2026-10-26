@@ -6,7 +6,7 @@ import { useStore, type DocTab, type StyledTool, type Tool } from '@renderer/app
 import { cx } from '@renderer/components/cx'
 import { loadMarkupFont } from '@renderer/features/markup/font'
 import { MarkupLayer } from '@renderer/features/markup/MarkupLayer'
-import { selectedMarkupId } from '@renderer/features/markup/selection'
+import { selectedMarkupId, type ContentTarget } from '@renderer/features/markup/selection'
 import { ContentLayer } from '@renderer/features/content/ContentLayer'
 import { selectionToPageRects } from '@renderer/features/markup/text-selection'
 import { PdfPageView, type PageForms } from './PdfPageView'
@@ -14,6 +14,7 @@ import s from './viewer.module.css'
 import { t } from '@renderer/i18n'
 
 const NO_MARKUP: readonly MarkupObject[] = []
+const NO_GROUP: readonly ContentTarget[] = []
 
 /** Стиль какого инструмента применяется к новым объектам. */
 function styledTool(tool: Tool): StyledTool {
@@ -175,6 +176,15 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
   }, [tab.markup])
   const selectedId = selectedMarkupId(state.selection)
   const selectedContent = state.selection?.source === 'content' ? state.selection : null
+  const contentGroupByPage = useMemo(() => {
+    const map = new Map<number, ContentTarget[]>()
+    for (const target of state.contentGroup) {
+      const list = map.get(target.page) ?? []
+      list.push(target)
+      map.set(target.page, list)
+    }
+    return map
+  }, [state.contentGroup])
   const selectedPage = tab.markup.find((o) => o.id === selectedId)?.page ?? null
   const scale = (resolvedZoom / 100) * CSS_UNITS
   const tool = state.tool
@@ -262,6 +272,7 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
                     bytes={tab.bytes}
                     mode={state.contentMode}
                     textStyle={state.contentTextStyle}
+                    group={contentGroupByPage.get(n) ?? NO_GROUP}
                     selected={selectedContent?.page === n ? selectedContent : null}
                     actions={actions}
                   />

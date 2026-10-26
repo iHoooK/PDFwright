@@ -128,12 +128,13 @@ describe('абзацы', () => {
       line(3, 'Другой цвет', 661, 40, { color: [0.5, 0.5, 0.5] }),
       line(4, 'Далеко внизу', 600)
     ])
-    expect(blocks).toHaveLength(3)
+    // Строка другого цвета того же кегля — часть абзаца, но с явным разрывом.
+    expect(blocks).toHaveLength(2)
     expect(blocks[0]?.text).toBe(
-      'Первая строка абзаца, довольно длинная вторая строка абзаца.\n- пункт списка'
+      'Первая строка абзаца, довольно длинная вторая строка абзаца.\n- пункт списка\nДругой цвет'
     )
     expect(blocks[0]?.lineHeight).toBeCloseTo(13)
-    expect(blocks[0]?.lines).toEqual([0, 1, 2])
+    expect(blocks[0]?.lines).toEqual([0, 1, 2, 3])
   })
 })
 

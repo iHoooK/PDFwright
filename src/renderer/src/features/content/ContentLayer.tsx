@@ -49,6 +49,8 @@ interface Props {
   selected: ContentTarget | null
   /** Стиль нового текста (режим «Новый текст»). */
   textStyle: TextStyle | null
+  /** Группа выбранных объектов на этой странице (больше одного) или пусто. */
+  group: readonly ContentTarget[]
   actions: Actions
 }
 
@@ -253,6 +255,7 @@ export const ContentLayer = memo(function ContentLayer({
   mode,
   selected,
   textStyle,
+  group,
   actions
 }: Props): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -265,6 +268,8 @@ export const ContentLayer = memo(function ContentLayer({
   /** Рамка во время жеста (пространство PDF): перенос, изменение размера или ластик. */
   const [preview, setPreview] = useState<Rect | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
+  /** Смещение группы во время перетаскивания (пространство PDF). */
+  const [groupShift, setGroupShift] = useState<Point | null>(null)
   /** Что было выбрано до первого нажатия двойного щелчка. */
   const beforeDouble = useRef<ContentTarget | null>(null)
   /** Время и место прошлого нажатия: у pointerdown нет счётчика щелчков. */
@@ -365,6 +370,49 @@ export const ContentLayer = memo(function ContentLayer({
           const origin = { x: object.origin.x + shift.x, y: object.origin.y + shift.y }
           actions.replaceContentBlock(pageNumber, object, object.text, { origin })
         }
+      }
+    )
+  }
+
+  /** Перетаскивание группы: все выбранные объекты сдвигаются одним шагом отмены. */
+  const startGroupMove = (members: readonly ContentTarget[], startClient: Point): void => {
+    const start = pagePoint(startClient.x, startClient.y)
+    let delta: Point | null = null
+    trackPointer(
+      (e) => {
+        const p = pagePoint(e.clientX, e.clientY)
+        delta = { x: p.x - start.x, y: p.y - start.y }
+        setGroupShift(delta)
+      },
+      () => {
+        setGroupShift(null)
+        const shift: Point | null = delta
+        if (!shift || Math.hypot(shift.x, shift.y) * scale < CLICK_DISTANCE) return
+        actions.moveContentGroup(members, shift)
+      }
+    )
+  }
+
+  /** Рамка с Shift: выбирает абзацы, картинки и фигуры целиком внутри неё. */
+  const startBand = (start: Point): void => {
+    let band: Rect | null = null
+    trackPointer(
+      (e) => {
+        band = rectFromPoints(start, pagePoint(e.clientX, e.clientY))
+        setPreview(band)
+      },
+      () => {
+        setPreview(null)
+        const area: Rect | null = band
+        if (!area) return
+        const inside = pickable.filter(
+          (o) =>
+            o.rect.x >= area.x &&
+            o.rect.y >= area.y &&
+            o.rect.x + o.rect.width <= area.x + area.width &&
+            o.rect.y + o.rect.height <= area.y + area.height
+        )
+        actions.setContentGroup(inside.map(target))
       }
     )
   }
@@ -494,8 +542,27 @@ export const ContentLayer = memo(function ContentLayer({
     ) {
       return
     }
+    const hit = objectAt(start, !event.ctrlKey)
+    if (!hit && event.shiftKey) {
+      startBand(start)
+      return
+    }
+    // Ctrl+щелчок добавляет объект к группе или убирает из неё.
+    if (hit && (event.ctrlKey || event.metaKey)) {
+      const picked = target(hit)
+      const current: ContentTarget[] =
+        group.length > 1 ? [...group] : selected?.page === pageNumber ? [selected] : []
+      const next = current.some((t) => t.id === picked.id)
+        ? current.filter((t) => t.id !== picked.id)
+        : [...current, picked]
+      actions.setContentGroup(next)
+      return
+    }
+    if (hit && group.length > 1 && group.some((t) => t.id === contentId(pageNumber, hit))) {
+      startGroupMove(group, { x: event.clientX, y: event.clientY })
+      return
+    }
     beforeDouble.current = selected
-    const hit = objectAt(start, true)
     actions.select(hit ? target(hit) : null)
     if (hit) startMove(hit, { x: event.clientX, y: event.clientY })
   }
@@ -537,7 +604,7 @@ export const ContentLayer = memo(function ContentLayer({
 
   const selectedObject = selected?.object ?? null
   const handles: { id: Handle; at: Point; cursor: string }[] = []
-  if (selectedObject && !preview && !editing && mode === 'objects') {
+  if (selectedObject && !preview && !editing && mode === 'objects' && group.length < 2) {
     if (selectedObject.kind === 'block') {
       const d = selectedObject.direction
       const n = { x: -d.y, y: d.x }
@@ -676,7 +743,25 @@ export const ContentLayer = memo(function ContentLayer({
       {hovered && (
         <div className={s.outline} style={box(hovered.rect, 2)} data-content-hover={hovered.kind} />
       )}
-      {selectedObject && !editing && (
+      {group.length > 1 &&
+        group.map((member) => {
+          const shifted = groupShift
+            ? {
+                ...member.object.rect,
+                x: member.object.rect.x + groupShift.x,
+                y: member.object.rect.y + groupShift.y
+              }
+            : member.object.rect
+          return (
+            <div
+              key={member.id}
+              className={groupShift ? s.preview : s.frame}
+              style={box(shifted, 2)}
+              data-content-selected={member.object.kind}
+            />
+          )
+        })}
+      {selectedObject && !editing && group.length < 2 && (
         <div
           className={s.frame}
           style={box(

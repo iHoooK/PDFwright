@@ -303,6 +303,9 @@ describe('PDFwright (собранное приложение)', () => {
     const ready = (): Promise<void> =>
       page.locator('[data-content-layer="1"][data-content-ready]').waitFor()
 
+    // Сдвиг содержимого под абзацем проверяет content-group.e2e.ts; здесь координаты постоянные.
+    await page.getByRole('radio', { name: 'Не сдвигать' }).click()
+
     // Щелчок выбирает абзац (здесь — из одной строки), Delete вырезает его из документа.
     await clickPage(page, 1, fx(110), fy(767))
     await page.locator('[data-content-selected="block"]').waitFor()

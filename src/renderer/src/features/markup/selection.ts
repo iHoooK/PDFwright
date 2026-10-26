@@ -21,6 +21,9 @@ export type SelectionTarget =
   | { source: 'markup'; id: string }
   | { source: 'content'; id: string; page: number; object: PageContentObject }
 
+/** Выбранный объект самого документа (инструмент «Правка»). */
+export type ContentTarget = Extract<SelectionTarget, { source: 'content' }>
+
 export interface SelectionSource {
   readonly id: SelectionTarget['source']
   /** Объект под точкой (координаты страницы, допуск в пунктах) или null. */

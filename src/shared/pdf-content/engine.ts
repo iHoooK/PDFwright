@@ -1,6 +1,6 @@
 import { m } from '../messages'
 import type { Font, Image, PDFDocument as MuDocument, PDFObject, PDFPage as MuPage } from 'mupdf'
-import { groupBlocks } from './blocks'
+import { dot, extentAlong, groupBlocks, layoutBlocks, normalOf, type BlockLayout } from './blocks'
 import { blankRanges, findXObjectCalls, type XObjectCall } from './content-stream'
 import {
   boxToRect,
@@ -28,14 +28,15 @@ import {
   type RawGraphic
 } from './graphics'
 import { loadMupdf, type Mupdf } from './mupdf'
+import { collectDocumentFonts, type GlyphSource } from './text-writer'
 import {
-  collectDocumentFonts,
-  FontPalette,
-  styleHintsFromName,
-  wrapText,
-  type GlyphSource,
-  type StyleHints
-} from './text-writer'
+  carryStyles,
+  Shaper,
+  wrapGlyphs,
+  type CharStyle,
+  type LaidRow,
+  type StyledChar
+} from './typeset'
 import { fontFamily, sameFamily } from './to-unicode'
 import {
   PdfContentError,
@@ -687,61 +688,104 @@ function cutLines(ctx: PageContext, lines: readonly RawLine[], targets: readonly
   }
 }
 
-function hintsOf(name: string, font: Font | null, patch: TextStylePatch | undefined): StyleHints {
-  return styleHintsFromName(
-    name,
-    patch?.bold ?? font?.isBold() ?? false,
-    patch?.italic ?? font?.isItalic() ?? false
-  )
-}
-
-interface Styled {
-  palette: FontPalette
-  size: number
-  color: RgbColor
-}
-
-/** Шрифты для текста в стиле строки raw с изменениями patch. */
-function styledFrom(
-  ctx: PageContext,
-  raw: RawLine,
-  patch: TextStylePatch | undefined,
-  options: ReplaceTextOptions
-): Styled {
-  const original = raw.font?.getName() ?? raw.family
-  const family = patch?.fontName ?? original
-  const keepsFamily = sameFamily(family, original)
+function charStyleOf(raw: RawLine): CharStyle {
   return {
-    palette: new FontPalette(
-      ctx.mupdf,
-      collectDocumentFonts(ctx.doc),
-      family,
-      hintsOf(family, keepsFamily ? raw.font : null, patch),
-      keepsFamily ? raw.font : null,
-      options.fallbackFont
-    ),
-    size: patch?.fontSize ?? raw.size,
-    color: patch?.color ?? raw.color
+    fontName: raw.font?.getName() ?? raw.family,
+    size: raw.size,
+    color: raw.color,
+    bold: raw.font?.isBold() ?? false,
+    italic: raw.font?.isItalic() ?? false,
+    font: raw.font
   }
 }
 
-interface TextPlacement {
-  rows: readonly string[]
+function closeColors(a: RgbColor, b: RgbColor): boolean {
+  return a.every((v, i) => Math.abs(v - (b[i] ?? 0)) < 0.02)
+}
+
+/**
+ * Правка стиля из панели: буквы основного стиля абзаца получают новый шрифт и
+ * цвет, кегль меняется у всех букв пропорционально — жирные слова и другие
+ * цвета внутри абзаца остаются собой.
+ */
+function patchStyle(
+  style: CharStyle,
+  base: TextStyle,
+  patch: TextStylePatch | undefined
+): CharStyle {
+  if (!patch) return style
+  const size =
+    patch.fontSize !== undefined ? style.size * (patch.fontSize / base.fontSize) : style.size
+  const isBase =
+    sameFamily(style.fontName, base.fontName) &&
+    style.bold === base.bold &&
+    style.italic === base.italic &&
+    closeColors(style.color, base.color)
+  if (!isBase) return { ...style, size }
+  const fontName = patch.fontName ?? style.fontName
+  const keeps = sameFamily(fontName, style.fontName)
+  return {
+    fontName,
+    size,
+    color: patch.color ?? style.color,
+    bold: patch.bold ?? (keeps ? style.bold : /bold/i.test(fontFamily(fontName))),
+    italic: patch.italic ?? style.italic,
+    font: keeps ? style.font : null
+  }
+}
+
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((x, y) => x - y)
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length === 0) return 0
+  return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
+}
+
+/**
+ * Межбуквенный интервал исходного текста: разница между шириной строки на
+ * странице и суммой ширин её глифов, делённая на число промежутков (медиана
+ * по строкам). Строки, растянутые выключкой, не учитываются.
+ */
+function estimateTc(
+  rows: readonly (readonly StyledChar[])[],
+  extents: readonly number[],
+  shaper: Shaper,
+  size: number
+): number {
+  const samples: number[] = []
+  rows.forEach((chars, i) => {
+    if (chars.length < 8) return
+    try {
+      const natural = shaper.shape(chars, 0).reduce((sum, g) => sum + g.advance, 0)
+      samples.push(((extents[i] ?? natural) - natural) / (chars.length - 1))
+    } catch {
+      // Строка с буквами без кодов в шрифтах — без неё.
+    }
+  })
+  const tc = median(samples)
+  if (Math.abs(tc) < 0.005 * size) return 0
+  return Math.max(-0.1 * size, Math.min(0.3 * size, tc))
+}
+
+interface Placement {
+  rows: readonly LaidRow[]
   /** Начало базовой линии первой строки в пространстве PDF. */
   origin: PdfSpacePoint
   direction: PdfSpacePoint
   lineHeight: number
-  size: number
-  color: RgbColor
+  /** Ширина колонки для выключки по ширине или null. */
+  justify: number | null
+  tc: number
 }
 
 /**
- * Дописывает текст на страницу. Каждый отрезок одного шрифта ставится своей
- * матрицей Tm по нашим же ширинам глифов, поэтому подстановка другого шрифта
- * для пары букв и отсутствующий в шрифте пробел не сбивают строку.
+ * Операторы текста. Каждый отрезок одного шрифта, кегля и цвета ставится своей
+ * матрицей Tm по нашим ширинам глифов (с интервалом Tc), поэтому подстановка
+ * другого шрифта и отсутствующий пробел не сбивают строку; при выключке после
+ * каждого пробела добавляется ровная доля свободного места.
  */
-function writeText(ctx: PageContext, palette: FontPalette, placement: TextPlacement): void {
-  const { origin, direction: d, lineHeight, size, color } = placement
+function textOperators(ctx: PageContext, placement: Placement): string {
+  const { origin, direction: d, lineHeight, tc } = placement
   const normal = { x: -d.y, y: d.x }
   const names = new Map<object, string>()
   const nameOf = (source: GlyphSource): string => {
@@ -753,49 +797,178 @@ function writeText(ctx: PageContext, palette: FontPalette, placement: TextPlacem
     }
     return name
   }
-  const ops: string[] = ['q BT', `${color.map(pdfNumber).join(' ')} rg`]
-  const state: { font: string; run: { name: string; hex: string; at: number } | null } = {
-    font: '',
-    run: null
+  const ops: string[] = ['q BT', `${pdfNumber(tc)} Tc`]
+  interface Run {
+    name: string
+    size: number
+    color: string
+    hex: string
+    at: number
   }
+  const state: { font: string; color: string; run: Run | null } = { font: '', color: '', run: null }
   placement.rows.forEach((row, index) => {
     const base = {
       x: origin.x - normal.x * lineHeight * index,
       y: origin.y - normal.y * lineHeight * index
     }
+    const natural = row.glyphs.reduce((sum, g) => sum + g.advance, 0)
+    const spaces = row.glyphs.filter((g) => g.space).length
+    const extra =
+      placement.justify !== null && !row.last && spaces > 0 && natural < placement.justify
+        ? (placement.justify - natural) / spaces
+        : 0
     const flush = (): void => {
       const run = state.run
       if (!run) return
-      if (run.name !== state.font) {
-        ops.push(`/${run.name} ${pdfNumber(size)} Tf`)
-        state.font = run.name
+      const font = `${run.name} ${pdfNumber(run.size)}`
+      if (font !== state.font) {
+        ops.push(`/${run.name} ${pdfNumber(run.size)} Tf`)
+        state.font = font
+      }
+      if (run.color !== state.color) {
+        ops.push(`${run.color} rg`)
+        state.color = run.color
       }
       const tm: Matrix = [d.x, d.y, -d.y, d.x, base.x + d.x * run.at, base.y + d.y * run.at]
       ops.push(`${tm.map(pdfNumber).join(' ')} Tm`, `<${run.hex}> Tj`)
       state.run = null
     }
     let advance = 0
-    for (const glyph of palette.glyphs(row)) {
-      if (glyph.source === null) {
+    for (const g of row.glyphs) {
+      const source = g.glyph.source
+      if (source === null) {
         flush()
       } else {
-        const name = nameOf(glyph.source)
-        if (state.run && state.run.name !== name) flush()
-        state.run ??= { name, hex: '', at: advance }
-        state.run.hex += glyph.code
+        const name = nameOf(source)
+        const color = g.style.color.map(pdfNumber).join(' ')
+        const open = state.run
+        if (open && (open.name !== name || open.size !== g.style.size || open.color !== color))
+          flush()
+        state.run ??= { name, size: g.style.size, color, hex: '', at: advance }
+        state.run.hex += g.glyph.code
       }
-      advance += (glyph.width * size) / 1000
+      advance += g.advance
+      if (g.space && extra > 0) {
+        flush()
+        advance += extra
+      }
     }
     flush()
   })
   ops.push('ET Q')
-  writeContent(ctx, readContent(ctx.pageObj), ops.join('\n'))
+  return ops.join('\n')
+}
+
+function paragraphsOf(chars: readonly StyledChar[]): StyledChar[][] {
+  let current: StyledChar[] = []
+  const paragraphs = [current]
+  for (const c of chars) {
+    if (c.char === '\n') {
+      current = []
+      paragraphs.push(current)
+    } else {
+      current.push(c.char === '\t' ? { ...c, char: ' ' } : c)
+    }
+  }
+  return paragraphs
 }
 
 function lineOrigin(ctx: PageContext, raw: RawLine): { origin: PdfSpacePoint; dir: PdfSpacePoint } {
   const [ox, oy] = transformPoint(ctx.toPdf, raw.origin[0], raw.origin[1])
   const [dx, dy] = transformVector(ctx.toPdf, raw.dir[0], raw.dir[1])
   return { origin: { x: ox, y: oy }, dir: normalizeVector(dx, dy) }
+}
+
+/** Протяжённость рамки по направлению v: [min, max]. */
+function rangeAlong(rect: PdfSpaceRect, v: PdfSpacePoint): [number, number] {
+  return extentAlong(rect, v)
+}
+
+/**
+ * 14.1 Сдвигает содержимое ниже абзаца на delta (пт, вниз — положительное):
+ * область страницы под абзацем (вся ширина или колонка, без нижнего поля)
+ * копируется в Form XObject и рисуется со смещением, а на странице вырезается.
+ * Так текст, картинки и линии сдвигаются точно, со своими шрифтами и
+ * кернингом, и остаются настоящим содержимым. Граница области обходит строки,
+ * чтобы не разрезать буквы. Возвращает операторы отрисовки сдвинутой копии.
+ */
+function shiftBelow(
+  ctx: PageContext,
+  lines: readonly RawLine[],
+  skip: ReadonlySet<number>,
+  layout: BlockLayout,
+  delta: number,
+  scope: 'page' | 'column'
+): string {
+  const d = layout.direction
+  const n = normalOf(d)
+  // Только для текста, идущего вдоль сторон страницы.
+  if (Math.abs(d.x * d.y) > 1e-6) return ''
+  const page = boxToRect(transformBox(ctx.toPdf, ctx.page.getBounds()))
+  const [pageLo, pageHi] = rangeAlong(page, n)
+  const footer = pageLo + 0.05 * (pageHi - pageLo)
+  let boundary = rangeAlong(layout.rect, n)[0]
+  if (boundary <= footer) return ''
+  const [pageA, pageB] = rangeAlong(page, d)
+  const start = dot(layout.origin, d)
+  const along: [number, number] =
+    scope === 'page' ? [pageA, pageB] : [start - 2, start + layout.width + 2]
+  // Граница не должна резать строки соседних колонок: строку, чья базовая
+  // линия ниже границы, берём целиком, остальную оставляем на месте.
+  for (let pass = 0; pass < 5; pass += 1) {
+    let moved = false
+    for (const [i, raw] of lines.entries()) {
+      if (skip.has(i) || !hasText(raw)) continue
+      const rect = boxToRect(transformBox(ctx.toPdf, raw.box))
+      const [a, b] = rangeAlong(rect, d)
+      if (b < along[0] || a > along[1]) continue
+      const [lo, hi] = rangeAlong(rect, n)
+      if (!(lo < boundary && boundary < hi)) continue
+      const baseline = dot(lineOrigin(ctx, raw).origin, n)
+      boundary = baseline < boundary ? hi + 0.1 : lo - 0.1
+      moved = true
+    }
+    if (!moved) break
+  }
+  if (boundary <= footer) return ''
+  // Область в пространстве PDF: вдоль письма — along, поперёк — [footer, boundary].
+  const corners = [
+    [along[0], footer],
+    [along[1], footer],
+    [along[0], boundary],
+    [along[1], boundary]
+  ].map(([u = 0, v = 0]) => ({ x: d.x * u + n.x * v, y: d.y * u + n.y * v }))
+  const x0 = Math.min(...corners.map((c) => c.x))
+  const y0 = Math.min(...corners.map((c) => c.y))
+  const region = {
+    x: x0,
+    y: y0,
+    width: Math.max(...corners.map((c) => c.x)) - x0,
+    height: Math.max(...corners.map((c) => c.y)) - y0
+  }
+  // Копия содержимого и ресурсов страницы до вырезания.
+  const content = readContent(ctx.pageObj)
+  const resources = ctx.pageObj.getInheritable('Resources')
+  const form = ctx.doc.newDictionary()
+  form.put('Type', ctx.doc.newName('XObject'))
+  form.put('Subtype', ctx.doc.newName('Form'))
+  const bbox = ctx.doc.newArray()
+  for (const v of [page.x, page.y, page.x + page.width, page.y + page.height]) {
+    bbox.push(ctx.doc.newReal(v))
+  }
+  form.put('BBox', bbox)
+  if (!resources.isNull()) form.put('Resources', resources)
+  const ref = ctx.doc.addStream(content, form)
+  redact(ctx, [transformBox(ctx.toMu, rectToBox(region))], {
+    text: true,
+    image: 'pixels',
+    lineArt: 'covered'
+  })
+  const name = addResource(ctx, 'XObject', 'PWFm', ref)
+  const tx = -n.x * delta
+  const ty = -n.y * delta
+  const clip = [region.x, region.y, region.width, region.height].map(pdfNumber).join(' ')
+  return `q 1 0 0 1 ${pdfNumber(tx)} ${pdfNumber(ty)} cm ${clip} re W n /${name} Do Q`
 }
 
 /** Удаляет строку текста целиком (вырезает из файла). */
@@ -810,8 +983,9 @@ export async function removeTextLine(
 /**
  * 10.4 Заменяет строку: вырезает её и пишет новый текст с той же базовой
  * линии тем же шрифтом документа (буквы берутся из всех подмножеств этого
- * шрифта в файле), кеглем и цветом; недостающие буквы — встроенным шрифтом
- * того же начертания. Переноса нет. Пустой текст удаляет строку.
+ * шрифта в файле), кеглем, цветом и межбуквенным интервалом; недостающие
+ * буквы — встроенным шрифтом того же начертания. Переноса нет. Пустой текст
+ * удаляет строку.
  */
 export async function replaceText(
   bytes: Uint8Array,
@@ -828,19 +1002,26 @@ export async function replaceText(
       if (!raw) return
       cutLines(ctx, lines, [target])
       if (text.trim() === '') return
-      const styled = styledFrom(ctx, raw, options.style, options)
+      const style = charStyleOf(raw)
+      const base = toTextLine(raw, target, ctx.toPdf)
+      const old = Array.from(raw.text).map((char) => ({ char, style }))
+      const chars = carryStyles(old, text).map((c) => ({
+        ...c,
+        style: patchStyle(c.style, base, options.style)
+      }))
+      const shaper = new Shaper(ctx.mupdf, collectDocumentFonts(ctx.doc), options.fallbackFont)
       try {
         const { origin, dir } = lineOrigin(ctx, raw)
-        writeText(ctx, styled.palette, {
-          rows: [text],
-          origin,
-          direction: dir,
-          lineHeight: 0,
-          size: styled.size,
-          color: styled.color
-        })
+        const [a, b] = extentAlong(base.rect, dir)
+        const tc = estimateTc([old], [b - a], shaper, raw.size)
+        const rows = wrapGlyphs([shaper.shape(chars, tc)], Infinity)
+        writeContent(
+          ctx,
+          readContent(ctx.pageObj),
+          textOperators(ctx, { rows, origin, direction: dir, lineHeight: 0, justify: null, tc })
+        )
       } finally {
-        styled.palette.dispose()
+        shaper.dispose()
       }
     })
   })
@@ -849,8 +1030,11 @@ export async function replaceText(
 /**
  * Переписывает абзац: вырезает все его строки и раскладывает новый текст по
  * словам в ширину колонки (по умолчанию прежнюю) с прежним интерлиньяжем,
- * тем же шрифтом, кеглем и цветом (или изменёнными в options.style).
- * Переводы строки в тексте — явные разрывы. Пустой текст удаляет абзац.
+ * интервалом и выключкой. У каждой буквы — свой стиль: общие с прежним
+ * текстом буквы сохраняют его, новые берут стиль соседей; options.style
+ * меняет основной стиль абзаца. Переводы строки — явные разрывы. Если абзац
+ * стал выше или ниже, содержимое под ним сдвигается (options.shift). Пустой
+ * текст удаляет абзац.
  */
 export async function replaceBlock(
   bytes: Uint8Array,
@@ -867,46 +1051,106 @@ export async function replaceBlock(
   return modifyPage(bytes, pageIndex, (ctx) => {
     withExtracted(ctx.page, ({ lines }) => {
       const targets = block.lines.map((ref) => findLine(lines, ref, ctx.toPdf))
-      const first = targets[0] === undefined ? undefined : lines[targets[0]]
-      if (!first)
+      const members = targets.flatMap((t) => {
+        const raw = lines[t]
+        return raw ? [toTextLine(raw, t, ctx.toPdf)] : []
+      })
+      const layouts = layoutBlocks(members)
+      const layout = layouts[0]
+      if (!layout) {
         throw new PdfContentError(
           m({
             ru: 'Абзац не найден на странице: документ изменился.',
             en: 'The paragraph was not found on the page: the document has changed.'
           })
         )
-      const members = targets.flatMap((t) => {
-        const raw = lines[t]
-        return raw ? [toTextLine(raw, t, ctx.toPdf)] : []
-      })
-      const geometry = groupBlocks(members)
-      const head = geometry[0]
-      if (!head)
+      }
+      // Буквы прежнего текста со стилями их отрезков (все раскладки по порядку).
+      const old: StyledChar[] = []
+      const rowChars: StyledChar[][] = []
+      const rowExtents: number[] = []
+      const firstRaw = lines[targets[0] ?? -1]
+      if (!firstRaw) {
         throw new PdfContentError(
           m({ ru: 'Абзац не найден на странице.', en: 'The paragraph was not found on the page.' })
         )
-      // У абзаца из одной строки колонки нет: удлинённый текст продолжается в строку,
-      // пока ширину не задали ручкой. Многострочный переносится по прежней ширине.
-      const width =
-        options.width ??
-        (targets.length === 1 ? Infinity : Math.max(...geometry.map((b) => b.width)))
-      cutLines(ctx, lines, targets)
-      if (newText.trim() === '') return
-      const styled = styledFrom(ctx, first, options.style, options)
-      try {
-        const rows = wrapText(newText.replace(/\t/g, ' '), width + 0.5, (t) =>
-          styled.palette.measure(t, styled.size)
+      }
+      const firstStyle = charStyleOf(firstRaw)
+      layouts.forEach((part, p) => {
+        const previous = (): CharStyle => old[old.length - 1]?.style ?? firstStyle
+        if (p > 0) old.push({ char: '\n', style: previous() })
+        const partRows = part.rows.map((row) =>
+          Array.from(row.text).map((char, k) => {
+            const segment = row.segments[row.owners[k] ?? 0]
+            const raw = segment ? lines[segment.index] : undefined
+            return { char, style: raw ? charStyleOf(raw) : firstStyle }
+          })
         )
-        writeText(ctx, styled.palette, {
-          rows,
-          origin: options.origin ?? head.origin,
-          direction: head.direction,
-          lineHeight: head.lineHeight * (styled.size / first.size),
-          size: styled.size,
-          color: styled.color
+        rowChars.push(...partRows)
+        rowExtents.push(...part.rows.map((row) => row.end - row.start))
+        const chars = Array.from(part.text)
+        part.sources.forEach((source, k) => {
+          const styled = source ? partRows[source[0]]?.[source[1]] : undefined
+          old.push(styled ?? { char: chars[k] ?? ' ', style: previous() })
         })
+      })
+      const sizeRatio =
+        options.style?.fontSize !== undefined ? options.style.fontSize / layout.style.fontSize : 1
+      const chars = carryStyles(old, newText).map((c) => ({
+        ...c,
+        style: patchStyle(c.style, layout.style, options.style)
+      }))
+      const shaper = new Shaper(ctx.mupdf, collectDocumentFonts(ctx.doc), options.fallbackFont)
+      try {
+        const justifiedRows = layouts.flatMap((part) =>
+          part.rows.map((_, i) => !part.justified || (part.breaks[i] ?? true))
+        )
+        const tc =
+          estimateTc(
+            rowChars.filter((_, i) => justifiedRows[i]),
+            rowExtents.filter((_, i) => justifiedRows[i]),
+            shaper,
+            layout.style.fontSize
+          ) * sizeRatio
+        // У абзаца из одной строки колонки нет: удлинённый текст продолжается в строку,
+        // пока ширину не задали ручкой. Многострочный переносится по прежней ширине.
+        const oldRows = layouts.reduce((sum, part) => sum + part.rows.length, 0)
+        const width = options.width ?? (oldRows === 1 ? Infinity : layout.width)
+        const rows =
+          newText.trim() === ''
+            ? []
+            : wrapGlyphs(
+                paragraphsOf(chars).map((paragraph) => shaper.shape(paragraph, tc)),
+                width + 0.5
+              )
+        const lineHeight = layout.lineHeight * sizeRatio
+        cutLines(ctx, lines, targets)
+        const ops: string[] = []
+        const delta = rows.length * lineHeight - oldRows * layout.lineHeight
+        const scope = options.shift ?? 'page'
+        if (scope !== 'none' && options.origin === undefined && Math.abs(delta) > 0.5) {
+          ops.push(shiftBelow(ctx, lines, new Set(targets), layout, delta, scope))
+        }
+        if (rows.length > 0) {
+          ops.push(
+            textOperators(ctx, {
+              rows,
+              origin: options.origin ?? layout.origin,
+              direction: layout.direction,
+              lineHeight,
+              justify:
+                layout.justified && options.width === undefined
+                  ? layout.width
+                  : layout.justified
+                    ? width
+                    : null,
+              tc
+            })
+          )
+        }
+        writeContent(ctx, readContent(ctx.pageObj), ops.filter((op) => op !== '').join('\n'))
       } finally {
-        styled.palette.dispose()
+        shaper.dispose()
       }
     })
   })
@@ -929,28 +1173,35 @@ export async function insertText(
   if (!(style.fontSize > 0))
     throw new PdfContentError(m({ ru: 'Некорректный кегль.', en: 'Invalid font size.' }))
   return modifyPage(bytes, pageIndex, (ctx) => {
-    const palette = new FontPalette(
-      ctx.mupdf,
-      collectDocumentFonts(ctx.doc),
-      style.fontName,
-      styleHintsFromName(style.fontName, style.bold, style.italic),
-      null,
-      options.fallbackFont
-    )
+    const charStyle: CharStyle = {
+      fontName: style.fontName,
+      size: style.fontSize,
+      color: style.color,
+      bold: style.bold,
+      italic: style.italic,
+      font: null
+    }
+    const chars = Array.from(text).map((char) => ({ char, style: charStyle }))
+    const shaper = new Shaper(ctx.mupdf, collectDocumentFonts(ctx.doc), options.fallbackFont)
     try {
-      const rows = wrapText(text.replace(/\t/g, ' '), options.width ?? Infinity, (t) =>
-        palette.measure(t, style.fontSize)
+      const rows = wrapGlyphs(
+        paragraphsOf(chars).map((paragraph) => shaper.shape(paragraph, 0)),
+        options.width ?? Infinity
       )
-      writeText(ctx, palette, {
-        rows,
-        origin,
-        direction: normalizeVector(options.direction?.x ?? 1, options.direction?.y ?? 0),
-        lineHeight: options.lineHeight ?? style.fontSize * 1.4,
-        size: style.fontSize,
-        color: style.color
-      })
+      writeContent(
+        ctx,
+        readContent(ctx.pageObj),
+        textOperators(ctx, {
+          rows,
+          origin,
+          direction: normalizeVector(options.direction?.x ?? 1, options.direction?.y ?? 0),
+          lineHeight: options.lineHeight ?? style.fontSize * 1.4,
+          justify: null,
+          tc: 0
+        })
+      )
     } finally {
-      palette.dispose()
+      shaper.dispose()
     }
   })
 }

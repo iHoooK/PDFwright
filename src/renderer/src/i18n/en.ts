@@ -297,6 +297,16 @@ export const en: Strings = {
     modeLabel: 'What a click does',
     modeObjects: 'Select objects',
     modeText: 'New text',
+    shiftLabel: 'Content below the paragraph',
+    shiftPage: 'Move across the full width',
+    shiftColumn: 'Move this column only',
+    shiftNone: "Don't move",
+    shiftHint:
+      'When a paragraph gets taller or shorter after editing, the text, images and lines below it move with it.',
+    groupTitle: (n: number) => (n === 1 ? '1 object selected' : `${n} objects selected`),
+    removeAll: 'Delete all',
+    groupHint:
+      'Ctrl+click adds or removes an object, Shift+drag selects everything inside the frame. Drag any selected object to move them all.',
     modeErase: 'Erase area',
     blockText: 'Paragraph text',
     applyBlock: 'Apply',
@@ -347,7 +357,9 @@ export const en: Strings = {
       removeBlock: 'Paragraph deleted',
       insertText: 'Text added',
       removeGraphic: 'Shape deleted',
-      moveGraphic: 'Shape changed'
+      moveGraphic: 'Shape changed',
+      removeGroup: 'Objects deleted',
+      moveGroup: 'Objects moved'
     }
   },
   convert: {

@@ -294,6 +294,16 @@ export const ru = {
     modeLabel: 'Что делает щелчок',
     modeObjects: 'Выбор объектов',
     modeText: 'Новый текст',
+    shiftLabel: 'Содержимое ниже абзаца',
+    shiftPage: 'Сдвигать по всей ширине',
+    shiftColumn: 'Сдвигать только колонку',
+    shiftNone: 'Не сдвигать',
+    shiftHint:
+      'Когда абзац после правки становится выше или ниже, текст, картинки и\u00a0линии под ним сдвигаются вместе с\u00a0ним.',
+    groupTitle: (n: number) => `Выбрано объектов: ${n}`,
+    removeAll: 'Удалить все',
+    groupHint:
+      'Ctrl+щелчок добавляет или убирает объект, рамка с\u00a0Shift выбирает всё внутри. Перетащите любой из\u00a0выбранных, чтобы сдвинуть все.',
     modeErase: 'Ластик области',
     blockText: 'Текст абзаца',
     applyBlock: 'Применить',
@@ -346,7 +356,9 @@ export const ru = {
       removeBlock: 'Абзац удалён',
       insertText: 'Текст добавлен',
       removeGraphic: 'Фигура удалена',
-      moveGraphic: 'Фигура изменена'
+      moveGraphic: 'Фигура изменена',
+      removeGroup: 'Объекты удалены',
+      moveGroup: 'Объекты перемещены'
     }
   },
   convert: {

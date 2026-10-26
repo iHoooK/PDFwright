@@ -81,6 +81,7 @@ import { imageSize, readImageBytes, readImageFile } from '@renderer/features/mar
 import {
   sameTarget,
   selectedMarkupId,
+  type ContentTarget,
   type PageContentObject,
   type SelectionTarget
 } from '@renderer/features/markup/selection'
@@ -92,6 +93,8 @@ export type Screen = 'start' | 'viewer' | 'settings' | 'kit' | 'compare'
 export type Tool = 'select' | 'edit' | 'hand' | 'marker' | 'pen' | 'shapes' | 'text' | 'sign'
 /** Инструмент «Правка»: выбор объектов документа, новый текст или ластик области. */
 export type ContentMode = 'objects' | 'text' | 'erase'
+/** Что делать с содержимым под абзацем, когда он стал выше или ниже. */
+export type ContentShift = 'page' | 'column' | 'none'
 type ContentEditKind = keyof typeof t.content.done
 export type SidebarTab = 'thumbs' | 'outline' | 'search'
 export type SettingsSection = 'general' | 'view' | 'updates' | 'about' | 'author'
@@ -265,6 +268,9 @@ export interface State {
   shapeKind: ShapeKind
   activeSignature: string | null
   contentMode: ContentMode
+  contentShift: ContentShift
+  /** Несколько выбранных объектов документа (Ctrl+щелчок, рамка с Shift). */
+  contentGroup: readonly ContentTarget[]
   /** Стиль нового текста в «Правке»: берётся у последнего выбранного текста документа. */
   contentTextStyle: TextStyle | null
   selection: SelectionTarget | null
@@ -346,6 +352,8 @@ type Action =
   | { type: 'activeSignature'; id: string | null }
   | { type: 'contentMode'; mode: ContentMode }
   | { type: 'contentTextStyle'; patch: Partial<TextStyle> }
+  | { type: 'contentShift'; shift: ContentShift }
+  | { type: 'contentGroup'; group: readonly ContentTarget[] }
   | { type: 'select'; target: SelectionTarget | null }
   | { type: 'pagesMode'; on?: boolean }
   | { type: 'page'; page: number; scroll: boolean }
@@ -393,6 +401,8 @@ const initial: State = {
   activeSignature: null,
   contentMode: 'objects',
   contentTextStyle: null,
+  contentShift: 'page',
+  contentGroup: [],
   selection: null,
   pagesMode: false,
   page: 1,
@@ -532,6 +542,7 @@ function reducer(state: State, action: Action): State {
           state.selection?.source === 'content'
             ? null
             : keepSelection(state.selection, action.markup),
+        contentGroup: [],
         search: EMPTY_SEARCH
       }
     }
@@ -653,8 +664,21 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         contentMode: action.mode,
-        selection: action.mode === 'objects' ? state.selection : null
+        selection: action.mode === 'objects' ? state.selection : null,
+        contentGroup: action.mode === 'objects' ? state.contentGroup : []
       }
+    case 'contentShift':
+      return { ...state, contentShift: action.shift }
+    case 'contentGroup': {
+      // Главный объект группы — последний добавленный: его показывает панель.
+      const primary = action.group[action.group.length - 1] ?? null
+      return {
+        ...state,
+        contentGroup: action.group.length > 1 ? action.group : [],
+        selection: primary,
+        contentTextStyle: (primary && textStyleOf(primary.object)) ?? state.contentTextStyle
+      }
+    }
     case 'contentTextStyle':
       return state.contentTextStyle
         ? { ...state, contentTextStyle: { ...state.contentTextStyle, ...action.patch } }
@@ -666,6 +690,7 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         selection: action.target,
+        contentGroup: [],
         contentTextStyle: style ?? state.contentTextStyle
       }
     }
@@ -774,6 +799,11 @@ export interface Actions {
   setContentTextStyle: (patch: Partial<TextStyle>) => void
   removeContent: (page: number, object: PageContentObject) => void
   moveContentGraphic: (page: number, graphic: PageGraphic, rect: PdfSpaceRect) => void
+  setContentShift: (shift: ContentShift) => void
+  /** Группа выбранных объектов документа; пустая или из одного — обычный выбор. */
+  setContentGroup: (group: readonly ContentTarget[]) => void
+  /** Сдвигает все объекты группы на delta (пространство PDF). */
+  moveContentGroup: (group: readonly ContentTarget[], delta: PdfSpacePoint) => void
   replaceContentImage: (page: number, image: PageImage, file: File) => void
   moveContentImage: (page: number, image: PageImage, rect: PdfSpaceRect) => void
   eraseContent: (page: number, rect: PdfSpaceRect) => void
@@ -1340,6 +1370,36 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         select: null
       })
     }
+    /**
+     * Удаляет группу объектов одним шагом отмены. Абзацы удаляются без сдвига
+     * содержимого ниже — иначе остальные объекты группы сместились бы и не нашлись.
+     * Объект, исчезнувший вместе с предыдущим (строка удалённого абзаца), пропускается.
+     */
+    const removeContentGroup = (group: readonly ContentTarget[]): void => {
+      void editContent('removeGroup', async (bytes) => {
+        let next = bytes
+        let removed = 0
+        let failure: Error | null = null
+        for (const target of group) {
+          const index = target.page - 1
+          const o = target.object
+          try {
+            if (o.kind === 'text') next = await pdfContent.removeTextLine(next, index, o)
+            else if (o.kind === 'block')
+              next = await pdfContent.replaceBlock(next, index, { lines: o.refs }, '', {
+                shift: 'none'
+              })
+            else if (o.kind === 'image') next = await pdfContent.removeImage(next, index, o)
+            else next = await pdfContent.removeGraphic(next, index, o)
+            removed += 1
+          } catch (error) {
+            failure ??= error instanceof Error ? error : new Error(String(error))
+          }
+        }
+        if (removed === 0 && failure !== null) throw failure
+        return next
+      })
+    }
     const removeContentObject = (page: number, object: PageContentObject): void => {
       const index = page - 1
       switch (object.kind) {
@@ -1348,7 +1408,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           break
         case 'block':
           void editContent('removeBlock', (bytes) =>
-            pdfContent.replaceBlock(bytes, index, { lines: object.refs }, '')
+            pdfContent.replaceBlock(bytes, index, { lines: object.refs }, '', {
+              shift: stateRef.current.contentShift
+            })
           )
           break
         case 'image':
@@ -1564,8 +1626,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         dispatch({ type: 'contentMode', mode })
       },
       removeSelected: () => {
-        const target = stateRef.current.selection
-        if (target?.source === 'content') removeContentObject(target.page, target.object)
+        const { selection: target, contentGroup } = stateRef.current
+        if (contentGroup.length > 1) removeContentGroup(contentGroup)
+        else if (target?.source === 'content') removeContentObject(target.page, target.object)
         else if (target) removeMarkupObject(target.id)
       },
       replaceContentText: (page, line, text, style) => {
@@ -1594,6 +1657,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         void editContent(kind, async (bytes) => {
           const fallbackFont = (await loadMarkupFont()).bytes
           return pdfContent.replaceBlock(bytes, page - 1, { lines: block.refs }, text, {
+            shift: stateRef.current.contentShift,
             ...options,
             fallbackFont
           })
@@ -1634,6 +1698,35 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         void editContent('moveGraphic', (bytes) =>
           pdfContent.moveGraphic(bytes, page - 1, graphic, rect)
         )
+      },
+      setContentShift: (shift) => {
+        dispatch({ type: 'contentShift', shift })
+      },
+      setContentGroup: (group) => {
+        dispatch({ type: 'contentGroup', group })
+      },
+      moveContentGroup: (group, delta) => {
+        void editContent('moveGroup', async (bytes) => {
+          const fallbackFont = (await loadMarkupFont()).bytes
+          let next = bytes
+          for (const target of group) {
+            const index = target.page - 1
+            const o = target.object
+            const shifted = { ...o.rect, x: o.rect.x + delta.x, y: o.rect.y + delta.y }
+            if (o.kind === 'block') {
+              next = await pdfContent.replaceBlock(next, index, { lines: o.refs }, o.text, {
+                origin: { x: o.origin.x + delta.x, y: o.origin.y + delta.y },
+                shift: 'none',
+                fallbackFont
+              })
+            } else if (o.kind === 'image') {
+              next = await pdfContent.moveImage(next, index, o, shifted)
+            } else if (o.kind === 'graphic') {
+              next = await pdfContent.moveGraphic(next, index, o, shifted)
+            }
+          }
+          return next
+        })
       },
       eraseContent: (page, rect) => {
         void editContent('erase', (bytes) => pdfContent.eraseRegions(bytes, page - 1, [rect]))
