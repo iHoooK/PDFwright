@@ -132,8 +132,9 @@ describe('Формы и метаданные (собранное приложе�
     await tool(page, 'Сохранить').click()
     await expect.poll(() => statusText(page), { timeout: 15_000 }).toContain('Сохранено')
     expect(await readFormFields(new Uint8Array(await readFile(target)))).toEqual([])
+    // После сохранения страница перерисовывается заново: на CI это дольше секунды.
     await expect
-      .poll(() => page.locator('[data-page="1"] .textLayer').textContent())
+      .poll(() => page.locator('[data-page="1"] .textLayer').textContent(), { timeout: 15_000 })
       .toContain('Мария')
   })
 

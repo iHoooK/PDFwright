@@ -7,6 +7,9 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 120_000,
     hookTimeout: 60_000,
-    fileParallelism: false
+    fileParallelism: false,
+    // Перерисовка страниц и запись файлов на раннере CI бывают дольше секунды —
+    // стандартного таймаута expect.poll.
+    expect: { poll: { timeout: 15_000 } }
   }
 })
