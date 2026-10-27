@@ -80,13 +80,40 @@ export function fontFamily(name: string): string {
 }
 
 /**
+ * Ключ для сравнения семейств: без префикса подмножества и без числового
+ * хвоста, который pdf-lib добавляет к имени встроенного шрифта (PTSans-Regular-4824).
+ */
+function familyKey(name: string): string {
+  return fontFamily(name).replace(/-\d+$/, '')
+}
+
+/**
  * Одно ли это семейство. MuPDF обрезает имя шрифта до 31 символа, поэтому
  * полное имя из PDF сравнивается с обрезанным по началу.
  */
 export function sameFamily(a: string, b: string): boolean {
-  const x = fontFamily(a)
-  const y = fontFamily(b)
+  const x = familyKey(a)
+  const y = familyKey(b)
   if (x.length === 0 || y.length === 0) return false
   // Обрезано всё имя вместе с префиксом подмножества.
-  return x === y || (a.length >= 31 && y.startsWith(x)) || (b.length >= 31 && x.startsWith(y))
+  return (
+    x === y ||
+    (a.length >= 31 && fontFamily(b).startsWith(fontFamily(a))) ||
+    (b.length >= 31 && fontFamily(a).startsWith(fontFamily(b)))
+  )
+}
+
+/**
+ * Понятное имя шрифта для списка: «PTSans-Regular-4824» → «PT Sans Regular»,
+ * «Arial-BoldMT» → «Arial Bold».
+ */
+export function displayFontName(name: string): string {
+  const words = familyKey(name)
+    .replace(/MT(?=-|$)/g, '')
+    .replace(/[-_,]+/g, ' ')
+    .replace(/(?<=[a-z])(?=[A-Z])/g, ' ')
+    .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return words.length > 0 ? words : name
 }

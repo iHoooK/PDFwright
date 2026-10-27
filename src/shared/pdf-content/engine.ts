@@ -704,9 +704,9 @@ function closeColors(a: RgbColor, b: RgbColor): boolean {
 }
 
 /**
- * Правка стиля из панели: буквы основного стиля абзаца получают новый шрифт и
- * цвет, кегль меняется у всех букв пропорционально — жирные слова и другие
- * цвета внутри абзаца остаются собой.
+ * Правка стиля из панели: буквы основного стиля абзаца получают новый шрифт,
+ * цвет — все буквы, кегль меняется у всех букв пропорционально — жирные слова
+ * внутри абзаца остаются жирными.
  */
 function patchStyle(
   style: CharStyle,
@@ -721,7 +721,8 @@ function patchStyle(
     style.bold === base.bold &&
     style.italic === base.italic &&
     closeColors(style.color, base.color)
-  if (!isBase) return { ...style, size }
+  // Цвет из панели — для всего абзаца, вместе с жирными словами.
+  if (!isBase) return { ...style, size, color: patch.color ?? style.color }
   const fontName = patch.fontName ?? style.fontName
   const keeps = sameFamily(fontName, style.fontName)
   return {

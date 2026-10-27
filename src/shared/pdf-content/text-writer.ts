@@ -194,6 +194,7 @@ export class FontPalette {
   private readonly embedded: Font[] = []
   private builtin: Font | null | undefined
   private fallback: Font | null | undefined
+  private readonly fallbackFirst: boolean
 
   constructor(
     private readonly mupdf: Mupdf,
@@ -204,6 +205,16 @@ export class FontPalette {
     private readonly fallbackBytes: Uint8Array | undefined
   ) {
     this.family = docFonts.filter((font) => sameFamily(font.family, familyName))
+    // Запасной шрифт программы — PT Sans: документу в PT Sans он подходит
+    // лучше встроенной Helvetica.
+    this.fallbackFirst = /pt.?sans/i.test(fontFamily(familyName)) && !style.bold && !style.italic
+  }
+
+  /** Встраиваемые шрифты в порядке предпочтения. */
+  private substitutes(): (Font | null)[] {
+    return this.fallbackFirst
+      ? [this.original, this.getFallback(), this.getBuiltin()]
+      : [this.original, this.getBuiltin(), this.getFallback()]
   }
 
   private getBuiltin(): Font | null {
@@ -270,12 +281,13 @@ export class FontPalette {
   }
 
   private glyph(char: string, previous: GlyphSource | null): Glyph | null {
-    return (
-      this.docGlyph(char, previous) ??
-      this.embeddedGlyph(this.original, char) ??
-      this.embeddedGlyph(this.getBuiltin(), char) ??
-      this.embeddedGlyph(this.getFallback(), char)
-    )
+    const fromDoc = this.docGlyph(char, previous)
+    if (fromDoc) return fromDoc
+    for (const font of this.substitutes()) {
+      const glyph = this.embeddedGlyph(font, char)
+      if (glyph) return glyph
+    }
+    return null
   }
 
   /**
@@ -293,7 +305,7 @@ export class FontPalette {
       source = glyph.source
     }
     if (fromDoc.length === chars.length) return fromDoc
-    for (const font of [this.original, this.getBuiltin(), this.getFallback()]) {
+    for (const font of this.substitutes()) {
       const glyphs = chars.map((char) => this.embeddedGlyph(font, char))
       if (glyphs.every((g) => g !== null)) return glyphs
     }

@@ -8,7 +8,7 @@ import type {
   TextStyle,
   TextStylePatch
 } from '@shared/pdf-content/types'
-import { fontFamily } from '@shared/pdf-content/to-unicode'
+import { displayFontName, fontFamily } from '@shared/pdf-content/to-unicode'
 import { IconDelete, IconImage } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { Button, RadioGroup, SelectField, Swatches } from '@renderer/components/controls'
@@ -68,7 +68,10 @@ function TextStyleFields({
 }): React.JSX.Element {
   const current = fontFamily(style.fontName)
   const known = fonts.find((f) => f.startsWith(current) || current.startsWith(f)) ?? current
-  const options = [...new Set([known, ...fonts])].map((f) => ({ value: f, label: f }))
+  const options = [...new Set([known, ...fonts])].map((f) => ({
+    value: f,
+    label: displayFontName(f)
+  }))
   const color = toHex(style.color)
   const colors = [...new Set([color, ...INK_COLORS])]
   const [size, setSize] = useState(String(Math.round(style.fontSize * 10) / 10))

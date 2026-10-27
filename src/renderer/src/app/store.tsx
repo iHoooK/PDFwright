@@ -1601,15 +1601,18 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         let next = bytes
         let removed = 0
         let failure: Error | null = null
-        for (const target of group) {
+        // Снизу вверх: сдвиг после удаления абзаца не задевает то, что удаляется следом.
+        const ordered = [...group].sort(
+          (a, b) => a.page - b.page || a.object.rect.y - b.object.rect.y
+        )
+        const shift = stateRef.current.contentShift
+        for (const target of ordered) {
           const index = target.page - 1
           const o = target.object
           try {
             if (o.kind === 'text') next = await pdfContent.removeTextLine(next, index, o)
             else if (o.kind === 'block')
-              next = await pdfContent.replaceBlock(next, index, { lines: o.refs }, '', {
-                shift: 'none'
-              })
+              next = await pdfContent.replaceBlock(next, index, { lines: o.refs }, '', { shift })
             else if (o.kind === 'image') next = await pdfContent.removeImage(next, index, o)
             else next = await pdfContent.removeGraphic(next, index, o)
             removed += 1

@@ -15,7 +15,7 @@ import {
 } from '@shared/pdf-content'
 import { groupBlocks } from '@shared/pdf-content/blocks'
 import { wrapText } from '@shared/pdf-content/text-writer'
-import { parseToUnicode, sameFamily } from '@shared/pdf-content/to-unicode'
+import { displayFontName, parseToUnicode, sameFamily } from '@shared/pdf-content/to-unicode'
 import type { PageTextLine } from '@shared/pdf-content/types'
 
 const FONT = readFileSync(
@@ -85,6 +85,15 @@ describe('ToUnicode', () => {
     expect(sameFamily('ABCDEF+GoNotoCurrent-Regular', 'XYZQWE+GoNotoCurrent-Regular')).toBe(true)
     expect(sameFamily('DQNOFE+GoNotoCurrentBold-Regula', 'GoNotoCurrentBold-Regular')).toBe(true)
     expect(sameFamily('GoNotoCurrent-Regular', 'GoNotoCurrentBold-Regular')).toBe(false)
+    // pdf-lib дописывает к имени число: это то же семейство.
+    expect(sameFamily('ABCDEF+PTSans-Regular-4824', 'PTSans-Regular-17')).toBe(true)
+  })
+
+  it('показывает понятные имена шрифтов', () => {
+    expect(displayFontName('PTSans-Regular-4824')).toBe('PT Sans Regular')
+    expect(displayFontName('ArialMT-9668')).toBe('Arial')
+    expect(displayFontName('Arial-BoldMT-250')).toBe('Arial Bold')
+    expect(displayFontName('ABCDEF+TimesNewRomanPS-BoldMT')).toBe('Times New Roman PS Bold')
   })
 })
 
@@ -163,6 +172,18 @@ describe('запись текста шрифтом документа', () => {
     if (!line) throw new Error('нет строки')
     const next = await replaceText(bytes, 0, line, 'Здравствуй, Жёлудь!')
     expect(texts(await listPageObjects(next, 0))).toContain('Здравствуй, Жёлудь!')
+  })
+
+  it('недостающие буквы документа в PT Sans берёт из PT Sans программы, а не из Helvetica', async () => {
+    const objects = await listPageObjects(bytes, 0)
+    const line = objects.lines.find((l) => l.text === 'Привет мир')
+    if (!line) throw new Error('нет строки')
+    const next = await replaceText(bytes, 0, line, 'Привет, Ёжик и Щука', {
+      fallbackFont: new Uint8Array(FONT)
+    })
+    const written = (await listPageObjects(next, 0)).lines.filter((l) => /Ёжик|Щука/.test(l.text))
+    expect(written.length).toBeGreaterThan(0)
+    expect(written.every((l) => !/helvetica|nimbus/i.test(l.fontName))).toBe(true)
   })
 
   it('переписывает абзац с новой шириной: строки переносятся, кегль и цвет прежние', async () => {

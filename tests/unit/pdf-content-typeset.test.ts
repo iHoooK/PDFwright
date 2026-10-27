@@ -82,6 +82,14 @@ describe('абзац со смешанным начертанием', () => {
     expect(boldLine?.bold).toBe(true)
     const tail = lines.find((l) => l.text.includes('words'))
     expect(tail?.bold).toBe(false)
+
+    // Цвет из панели перекрашивает и жирное слово, а жирным оно остаётся.
+    const red = await replaceBlock(bytes, 0, { lines: block.refs }, block.text, {
+      style: { color: [1, 0, 0] }
+    })
+    const redLines = (await listPageObjects(red, 0)).lines.filter((l) => l.text.trim() !== '')
+    expect(redLines.every((l) => l.color[0] > 0.9 && l.color[1] < 0.1)).toBe(true)
+    expect(redLines.find((l) => l.text.includes('Bold'))?.bold).toBe(true)
   })
 })
 

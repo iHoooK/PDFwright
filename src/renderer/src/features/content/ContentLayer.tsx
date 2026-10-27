@@ -349,7 +349,8 @@ export const ContentLayer = memo(function ContentLayer({
     )
   }
 
-  const startMove = (object: PageContentObject, startClient: Point): void => {
+  /** Перенос объекта; щелчок без движения вызывает onClick. */
+  const startMove = (object: PageContentObject, startClient: Point, onClick?: () => void): void => {
     if (object.kind === 'text') return
     const start = pagePoint(startClient.x, startClient.y)
     let delta: Point | null = null
@@ -362,7 +363,10 @@ export const ContentLayer = memo(function ContentLayer({
       () => {
         setPreview(null)
         const shift: Point | null = delta
-        if (!shift || Math.hypot(shift.x, shift.y) * scale < CLICK_DISTANCE) return
+        if (!shift || Math.hypot(shift.x, shift.y) * scale < CLICK_DISTANCE) {
+          onClick?.()
+          return
+        }
         const moved = { ...object.rect, x: object.rect.x + shift.x, y: object.rect.y + shift.y }
         if (object.kind === 'image') actions.moveContentImage(pageNumber, object, moved)
         else if (object.kind === 'graphic') actions.moveContentGraphic(pageNumber, object, moved)
@@ -563,6 +567,15 @@ export const ContentLayer = memo(function ContentLayer({
       return
     }
     beforeDouble.current = selected
+    // Строка внутри выбранного абзаца: перетаскивание переносит абзац, а
+    // щелчок без движения выбирает строку.
+    const parent = hit?.kind === 'text' ? blockOf(hit) : null
+    if (hit && parent) {
+      startMove(parent, { x: event.clientX, y: event.clientY }, () => {
+        actions.select(target(hit))
+      })
+      return
+    }
     actions.select(hit ? target(hit) : null)
     if (hit) startMove(hit, { x: event.clientX, y: event.clientY })
   }
