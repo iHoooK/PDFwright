@@ -10,12 +10,13 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import type {
-  AppCommand,
-  AppInfo,
-  PdfwrightApi,
-  RecentFile,
-  UpdateInfoSummary
+import {
+  isFileMissingError,
+  type AppCommand,
+  type AppInfo,
+  type PdfwrightApi,
+  type RecentFile,
+  type UpdateInfoSummary
 } from '@shared/ipc-contract'
 import { describeUpdateError } from '@shared/update-messages'
 import { RELEASES_PAGE } from '@shared/external-links'
@@ -235,6 +236,8 @@ export interface DocTab {
   pages: number
   fileSize: number
   error: string | null
+  /** Ошибка открытия: файла нет на диске (удалён или перемещён). */
+  missing?: boolean
   /** Растёт по мере чтения размеров страниц, чтобы раскладка обновлялась. */
   sizesVersion: number
   /** Текущие байты документа со всеми применёнными правками. */
@@ -251,6 +254,11 @@ export interface DocTab {
   busy: boolean
   /** Защита паролем, которая будет записана в файл; нет — документ без пароля. */
   protection?: DocProtection | null | undefined
+}
+
+export interface ToastAction {
+  label: string
+  run: () => void
 }
 
 export interface ZoomState {
@@ -343,6 +351,8 @@ export interface State {
   activeId: string | null
   recent: RecentFile[]
   toast: string | null
+  /** Кнопка в сообщении внизу окна (например, «Открыть» извлечённый файл). */
+  toastAction: ToastAction | null
   sidebar: boolean
   props: boolean
   sidebarTab: SidebarTab
@@ -397,7 +407,7 @@ type Action =
       fileSize: number
       protection?: DocProtection | null | undefined
     }
-  | { type: 'docError'; id: string; error: string }
+  | { type: 'docError'; id: string; error: string; missing?: boolean }
   | { type: 'docSizes'; id: string }
   | { type: 'docBusy'; id: string; busy: boolean }
   | {
@@ -439,7 +449,7 @@ type Action =
   | { type: 'docSaved'; id: string; path: string }
   | { type: 'closeDoc'; id: string }
   | { type: 'activateDoc'; id: string }
-  | { type: 'toast'; message: string | null }
+  | { type: 'toast'; message: string | null; action?: ToastAction | null }
   | { type: 'sidebar'; on?: boolean }
   | { type: 'props'; on?: boolean }
   | { type: 'sidebarTab'; tab: SidebarTab }
@@ -487,6 +497,7 @@ const initial: State = {
   activeId: null,
   recent: [],
   toast: null,
+  toastAction: null,
   sidebar: true,
   props: window.innerWidth >= 1100,
   sidebarTab: 'thumbs',
@@ -636,7 +647,12 @@ function reducer(state: State, action: Action): State {
         protection: action.protection ?? null
       }))
     case 'docError':
-      return updateDoc(state, action.id, (d) => ({ ...d, status: 'error', error: action.error }))
+      return updateDoc(state, action.id, (d) => ({
+        ...d,
+        status: 'error',
+        error: action.error,
+        missing: action.missing === true
+      }))
     case 'docSizes':
       return updateDoc(state, action.id, (d) => ({ ...d, sizesVersion: d.sizesVersion + 1 }))
     case 'docBusy':
@@ -764,7 +780,7 @@ function reducer(state: State, action: Action): State {
         ? { ...state, screen: 'viewer' }
         : { ...resetView(state), activeId: action.id, screen: 'viewer' }
     case 'toast':
-      return { ...state, toast: action.message }
+      return { ...state, toast: action.message, toastAction: action.action ?? null }
     case 'sidebar':
       return { ...state, sidebar: action.on ?? !state.sidebar }
     case 'props':
@@ -923,7 +939,8 @@ export interface Actions {
   cycleTheme: () => void
   /** Сохраняет язык и перезагружает окна на нём (если нет несохранённых правок). */
   setLanguage: (language: Language) => void
-  toast: (message: string) => void
+  /** Сообщение внизу окна; с action — с кнопкой, и держится дольше. */
+  toast: (message: string, action?: ToastAction) => void
   zoomBy: (delta: 1 | -1) => void
   zoomTo: (percent: number) => void
   setZoomMode: (mode: ZoomMode) => void
@@ -1096,22 +1113,39 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
   const toastTimer = useRef<number | undefined>(undefined)
   const searchRun = useRef(0)
 
-  const toast = useCallback((message: string) => {
-    dispatch({ type: 'toast', message })
+  const toast = useCallback((message: string, action?: ToastAction) => {
+    // Кнопка сообщения закрывает его: второй раз то же действие не нужно.
+    const button: ToastAction | null = action
+      ? {
+          label: action.label,
+          run: () => {
+            dispatch({ type: 'toast', message: null })
+            action.run()
+          }
+        }
+      : null
+    dispatch({ type: 'toast', message, action: button })
     window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => {
-      dispatch({ type: 'toast', message: null })
-    }, 2600)
+    toastTimer.current = window.setTimeout(
+      () => {
+        dispatch({ type: 'toast', message: null })
+      },
+      action ? 8000 : 2600
+    )
   }, [])
 
-  const refreshRecent = useCallback(() => {
-    api
-      .getRecentFiles()
-      .then((recent) => {
-        dispatch({ type: 'recent', recent })
-      })
-      .catch(() => undefined)
-  }, [api])
+  /** Документ открыт или сохранён: файл поднимается в начало «Недавних» с числом страниц. */
+  const rememberRecent = useCallback(
+    (path: string, pages: number) => {
+      api
+        .addRecentFile(path, pages)
+        .then((recent) => {
+          dispatch({ type: 'recent', recent })
+        })
+        .catch(() => undefined)
+    },
+    [api]
+  )
 
   const openPath = useCallback(
     (path: string): string => {
@@ -1173,6 +1207,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
             return
           }
           dispatch({ type: 'docReady', id, doc, bytes, fileSize: file.size, protection })
+          // В «Недавние» попадает только документ, который удалось открыть.
+          rememberRecent(path, doc.numPages)
           console.info(`[pdfwright] документ открыт: ${name}, страниц: ${doc.numPages}`)
           void doc.loadSizes(() => {
             dispatch({ type: 'docSizes', id })
@@ -1182,15 +1218,17 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
             dispatch({ type: 'closeDoc', id })
             return
           }
+          if (isFileMissingError(error)) {
+            dispatch({ type: 'docError', id, error: t.errors.fileMissing(path), missing: true })
+            return
+          }
           const message = error instanceof Error ? error.message : String(error)
           dispatch({ type: 'docError', id, error: message })
-        } finally {
-          refreshRecent()
         }
       })()
       return id
     },
-    [api, refreshRecent]
+    [api, rememberRecent]
   )
 
   useEffect(() => {
@@ -1439,14 +1477,14 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         })
         dispatch({ type: 'docSaved', id: tab.id, path })
         toast(t.ops.saved(basenameOf(path)))
-        refreshRecent()
+        rememberRecent(path, tab.pages)
         return true
       } catch (error) {
         toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
         return false
       }
     },
-    [api, bakeMarkup, refreshRecent, toast]
+    [api, bakeMarkup, rememberRecent, toast]
   )
 
   const save = useCallback(async (): Promise<boolean> => {
@@ -1548,9 +1586,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       let firstJumped = false
       for (let page = 1; page <= doc.numPages; page += 1) {
         if (searchRun.current !== run) return
-        const items = await doc.getTextItems(page)
+        const { items, breaks } = await doc.getSearchText(page)
         if (searchRun.current !== run) return
-        for (const match of findMatches(items, trimmed)) matches.push({ page, match })
+        for (const match of findMatches(items, trimmed, breaks)) matches.push({ page, match })
         if (page % 10 === 0 || page === doc.numPages) {
           dispatch({
             type: 'search',
@@ -1803,6 +1841,8 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         dispatch({ type: 'resolvedZoom', percent })
       },
       rotate: () => {
+        // Поворот вида не касается режима «Страницы»: там видно, как страницы лежат в файле.
+        if (stateRef.current.pagesMode) return
         const next = ((stateRef.current.rotation + 90) % 360) as Rotation
         dispatch({ type: 'rotation', rotation: next })
       },
@@ -2263,8 +2303,14 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
             })
             if (path === null) return
             await api.writeFile({ path, bytes: toArrayBuffer(bytes), backup: false })
-            toast(t.ops.extracted(basenameOf(path)))
-            openPath(path)
+            // Новый файл не открывается сам: в исходном могут быть несохранённые правки,
+            // и Ctrl+S не должен вдруг относиться к другому документу.
+            toast(t.ops.extracted(basenameOf(path)), {
+              label: t.ops.openExtracted,
+              run: () => {
+                openPath(path)
+              }
+            })
           } catch (error) {
             toast(`${t.ops.failed}: ${error instanceof Error ? error.message : String(error)}`)
           }

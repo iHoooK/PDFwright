@@ -22,9 +22,7 @@ import {
   IconSign,
   IconSplit,
   IconText,
-  IconUndo,
-  IconZoomIn,
-  IconZoomOut
+  IconUndo
 } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
@@ -41,6 +39,7 @@ import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { ProtectDialog } from '@renderer/features/protect/ProtectDialog'
 import { OutlinePanel, SearchPanel, ThumbsPanel } from './SidebarPanels'
+import { ZoomControl } from './ZoomControl'
 import s from './viewer.module.css'
 
 const TOOL_META: readonly { tool: Tool; label: string; icon: ReactNode }[] = [
@@ -74,7 +73,9 @@ export function ViewerScreen(): React.JSX.Element {
   const canRedo = (readyDoc?.tab.future.length ?? 0) > 0
   const selectedCount = state.selectedPages.size
   const toolLabel = TOOL_META.find((m) => m.tool === state.tool)?.label ?? ''
-  const zoomLabel = `${state.resolvedZoom}%`
+  // Удалить все страницы нельзя: в PDF должна остаться хотя бы одна.
+  const allSelected = readyDoc !== null && selectedCount >= readyDoc.tab.pages
+  const inRecent = tab !== null && state.recent.some((file) => file.path === tab.path)
   const closing =
     state.closeConfirm !== null ? state.docs.find((d) => d.id === state.closeConfirm) : null
 
@@ -124,6 +125,7 @@ export function ViewerScreen(): React.JSX.Element {
             label={m.label}
             hotkey={TOOL_KEYS[m.tool]}
             pressed={state.tool === m.tool}
+            disabled={!ready}
             onClick={() => {
               actions.setTool(m.tool)
             }}
@@ -146,40 +148,11 @@ export function ViewerScreen(): React.JSX.Element {
           label={t.cmd.rotate}
           hotkey="Ctrl+R"
           onClick={actions.rotate}
-          disabled={!ready}
+          disabled={!ready || state.pagesMode}
         />
         <span className={s.spacer} />
         <div className={s.inline}>
-          <div className={s.zoom}>
-            <IconButton
-              label={t.cmd.zoomOut}
-              onClick={() => {
-                actions.zoomBy(-1)
-              }}
-              disabled={!ready}
-            >
-              <IconZoomOut />
-            </IconButton>
-            <button
-              type="button"
-              className={s.zoomValue}
-              title={t.cmd.zoomMenu}
-              aria-label={`${t.cmd.zoomMenu}: ${zoomLabel}`}
-              onClick={actions.cycleZoomMode}
-              disabled={!ready}
-            >
-              {zoomLabel}
-            </button>
-            <IconButton
-              label={t.cmd.zoomIn}
-              onClick={() => {
-                actions.zoomBy(1)
-              }}
-              disabled={!ready}
-            >
-              <IconZoomIn />
-            </IconButton>
-          </div>
+          <ZoomControl disabled={!ready || state.pagesMode} />
           <IconButton
             label={t.cmd.search}
             pressed={state.sidebar && state.sidebarTab === 'search'}
@@ -212,8 +185,9 @@ export function ViewerScreen(): React.JSX.Element {
       {state.pagesMode && readyDoc ? (
         <>
           <div className={s.pagesActions} role="toolbar" aria-label={t.cmd.pages}>
-            <span className={s.count} title={t.pages.hint}>
-              {t.pages.selected(selectedCount)}
+            {/* Все страницы выбраны: сразу видно, почему «Удалить» неактивна. */}
+            <span className={s.count} title={allSelected ? t.pages.removeAllHint : t.pages.hint}>
+              {allSelected ? t.pages.allSelectedNote : t.pages.selected(selectedCount)}
             </span>
             <Button
               variant="subtle"
@@ -227,6 +201,7 @@ export function ViewerScreen(): React.JSX.Element {
             <Command
               icon={<IconRotate />}
               label={t.pages.rotateCw}
+              title={t.pages.rotateCwHint}
               onClick={() => {
                 actions.rotateSelected(90)
               }}
@@ -235,6 +210,7 @@ export function ViewerScreen(): React.JSX.Element {
             <Command
               icon={<IconRotate style={{ transform: 'scaleX(-1)' }} />}
               label={t.pages.rotateCcw}
+              title={t.pages.rotateCcwHint}
               onClick={() => {
                 actions.rotateSelected(270)
               }}
@@ -268,8 +244,9 @@ export function ViewerScreen(): React.JSX.Element {
               icon={<IconDelete />}
               label={t.pages.remove}
               hotkey="Delete"
+              {...(allSelected ? { title: t.pages.removeAllHint } : {})}
               onClick={actions.deleteSelected}
-              disabled={!canEdit || selectedCount === 0 || selectedCount >= readyDoc.tab.pages}
+              disabled={!canEdit || selectedCount === 0 || allSelected}
             />
           </div>
           <PagesGrid tab={readyDoc.tab} doc={readyDoc.doc} />
@@ -284,7 +261,15 @@ export function ViewerScreen(): React.JSX.Element {
               label={t.cmd.sidebar}
             />
             {!readyDoc ? (
-              <p className={s.sideEmpty}>{t.viewer.emptyTitle}</p>
+              <p className={s.sideEmpty}>
+                {tab?.status === 'loading'
+                  ? t.viewer.loading
+                  : tab?.status === 'error'
+                    ? tab.missing === true
+                      ? t.viewer.missingTitle
+                      : t.viewer.errorTitle
+                    : t.viewer.emptyTitle}
+              </p>
             ) : state.sidebarTab === 'thumbs' ? (
               <ThumbsPanel tab={readyDoc.tab} doc={readyDoc.doc} />
             ) : state.sidebarTab === 'outline' ? (
@@ -305,9 +290,23 @@ export function ViewerScreen(): React.JSX.Element {
                 </>
               ) : tab?.status === 'error' ? (
                 <>
-                  <h2>{t.viewer.errorTitle}</h2>
+                  <h2>{tab.missing === true ? t.viewer.missingTitle : t.viewer.errorTitle}</h2>
                   <p>{tab.error}</p>
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  {inRecent && <p>{t.viewer.removeRecentLead}</p>}
+                  <div
+                    style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}
+                  >
+                    {inRecent && (
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          actions.removeRecent(tab.path)
+                          actions.requestCloseDoc(tab.id)
+                        }}
+                      >
+                        {t.viewer.removeRecent}
+                      </Button>
+                    )}
                     <Button
                       onClick={() => {
                         actions.openPath(tab.path)

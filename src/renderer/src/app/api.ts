@@ -13,7 +13,7 @@ import {
   resolveLanguage,
   type AppSettings
 } from '@shared/settings-schema'
-import { basenameOf } from '@shared/paths'
+import { basenameOf, freePath } from '@shared/paths'
 
 /**
  * Доступ к API preload. В обычном браузере (dev-сервер Vite без Electron)
@@ -108,10 +108,6 @@ function createBrowserMock(): PdfwrightApi {
         file = picked ? files.get(picked.path) : undefined
         if (!file) throw new Error('Файл не выбран')
       }
-      recent = [
-        { path, name: file.name, lastOpenedMs: Date.now() },
-        ...recent.filter((r) => r.path !== path)
-      ]
       return { bytes: await file.arrayBuffer(), size: file.size, modifiedMs: file.lastModified }
     },
     printFile: () => {
@@ -121,6 +117,18 @@ function createBrowserMock(): PdfwrightApi {
     getRecentFiles: () => Promise.resolve(recent),
     removeRecentFile: (path) => {
       recent = recent.filter((r) => r.path !== path)
+      return Promise.resolve(recent)
+    },
+    addRecentFile: (path, pages) => {
+      recent = [
+        {
+          path,
+          name: basenameOf(path),
+          lastOpenedMs: Date.now(),
+          ...(pages === undefined ? {} : { pages })
+        },
+        ...recent.filter((r) => r.path !== path)
+      ]
       return Promise.resolve(recent)
     },
     openPdfsDialog: () =>
@@ -185,12 +193,20 @@ function createBrowserMock(): PdfwrightApi {
       files.set(request.path, new File([blob], a.download, { type: 'application/pdf' }))
       return Promise.resolve()
     },
-    writeFiles: (items) => {
+    writeFiles: (items, options) => {
+      const written: string[] = []
       for (const item of items) {
+        const path =
+          options?.unique === true
+            ? freePath(item.path, (lower) =>
+                [...files.keys()].some((known) => known.toLowerCase() === lower)
+              )
+            : item.path
         const blob = new Blob([item.bytes], { type: 'application/pdf' })
-        files.set(item.path, new File([blob], basenameOf(item.path), { type: 'application/pdf' }))
+        files.set(path, new File([blob], basenameOf(path), { type: 'application/pdf' }))
+        written.push(path)
       }
-      return Promise.resolve()
+      return Promise.resolve(written)
     },
     showItemInFolder: () => Promise.resolve(),
     setDirtyCount: () => Promise.resolve(),

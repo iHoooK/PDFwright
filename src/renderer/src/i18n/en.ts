@@ -116,13 +116,15 @@ export const en: Strings = {
     text: 'Text',
     sign: 'Sign',
     pages: 'Pages',
-    rotate: 'Rotate',
+    rotate: 'Rotate view',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     search: 'Find in document',
     sidebar: 'Sidebar',
     props: 'Properties',
     zoomMenu: 'Zoom mode',
+    zoomValue: 'Zoom, %',
+    zoomValueHint: 'Type a zoom percentage and press Enter',
     fitWidth: 'Fit width',
     fitPage: 'Fit page',
     zoomActual: 'Zoom 100%'
@@ -149,6 +151,9 @@ export const en: Strings = {
   },
   viewer: {
     emptyTitle: 'No document open yet',
+    missingTitle: 'File not found',
+    removeRecentLead: 'The file is still in the Recent list on the Home tab.',
+    removeRecent: 'Remove from Recent',
     emptyLead: 'Open a PDF with the “+” button on the tab bar, or drag a file into the window.',
     loading: 'Opening document…',
     errorTitle: "Couldn't open the document",
@@ -167,6 +172,10 @@ export const en: Strings = {
     hint: 'Click to select, Ctrl to add, Shift for a range, drag to reorder, Delete to remove.',
     rotateCw: 'Rotate ↻',
     rotateCcw: 'Rotate ↺',
+    rotateCwHint: 'Rotate the selected pages clockwise',
+    rotateCcwHint: 'Rotate the selected pages counterclockwise',
+    removeAllHint: "You can't delete all pages: a document needs at least one",
+    allSelectedNote: "All selected — can't delete",
     remove: 'Delete',
     extract: 'Extract…',
     duplicate: 'Duplicate',
@@ -189,7 +198,8 @@ export const en: Strings = {
     redone: 'Redone',
     failed: "Couldn't complete the operation",
     extractTitle: 'Save selected pages',
-    saveAsTitle: 'Save as'
+    saveAsTitle: 'Save as',
+    openExtracted: 'Open'
   },
   confirm: {
     closeTitle: 'Close document?',
@@ -621,6 +631,8 @@ export const en: Strings = {
       'A local app for viewing and editing PDFs. Free software licensed under GNU AGPL-3.0: you can use and share it, and the source code is open.',
     copyDiag: 'Copy diagnostics',
     copied: 'Diagnostics copied',
+    diagBuild: 'Build',
+    diagData: 'Data folder',
     licenses: 'Licenses and privacy',
     licenseTab: 'AGPL-3.0 license',
     sourceCode: 'Source code',
@@ -702,7 +714,8 @@ export const en: Strings = {
     openCancelled: 'Opening was canceled.',
     openFailed: (message: string) => `Could not open the file: ${message}`,
     encodeImage: 'Could not encode the image',
-    webp: 'Could not convert the WebP image'
+    webp: 'Could not convert the WebP image',
+    fileMissing: (path: string) => `"${path}" is not on disk: it was deleted, renamed or moved.`
   },
   shortcuts: [
     { keys: 'Ctrl + N', action: 'New window' },

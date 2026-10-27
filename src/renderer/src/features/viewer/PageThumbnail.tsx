@@ -115,13 +115,16 @@ export const PageThumbnail = memo(function PageThumbnail({
             objects={markup}
           />
         )}
+      </span>
+      {/* Флажок выбора — под миниатюрой, рядом с номером: на странице он закрывал бы её угол. */}
+      <small className={s.thumbLabel}>
         {selectable && (
           <span className={s.check} aria-hidden="true">
             {selected && <IconCheck />}
           </span>
         )}
-      </span>
-      <small>{pageNumber}</small>
+        {pageNumber}
+      </small>
     </button>
   )
 })

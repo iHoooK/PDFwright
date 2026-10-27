@@ -100,9 +100,14 @@ export function SearchPanel(): React.JSX.Element {
           aria-label={t.cmd.search}
           onChange={(event) => {
             setDraft(event.target.value)
+            // Поле очищено (Esc или крестик поля поиска): результаты и подсветка уходят вместе с текстом.
+            if (event.target.value === '' && search.query !== '') actions.search('')
           }}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Escape') {
+              setDraft('')
+              if (search.query !== '' || search.running) actions.search('')
+            } else if (event.key === 'Enter') {
               if (draft === search.query && count > 0) {
                 if (event.shiftKey) actions.searchStep(-1)
                 else actions.searchStep(1)

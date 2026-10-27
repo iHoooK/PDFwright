@@ -6,7 +6,7 @@ import { installApplicationMenu } from './menu'
 import { mainStrings } from './strings'
 import { interfaceLanguage } from './language'
 import { setMessageLanguage } from '@shared/messages'
-import { extractPdfPath } from './open-args'
+import { extractPdfPaths } from './open-args'
 import { installAppProtocol, registerAppScheme, rendererDirFromMain } from './protocol'
 import { isPortableBuild } from './services/app-paths'
 import { RecentFilesStore } from './services/recent-files'
@@ -29,10 +29,10 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   registerAppScheme()
-  void bootstrap(extractPdfPath(process.argv, process.cwd()))
+  void bootstrap(extractPdfPaths(process.argv, process.cwd()))
 }
 
-async function bootstrap(startupFile: string | null): Promise<void> {
+async function bootstrap(startupFiles: string[]): Promise<void> {
   app.setAppUserModelId(APP_USER_MODEL_ID)
 
   const settings = SettingsStore.forUserData(app.getPath('userData'))
@@ -72,12 +72,12 @@ async function bootstrap(startupFile: string | null): Promise<void> {
   }
   applyLanguage()
 
-  await openStartupWindows(windows, settings, startupFile)
+  await openStartupWindows(windows, settings, startupFiles)
 
   app.on('second-instance', (_event, argv, workingDirectory) => {
-    const file = extractPdfPath(argv, workingDirectory)
-    if (file === null) windows.revealLatest()
-    else windows.openFile(file)
+    const files = extractPdfPaths(argv, workingDirectory)
+    if (files.length === 0) windows.revealLatest()
+    for (const file of files) windows.openFile(file)
   })
 
   app.on('activate', () => {
@@ -108,18 +108,21 @@ async function bootstrap(startupFile: string | null): Promise<void> {
 }
 
 /**
- * Первые окна: файл из аргументов запуска — в одном окне; без файла —
+ * Первые окна: файлы из аргументов запуска — вкладками одного окна; без файлов —
  * окна и вкладки прошлого сеанса, если это включено в Параметрах.
  * Отсутствующие файлы пропускаются, о них сообщает самое активное окно.
  */
 async function openStartupWindows(
   windows: WindowManager,
   settings: SettingsStore,
-  file: string | null
+  files: string[]
 ): Promise<void> {
   const session = settings.get().session
-  if (file !== null || !session.restore || session.windows.length === 0) {
-    windows.create(file === null ? {} : { open: { files: [file], active: file } })
+  if (files.length > 0 || !session.restore || session.windows.length === 0) {
+    // Активна последняя вкладка: её путь Проводник передаёт последним.
+    windows.create(
+      files.length === 0 ? {} : { open: { files, active: files[files.length - 1] ?? null } }
+    )
     return
   }
   const paths = session.windows.flatMap((window) => window.tabs)

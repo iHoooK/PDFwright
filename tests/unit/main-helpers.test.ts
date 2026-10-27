@@ -2,22 +2,30 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { extractPdfPath } from '../../src/main/open-args'
+import { extractPdfPaths } from '../../src/main/open-args'
 import { resolveWithinDir } from '../../src/main/services/fs-utils'
 import { normalizeRecent, RecentFilesStore } from '../../src/main/services/recent-files'
 
-describe('extractPdfPath', () => {
+describe('extractPdfPaths', () => {
   const cwd = resolve('D:\\work')
 
-  it('берёт последний .pdf-аргумент и разрешает относительный путь', () => {
-    expect(extractPdfPath(['app.exe', 'C:\\docs\\a.pdf'], cwd)).toBe('C:\\docs\\a.pdf')
-    expect(extractPdfPath(['app.exe', 'b.PDF'], cwd)).toBe(resolve(cwd, 'b.PDF'))
+  it('берёт .pdf-аргумент и разрешает относительный путь', () => {
+    expect(extractPdfPaths(['app.exe', 'C:\\docs\\a.pdf'], cwd)).toEqual(['C:\\docs\\a.pdf'])
+    expect(extractPdfPaths(['app.exe', 'b.PDF'], cwd)).toEqual([resolve(cwd, 'b.PDF')])
+  })
+
+  it('отдаёт все PDF по порядку без повторов: несколько файлов, брошенных на ярлык', () => {
+    expect(
+      extractPdfPaths(['app.exe', 'C:\\a.pdf', '--flag', 'notes.txt', 'b.pdf', 'C:\\a.pdf'], cwd)
+    ).toEqual(['C:\\a.pdf', resolve(cwd, 'b.pdf')])
   })
 
   it('игнорирует флаги, точку и не-PDF аргументы', () => {
-    expect(extractPdfPath(['electron', '.', '--inspect=9229'], cwd)).toBeNull()
-    expect(extractPdfPath(['app.exe', 'notes.txt'], cwd)).toBeNull()
-    expect(extractPdfPath(['app.exe'], cwd)).toBeNull()
+    expect(extractPdfPaths(['electron', '.', '--inspect=9229'], cwd)).toEqual([])
+    expect(extractPdfPaths(['app.exe', 'notes.txt'], cwd)).toEqual([])
+    expect(extractPdfPaths(['app.exe'], cwd)).toEqual([])
+    // Первый аргумент — сама программа, даже если её путь кончается на .pdf.
+    expect(extractPdfPaths(['x.pdf'], cwd)).toEqual([])
   })
 })
 
@@ -74,6 +82,17 @@ describe('RecentFilesStore', () => {
     const reloaded = await RecentFilesStore.forUserData(dir, () => 2).load()
     expect(reloaded.map((i) => i.name)).toEqual(['three.pdf', 'two.pdf'])
     expect(JSON.parse(await readFile(join(dir, 'recent.json'), 'utf8'))).toHaveLength(2)
+  })
+
+  it('помнит число страниц: новое значение заменяет старое, без значения оно остаётся', async () => {
+    const store = RecentFilesStore.forUserData(dir, () => 10)
+    await store.touch('C:\\one.pdf', 3)
+    await store.touch('C:\\one.pdf')
+    expect((await store.list())[0]?.pages).toBe(3)
+    await store.touch('C:\\one.pdf', 5)
+    const reloaded = await RecentFilesStore.forUserData(dir, () => 10).load()
+    expect(reloaded[0]?.pages).toBe(5)
+    expect(normalizeRecent([{ path: 'C:\\x.pdf', pages: -1 }])[0]).not.toHaveProperty('pages')
   })
 
   it('удаляет запись и переживает повреждённый файл', async () => {

@@ -115,13 +115,15 @@ export const ru = {
     text: 'Текст',
     sign: 'Подпись',
     pages: 'Страницы',
-    rotate: 'Повернуть',
+    rotate: 'Повернуть вид',
     zoomIn: 'Увеличить',
     zoomOut: 'Уменьшить',
     search: 'Поиск в документе',
     sidebar: 'Боковая панель',
     props: 'Свойства',
     zoomMenu: 'Режим масштаба',
+    zoomValue: 'Масштаб, %',
+    zoomValueHint: 'Введите масштаб в\u00a0процентах и\u00a0нажмите Enter',
     fitWidth: 'По ширине',
     fitPage: 'Страница целиком',
     zoomActual: 'Масштаб 100%'
@@ -148,6 +150,9 @@ export const ru = {
   },
   viewer: {
     emptyTitle: 'Документ ещё не открыт',
+    missingTitle: 'Файл не найден',
+    removeRecentLead: 'Файл остался в\u00a0списке «Недавние» на\u00a0вкладке «Начало».',
+    removeRecent: 'Убрать из\u00a0«Недавних»',
     emptyLead: 'Откройте PDF через кнопку «+» на панели вкладок или перетащите файл в окно.',
     loading: 'Открываем документ…',
     errorTitle: 'Не удалось открыть документ',
@@ -166,6 +171,10 @@ export const ru = {
     hint: 'Клик — выбрать, Ctrl — добавить, Shift — диапазон, перетащите для перестановки, Delete — удалить.',
     rotateCw: 'Повернуть ↻',
     rotateCcw: 'Повернуть ↺',
+    rotateCwHint: 'Повернуть выбранные страницы по\u00a0часовой стрелке',
+    rotateCcwHint: 'Повернуть выбранные страницы против часовой стрелки',
+    removeAllHint: 'Все страницы удалить нельзя: в\u00a0документе должна остаться хотя бы одна',
+    allSelectedNote: 'Выбраны все — удалить нельзя',
     remove: 'Удалить',
     extract: 'Извлечь…',
     duplicate: 'Дублировать',
@@ -188,7 +197,8 @@ export const ru = {
     redone: 'Операция повторена',
     failed: 'Операция не выполнена',
     extractTitle: 'Сохранить выбранные страницы',
-    saveAsTitle: 'Сохранить как'
+    saveAsTitle: 'Сохранить как',
+    openExtracted: 'Открыть'
   },
   confirm: {
     closeTitle: 'Закрыть документ?',
@@ -620,11 +630,13 @@ export const ru = {
     aboutLead: (v: string, kind: string) => `PDFwright ${v} · Windows x64 · ${kind}`,
     kindInstalled: 'установленная версия',
     kindPortable: 'portable-версия',
-    kindDev: 'режима разработки',
+    kindDev: 'версия для разработки',
     aboutText:
       'Локальная программа для просмотра и\u00a0редактирования PDF. Свободная программа под лицензией GNU AGPL-3.0: ею можно пользоваться и\u00a0делиться, исходный код открыт.',
     copyDiag: 'Скопировать диагностику',
     copied: 'Диагностика скопирована',
+    diagBuild: 'Тип сборки',
+    diagData: 'Папка данных',
     licenses: 'Лицензии и\u00a0приватность',
     licenseTab: 'Лицензия AGPL-3.0',
     sourceCode: 'Исходный код',
@@ -706,7 +718,9 @@ export const ru = {
     openCancelled: 'Открытие отменено.',
     openFailed: (message: string) => `Не удалось открыть файл: ${message}`,
     encodeImage: 'Не удалось закодировать картинку',
-    webp: 'Не удалось перекодировать WebP'
+    webp: 'Не удалось перекодировать WebP',
+    fileMissing: (path: string) =>
+      `Файла «${path}» нет на\u00a0диске: его удалили, переименовали или переместили.`
   },
   shortcuts: [
     { keys: 'Ctrl + N', action: 'Новое окно' },

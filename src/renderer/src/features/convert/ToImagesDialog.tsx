@@ -121,8 +121,11 @@ export function ToImagesDialog(): React.JSX.Element {
           const bytes = await renderPageImage(pdf, page, { dpi, format, quality }, cancel)
           if (bytes === null) break
           const path = joinPath(target, pageImageName(base, page, doc.pages, format))
-          await api.writeFiles([{ path, bytes: toArrayBuffer(bytes) }])
-          written.push(path)
+          // Существующие картинки не перезаписываются: занятое имя получает « (2)».
+          const [saved] = await api.writeFiles([{ path, bytes: toArrayBuffer(bytes) }], {
+            unique: true
+          })
+          written.push(saved ?? path)
           setProgress({ done: written.length, total: list.length })
         }
         const stopped = written.length < list.length

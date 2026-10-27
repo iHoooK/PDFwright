@@ -65,23 +65,47 @@
   align-items: center;
   gap: 2px;
 }
-.zoomValue {
-  min-width: 58px;
+/* Поле масштаба: ввод своего значения и кнопка меню режимов в одной рамке. */
+.zoomField {
+  display: inline-flex;
+  align-items: stretch;
   height: 30px;
-  display: grid;
-  place-items: center;
   border: 1px solid var(--line-2);
+  border-bottom-color: var(--ink-3);
   border-radius: var(--r-s);
+  background: var(--card);
+  overflow: hidden;
+}
+.zoomField:focus-within {
+  border-bottom: 2px solid var(--accent);
+}
+.zoomField[data-disabled] {
+  opacity: 0.45;
+}
+.zoomValue {
+  width: 52px;
+  border: 0;
+  outline: none;
+  padding: 0 0 0 8px;
+  font: inherit;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  background: var(--card);
+  text-align: center;
+  background: transparent;
   color: var(--ink);
 }
-.zoomValue:hover:not(:disabled) {
+.zoomMenuButton {
+  width: 24px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.zoomMenuButton:hover:not(:disabled) {
   background: var(--layer);
 }
-.zoomValue:disabled {
-  opacity: 0.45;
+.zoomMenuButton svg {
+  width: 14px;
+  height: 14px;
 }
 
 .sidebar {

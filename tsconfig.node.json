@@ -14,6 +14,10 @@
     "src/shared/**/*.ts",
     "src/renderer/src/i18n/ru.ts",
     "src/renderer/src/i18n/en.ts",
+    "src/renderer/src/app/window-title.ts",
+    "src/renderer/src/pdf-engine/outline.ts",
+    "src/renderer/src/features/viewer/zoom.ts",
+    "src/renderer/src/features/settings/parse-markdown.ts",
     "tests/unit/**/*.ts",
     "tests/e2e/**/*.ts"
   ]

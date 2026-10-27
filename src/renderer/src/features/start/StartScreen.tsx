@@ -1,4 +1,4 @@
-import { IconClose, IconImage, IconMerge, IconOpen, IconSplit } from '@renderer/icons'
+import { IconClose, IconDocument, IconImage, IconMerge, IconOpen, IconSplit } from '@renderer/icons'
 import { locale, t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
 import { IconButton } from '@renderer/components/controls'
@@ -94,10 +94,16 @@ export function StartScreen(): React.JSX.Element {
                       actions.openPath(file.path)
                     }}
                   >
-                    <span className={s.thumb} aria-hidden="true" />
+                    <span className={s.thumb} aria-hidden="true">
+                      <IconDocument />
+                    </span>
                     <span className={s.itemText}>
                       <span className={s.name}>{file.name}</span>
-                      <span className={s.meta}>{file.path}</span>
+                      <span className={s.meta}>
+                        {file.pages === undefined
+                          ? file.path
+                          : `${t.start.pageCount(file.pages)} · ${file.path}`}
+                      </span>
                     </span>
                     <span className={s.meta}>{formatOpened(file.lastOpenedMs)}</span>
                   </button>

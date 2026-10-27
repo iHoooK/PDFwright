@@ -263,11 +263,23 @@ export function SettingCard({
   )
 }
 
-export function Toast({ message }: { message: string | null }): React.JSX.Element | null {
+export function Toast({
+  message,
+  action
+}: {
+  message: string | null
+  /** Кнопка в сообщении: «Открыть» и подобное; щелчок закрывает сообщение. */
+  action?: { label: string; run: () => void } | null
+}): React.JSX.Element | null {
   if (message === null) return null
   return (
     <div className={s.toast} role="status" aria-live="polite">
       {message}
+      {action && (
+        <button type="button" className={s.toastAction} onClick={action.run}>
+          {action.label}
+        </button>
+      )}
     </div>
   )
 }

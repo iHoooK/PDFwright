@@ -124,11 +124,17 @@
   text-overflow: ellipsis;
 }
 .thumb {
-  width: 22px;
+  width: 28px;
   height: 28px;
-  background: var(--paper);
-  border: 1px solid var(--line-2);
-  border-radius: 2px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-s);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.thumb svg {
+  width: 20px;
+  height: 20px;
 }
 .empty {
   padding: 28px 20px;

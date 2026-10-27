@@ -100,8 +100,8 @@ export function SettingsScreen(): React.JSX.Element {
       `PDFwright ${version}`,
       `Electron ${info?.electron ?? '?'} · Chromium ${info?.chrome ?? '?'} · Node ${info?.node ?? '?'}`,
       `${info?.platform ?? '?'} ${info?.arch ?? ''}`.trim(),
-      `Сборка: ${kind}`,
-      `Данные: ${info?.userDataPath ?? '?'}`
+      `${t.settings.diagBuild}: ${kind}`,
+      `${t.settings.diagData}: ${info?.userDataPath ?? '?'}`
     ]
     navigator.clipboard
       .writeText(lines.join('\n'))

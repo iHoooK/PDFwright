@@ -27,6 +27,30 @@ export function joinPath(dir: string, name: string): string {
   return dir.endsWith(sep) ? dir + name : dir + sep + name
 }
 
+/** «Папка\имя (n).pdf» для «Папка\имя.pdf»: так Проводник называет копии. */
+export function numberedPath(path: string, n: number): string {
+  const name = basenameOf(path)
+  const dot = name.lastIndexOf('.')
+  const stem = dot <= 0 ? name : name.slice(0, dot)
+  const ext = dot <= 0 ? '' : name.slice(dot)
+  const numbered = `${stem} (${n})${ext}`
+  return name === path ? numbered : joinPath(dirnameOf(path), numbered)
+}
+
+/**
+ * Свободное имя файла: сам путь, если он не занят, иначе первый свободный
+ * из «имя (2)», «имя (3)»… Имена в Windows не различают регистр, поэтому
+ * taken получает путь в нижнем регистре.
+ */
+export function freePath(path: string, taken: (lowerCasePath: string) => boolean): string {
+  if (!taken(path.toLowerCase())) return path
+  for (let n = 2; n < 10_000; n += 1) {
+    const candidate = numberedPath(path, n)
+    if (!taken(candidate.toLowerCase())) return candidate
+  }
+  throw new Error(`Нет свободного имени для ${basenameOf(path)}`)
+}
+
 /** Убирает символы, недопустимые в именах файлов Windows. */
 export function safeFileName(name: string): string {
   // eslint-disable-next-line no-control-regex -- управляющие символы запрещены в именах файлов Windows

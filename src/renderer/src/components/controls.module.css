@@ -294,6 +294,18 @@
   border-radius: 2px;
   background: var(--accent);
 }
+.toastAction {
+  pointer-events: auto;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-s);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.toastAction:hover {
+  filter: brightness(1.06);
+}
 
 .swatches {
   display: flex;
