@@ -97,9 +97,15 @@ import {
   type SelectionTarget
 } from '@renderer/features/markup/selection'
 import { findAnnotation } from '@renderer/features/annotations/page-annotations'
+import { withFieldValue } from '@renderer/features/forms/form-values'
 import { pdfContent } from '@renderer/pdf-content/client'
-import type { ProtectionInfo, ProtectOptions } from '@shared/pdf-content/protect'
+import {
+  restrictionsOf,
+  type ProtectionInfo,
+  type ProtectOptions
+} from '@shared/pdf-content/protect'
 import { getApi } from './api'
+import { matchesSaved, type SavedState } from './saved-state'
 import { applyTheme, resolvedTheme } from './theme'
 
 export type Screen = 'start' | 'viewer' | 'settings' | 'kit' | 'compare'
@@ -127,6 +133,8 @@ export interface ConvertSource {
   path: string
   bytes: Uint8Array
   pages: number
+  /** Владелец запретил копирование, а документ открыт паролем на открытие. */
+  noCopy?: boolean
 }
 
 export interface ToolStyle {
@@ -172,6 +180,15 @@ export type DocProtection =
       kind: 'new'
       options: ProtectOptions
     }
+
+/**
+ * Сведения о защите файла, открытого паролем. Запреты владельца действуют в
+ * программе, пока документ открыт паролем на открытие; новая защита задана
+ * уже с правами владельца.
+ */
+export function fileProtection(tab: DocTab): ProtectionInfo | null {
+  return tab.protection?.kind === 'file' ? tab.protection.info : null
+}
 
 /** Байты для записи файла: расшифрованная копия вкладки снова шифруется. */
 async function lockForWrite(
@@ -220,11 +237,6 @@ async function unlockOpened(
 
 const NO_FORMS: FormValues = {}
 const hasForms = (tab: DocTab): boolean => Object.keys(tab.forms).length > 0
-const sameFormValue = (a: FormValue | undefined, b: FormValue): boolean =>
-  a !== undefined &&
-  (typeof a === 'string' || typeof b === 'string'
-    ? a === b
-    : a.length === b.length && a.every((v, i) => v === b[i]))
 
 export interface DocTab {
   id: string
@@ -251,6 +263,13 @@ export interface DocTab {
   busy: boolean
   /** Защита паролем, которая будет записана в файл; нет — документ без пароля. */
   protection?: DocProtection | null | undefined
+  /** Что записано в файл; нет — документ ещё не сохранялся (новый). */
+  saved?: SavedState<DocProtection> | undefined
+}
+
+/** Снимок вкладки совпал с записанным в файл — документ снова не изменён. */
+function syncDirty(tab: DocTab): DocTab {
+  return tab.dirty && matchesSaved(tab, tab.saved) ? { ...tab, dirty: false } : tab
 }
 
 export interface ZoomState {
@@ -436,7 +455,7 @@ type Action =
       change: (forms: FormValues) => FormValues
       coalesce?: string
     }
-  | { type: 'docSaved'; id: string; path: string }
+  | { type: 'docSaved'; id: string; path: string; saved: SavedState<DocProtection> }
   | { type: 'closeDoc'; id: string }
   | { type: 'activateDoc'; id: string }
   | { type: 'toast'; message: string | null }
@@ -599,6 +618,12 @@ function selectionForTool(target: SelectionTarget | null, tool: Tool): Selection
 }
 
 function reducer(state: State, action: Action): State {
+  const next = reduce(state, action)
+  if (next.docs === state.docs) return next
+  return { ...next, docs: next.docs.map((d) => (state.docs.includes(d) ? d : syncDirty(d))) }
+}
+
+function reduce(state: State, action: Action): State {
   switch (action.type) {
     case 'ready':
       return {
@@ -633,7 +658,15 @@ function reducer(state: State, action: Action): State {
         bytes: action.bytes,
         fileSize: action.fileSize,
         error: null,
-        protection: action.protection ?? null
+        protection: action.protection ?? null,
+        saved: d.dirty
+          ? undefined
+          : {
+              bytes: action.bytes,
+              markup: [],
+              forms: NO_FORMS,
+              protection: action.protection ?? null
+            }
       }))
     case 'docError':
       return updateDoc(state, action.id, (d) => ({ ...d, status: 'error', error: action.error }))
@@ -739,7 +772,9 @@ function reducer(state: State, action: Action): State {
     case 'docSaved':
       return updateDoc(state, action.id, (d) => ({
         ...d,
-        dirty: false,
+        // Правка во время записи файла остаётся несохранённой.
+        dirty: !matchesSaved(d, action.saved),
+        saved: action.saved,
         path: action.path,
         name: basenameOf(action.path)
       }))
@@ -984,7 +1019,8 @@ export interface Actions {
   eraseContent: (page: number, rect: PdfSpaceRect) => void
   // Формы и метаданные
   /** Значение поля формы; coalesce склеивает набор текста в один шаг отмены. */
-  setFormValue: (name: string, value: FormValue, coalesce?: string) => void
+  /** value null — поле снова как в файле: его несохранённое значение убирается. */
+  setFormValue: (name: string, value: FormValue | null, coalesce?: string) => void
   /** Отменяет несохранённые значения полей: поля снова как в файле. */
   resetForms: () => void
   /** Вплавляет поля в страницы: значения остаются, полей больше нет. */
@@ -1047,6 +1083,12 @@ export interface Actions {
   // Конвертация
   /** Активный документ как источник: байты с записанной несохранённой разметкой. */
   convertSource: () => Promise<ConvertSource | null>
+  /**
+   * PDF-файл как источник конвертации: зашифрованный спрашивает пароль, как при
+   * обычном открытии, и расшифровывается; null — пользователь отменил ввод
+   * пароля. Повреждённый файл даёт понятную ошибку.
+   */
+  readConvertFile: (file: { name: string; path: string }) => Promise<ConvertSource | null>
   /** Открывает готовые байты новой несохранённой вкладкой («Сохранить» спросит путь). */
   openNewDocument: (name: string, bytes: Uint8Array) => Promise<boolean>
   /** Заменяет байты активного документа шагом истории: Ctrl+Z возвращает прежние. */
@@ -1223,6 +1265,38 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
   useEffect(() => {
     api.setDirtyCount(dirtyCount).catch(() => undefined)
   }, [api, dirtyCount])
+
+  // Запрет копирования владельцем: текст страниц (и полей формы на них) не копируется.
+  useEffect(() => {
+    // Поле формы на странице или выделение, задевающее хотя бы одну страницу (Ctrl+A).
+    const fromPages = (event: ClipboardEvent): boolean => {
+      if (event.target instanceof Element && event.target.closest('[data-page]') !== null) {
+        return true
+      }
+      const selection = document.getSelection()
+      if (!selection || selection.isCollapsed) return false
+      const pages = Array.from(document.querySelectorAll('[data-page]'))
+      for (let i = 0; i < selection.rangeCount; i += 1) {
+        const range = selection.getRangeAt(i)
+        if (pages.some((page) => range.intersectsNode(page))) return true
+      }
+      return false
+    }
+    const onCopy = (event: ClipboardEvent): void => {
+      const current = stateRef.current
+      const tab = activeDoc(current)
+      if (current.screen !== 'viewer' || !tab || !restrictionsOf(fileProtection(tab)).copy) return
+      if (!fromPages(event)) return
+      event.preventDefault()
+      toast(t.protect.copyBlocked)
+    }
+    document.addEventListener('copy', onCopy)
+    document.addEventListener('cut', onCopy)
+    return () => {
+      document.removeEventListener('copy', onCopy)
+      document.removeEventListener('cut', onCopy)
+    }
+  }, [toast])
 
   // main запоминает вкладки окна для сеанса и для выбора окна под файл из Проводника.
   const tabPaths = state.docs
@@ -1437,7 +1511,12 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           bytes: toArrayBuffer(output),
           backup: stateRef.current.settings.files.backupOnSave
         })
-        dispatch({ type: 'docSaved', id: tab.id, path })
+        dispatch({
+          type: 'docSaved',
+          id: tab.id,
+          path,
+          saved: { bytes, markup: [], forms: NO_FORMS, protection: tab.protection ?? null }
+        })
         toast(t.ops.saved(basenameOf(path)))
         refreshRecent()
         return true
@@ -2006,8 +2085,7 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         dispatch({
           type: 'forms',
           id: tab.id,
-          change: (forms) =>
-            sameFormValue(forms[name], value) ? forms : { ...forms, [name]: value },
+          change: (forms) => withFieldValue(forms, name, value),
           ...(coalesce === undefined ? {} : { coalesce: `form:${coalesce}` })
         })
       },
@@ -2172,6 +2250,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       print: () => {
         const tab = activeDoc(stateRef.current)
         if (tab?.status !== 'ready') return
+        if (restrictionsOf(fileProtection(tab)).print) {
+          toast(t.protect.printBlocked)
+          return
+        }
         if (tab.dirty) {
           toast(t.viewer.unsaved)
           return
@@ -2359,7 +2441,53 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       convertSource: async () => {
         const tab = activeDoc(stateRef.current)
         if (tab?.status !== 'ready' || !tab.bytes) return null
-        return { name: tab.name, path: tab.path, pages: tab.pages, bytes: await bakeMarkup(tab) }
+        return {
+          name: tab.name,
+          path: tab.path,
+          pages: tab.pages,
+          bytes: await bakeMarkup(tab),
+          noCopy: restrictionsOf(fileProtection(tab)).copy
+        }
+      },
+      readConvertFile: async (file) => {
+        let typed: string | null = null
+        const askPassword = (reason: PasswordReason): Promise<string | null> =>
+          new Promise((resolve) => {
+            dispatch({
+              type: 'password',
+              request: {
+                fileName: file.name,
+                reason,
+                resolve: (password) => {
+                  dispatch({ type: 'password', request: null })
+                  typed = password
+                  resolve(password)
+                }
+              }
+            })
+          })
+        const raw = new Uint8Array((await api.readFile(file.path)).bytes)
+        let doc: PdfDocument
+        try {
+          // pdf.js проверяет файл и спрашивает пароль; его сообщения понятны.
+          doc = await loadPdfDocument(raw, { askPassword })
+        } catch (error) {
+          if (error instanceof PdfLoadError && error.kind === 'cancelled') return null
+          throw error
+        }
+        try {
+          const { bytes, protection } = await unlockOpened(doc, raw, typed)
+          const info = protection?.kind === 'file' ? protection.info : null
+          return {
+            name: file.name,
+            path: file.path,
+            bytes,
+            pages: doc.numPages,
+            noCopy: restrictionsOf(info).copy
+          }
+        } finally {
+          doc.destroy()
+        }
       },
       openNewDocument: async (name, bytes) => {
         docCounter += 1

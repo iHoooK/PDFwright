@@ -6,6 +6,7 @@ import {
   type PDFPageProxy,
   type PdfDocument
 } from '@renderer/pdf-engine/engine'
+import { sameValue, supportsSelection, withFieldValue } from './form-values'
 
 /**
  * Слой форм pdf.js поверх страницы: поля AcroForm как обычные элементы ввода.
@@ -36,8 +37,11 @@ interface Widget {
 }
 
 export interface FormLayerCallbacks {
-  /** coalesce склеивает набор текста в одном поле в один шаг отмены. */
-  onChange: (name: string, value: FormValue, coalesce?: string) => void
+  /**
+   * coalesce склеивает набор текста в одном поле в один шаг отмены. value null —
+   * поле вернулось к значению из файла: несохранённой правки у него больше нет.
+   */
+  onChange: (name: string, value: FormValue | null, coalesce?: string) => void
   onUndo: () => void
   onRedo: () => void
 }
@@ -77,11 +81,6 @@ function fileValue({ data, kind }: Widget): FormValue {
     ? data.fieldValue
     : FORM_OFF
 }
-
-const sameValue = (a: FormValue, b: FormValue): boolean =>
-  typeof a === 'string' || typeof b === 'string'
-    ? a === b
-    : a.length === b.length && a.every((v, i) => v === b[i])
 
 /** Что должно лежать в annotationStorage у виджета при значении поля value. */
 function storageEntry({ data, kind }: Widget, value: FormValue): Record<string, unknown> {
@@ -147,6 +146,12 @@ export class FormLayerController {
   private pending: FormValues | null = null
   private focusRun = 0
   private destroyed = false
+  /**
+   * Слой перерисовывается: поле в фокусе, удаляемое из DOM, присылает change
+   * со старым значением — это не правка пользователя (иначе отмена тут же
+   * перезаписывается этим значением).
+   */
+  private replacing = false
   /**
    * Своя копия холстов: AnnotationLayer вынимает их из переданной карты, а при
    * перерисовке слоя (отмена, повтор) они нужны снова.
@@ -219,7 +224,12 @@ export class FormLayerController {
           : null
       const fieldObjects = await doc.getFieldObjects()
       if (this.destroyed) return
-      div.replaceChildren()
+      this.replacing = true
+      try {
+        div.replaceChildren()
+      } finally {
+        this.replacing = false
+      }
       const layer = new AnnotationLayer({
         div,
         page,
@@ -247,7 +257,10 @@ export class FormLayerController {
       if (focusedId !== null && div.isConnected) {
         const element = div.querySelector<HTMLElement>(`[data-element-id="${focusedId}"]`)
         element?.focus()
-        if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+        if (
+          (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
+          supportsSelection(element.tagName, element.type)
+        ) {
           const end = element.value.length
           element.setSelectionRange(end, end)
         }
@@ -269,17 +282,19 @@ export class FormLayerController {
 
   private readonly onInput = (event: Event): void => {
     const target = event.target
-    if (!(target instanceof HTMLElement)) return
+    if (this.replacing || !(target instanceof HTMLElement)) return
     const id = target.getAttribute('data-element-id')
     const widget = this.widgets.find((w) => w.data.id === id)
     if (!widget) return
     const value = valueFromElement(target, widget)
     if (value === null || sameValue(value, this.valueOf(widget))) return
     const name = widget.data.fieldName
-    this.values = { ...this.values, [name]: value }
+    // Значение как в файле — правки поля больше нет (флажок переключён дважды).
+    const change = sameValue(value, fileValue(widget)) ? null : value
+    this.values = withFieldValue(this.values, name, change)
     this.options.onChange(
       name,
-      value,
+      change,
       widget.kind === 'text' ? `${name}:${this.focusRun}` : undefined
     )
   }

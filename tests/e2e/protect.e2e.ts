@@ -6,7 +6,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { _electron as electron, type Page } from 'playwright'
 import { describe, expect, it } from 'vitest'
 import { inspectProtection } from '../../src/shared/pdf-content/protect'
-import { clickMenuItem, ctx, launch, ROOT, shot, statusText, useElectronApp } from './helpers'
+import { clickMenuItem, ctx, launch, ROOT, shot, statusText, tool, useElectronApp } from './helpers'
 
 /** Фаза 16: пароль на документ — установка, правка защищённого файла, снятие. */
 useElectronApp()
@@ -58,6 +58,11 @@ async function command(name: string): Promise<void> {
   await ctx.app.evaluate(({ BrowserWindow }, cmd) => {
     BrowserWindow.getAllWindows()[0]?.webContents.send('app:command', cmd)
   }, name)
+}
+
+function requireApp(): NonNullable<typeof ctx.app> {
+  if (!ctx.app) throw new Error('программа не запущена')
+  return ctx.app
 }
 
 async function stopApp(): Promise<void> {
@@ -158,10 +163,10 @@ describe('Защита паролем (собранное приложение)'
     await clickMenuItem('file.protect')
     dialog = page.getByRole('dialog', { name: 'Защита паролем' })
     await dialog.getByText('Печать запрещена.', { exact: false }).waitFor()
-    await dialog.getByLabel('Пароль владельца', { exact: true }).fill(OPEN)
+    await dialog.getByLabel('Текущий пароль владельца').fill(OPEN)
     await dialog.getByRole('button', { name: 'Снять защиту' }).click()
     await dialog.getByRole('alert').filter({ hasText: 'Это не пароль владельца' }).waitFor()
-    await dialog.getByLabel('Пароль владельца', { exact: true }).fill(OWNER)
+    await dialog.getByLabel('Текущий пароль владельца').fill(OWNER)
     await dialog.getByRole('button', { name: 'Снять защиту' }).click()
     await expect.poll(() => dialog.isVisible()).toBe(false)
     await save(page)
@@ -170,5 +175,76 @@ describe('Защита паролем (собранное приложение)'
     const plain = await PDFDocument.load(await readFile(target))
     expect(plain.getTitle()).toBe('After')
     expect(plain.getPageCount()).toBe(2)
+  }, 180_000)
+
+  it('смена пароля на открытие сохраняет пароль владельца и запреты; запреты действуют в программе', async () => {
+    const target = await protectedSample('запреты.pdf')
+    let page = await launch(target)
+    await clickMenuItem('file.protect')
+    let dialog = page.getByRole('dialog', { name: 'Защита паролем' })
+    await dialog.getByLabel('Пароль на открытие').fill(OPEN)
+    await dialog.getByLabel('Повторите пароль').fill(OPEN)
+    await dialog.getByLabel('Пароль владельца (необязательно)').fill(OWNER)
+    await dialog.getByRole('switch', { name: 'Разрешить печать' }).click()
+    await dialog.getByRole('switch', { name: 'Разрешить копирование' }).click()
+    await dialog.getByRole('button', { name: 'Установить пароль' }).click()
+    await expect.poll(() => dialog.isVisible()).toBe(false)
+    await save(page)
+
+    // После сохранения «Свойства» не обещают записать шифрование ещё раз.
+    await command('file.properties')
+    const props = page.getByRole('dialog', { name: 'Свойства документа' })
+    await props.getByText('AES-256', { exact: true }).waitFor()
+    expect(await props.textContent()).not.toContain('при сохранении')
+    await page.keyboard.press('Escape')
+    await stopApp()
+
+    page = await launchLocked(target)
+    const ask = page.getByRole('dialog', { name: 'Документ защищён паролем' })
+    await ask.getByLabel('Документ защищён паролем').fill(OPEN)
+    await page.keyboard.press('Enter')
+    await page.waitForSelector('[data-page="1"] canvas', { timeout: 60_000 })
+    await page.locator('[data-page="1"] .textLayer span').first().waitFor({ timeout: 20_000 })
+
+    // Печать и копирование запрещены владельцем — понятное сообщение.
+    const toast = page.getByRole('status')
+    await tool(page, 'Печать').click()
+    await toast.filter({ hasText: 'запретил печать' }).waitFor()
+    await requireApp().evaluate(({ clipboard }) => clipboard.writeText('прежнее'))
+    await page.locator('[data-page="1"] .textLayer span').first().click()
+    await page.keyboard.press('Control+a')
+    await page.keyboard.press('Control+c')
+    await toast.filter({ hasText: 'запретил копирование' }).waitFor()
+    expect(await requireApp().evaluate(({ clipboard }) => clipboard.readText())).toBe('прежнее')
+
+    // Неверный пароль владельца при пустых новых полях — сообщение про пароль владельца.
+    await clickMenuItem('file.protect')
+    dialog = page.getByRole('dialog', { name: 'Защита паролем' })
+    await dialog.getByText('Печать запрещена.', { exact: false }).waitFor()
+    await dialog.getByLabel('Текущий пароль владельца').fill('не тот')
+    await dialog.getByRole('button', { name: 'Сменить пароль' }).click()
+    await dialog.getByRole('alert').filter({ hasText: 'Это не пароль владельца' }).waitFor()
+
+    // Смена только пароля на открытие: переключатели показывают действующие запреты.
+    await dialog.getByLabel('Текущий пароль владельца').fill(OWNER)
+    expect(
+      await dialog.getByRole('switch', { name: 'Разрешить печать' }).getAttribute('aria-checked')
+    ).toBe('false')
+    expect(
+      await dialog
+        .getByRole('switch', { name: 'Разрешить копирование' })
+        .getAttribute('aria-checked')
+    ).toBe('false')
+    await dialog.getByLabel('Пароль на открытие').fill('Новый-1')
+    await dialog.getByLabel('Повторите пароль').fill('Новый-1')
+    await dialog.getByRole('button', { name: 'Сменить пароль' }).click()
+    await expect.poll(() => dialog.isVisible()).toBe(false)
+    await save(page)
+
+    expect(await access(target, 'Новый-1')).toBe(2)
+    expect(await access(target, OWNER)).toBe(4)
+    expect(await access(target, OPEN)).toBe(0)
+    const info = await inspectProtection(new Uint8Array(await readFile(target)), 'Новый-1')
+    expect(info).toMatchObject({ canPrint: false, canCopy: false })
   }, 180_000)
 })

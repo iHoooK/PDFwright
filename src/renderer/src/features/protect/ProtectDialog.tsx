@@ -4,6 +4,8 @@ import { Dialog } from '@renderer/components/Dialog'
 import { activeDoc, useStore, type DocTab } from '@renderer/app/store'
 import { t } from '@renderer/i18n'
 import { pdfContent } from '@renderer/pdf-content/client'
+import { protectionWritten } from '@renderer/app/saved-state'
+import { initialPermissions, isRestricted, keptOwnerPassword, protectOptions } from './protect-form'
 import ds from '@renderer/components/dialog.module.css'
 import ts from '@renderer/features/tools/tools.module.css'
 
@@ -26,24 +28,29 @@ function ProtectForm({ tab }: { tab: DocTab }): React.JSX.Element {
   const [repeat, setRepeat] = useState('')
   const [owner, setOwner] = useState('')
   const [current, setCurrent] = useState('')
-  const [allowPrint, setAllowPrint] = useState(true)
-  const [allowCopy, setAllowCopy] = useState(true)
+  const [allowPrint, setAllowPrint] = useState(() => initialPermissions(protection).allowPrint)
+  const [allowCopy, setAllowCopy] = useState(() => initialPermissions(protection).allowCopy)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const needsOwner = protection?.kind === 'file' && protection.info.access === 'user'
-  const restricted = owner !== '' && owner !== user
+  const input = { user, owner, current, allowPrint, allowCopy }
+  const restricted = isRestricted(protection, input)
+  // Пароль владельца, который останется, если не задавать новый.
+  const keepsOwner = needsOwner || keptOwnerPassword(protection, current) !== ''
   const close = (): void => {
     actions.openTool(null)
   }
 
   const lead: string[] = []
   if (!protection) lead.push(t.protect.leadNone)
-  else if (protection.kind === 'new') lead.push(t.protect.leadNew)
-  else {
-    lead.push(t.protect.leadFile(protection.info.method))
-    if (!protection.info.canPrint) lead.push(t.protect.noPrint)
-    if (!protection.info.canCopy) lead.push(t.protect.noCopy)
+  else if (protection.kind === 'new' && !protectionWritten(protection, tab.saved)) {
+    lead.push(t.protect.leadNew)
+  } else {
+    const allowed = initialPermissions(protection)
+    lead.push(t.protect.leadFile(protection.kind === 'file' ? protection.info.method : 'AES-256'))
+    if (!allowed.allowPrint) lead.push(t.protect.noPrint)
+    if (!allowed.allowCopy) lead.push(t.protect.noCopy)
   }
 
   /** Пароль владельца нужен, если документ открыт паролем на открытие. */
@@ -68,6 +75,8 @@ function ProtectForm({ tab }: { tab: DocTab }): React.JSX.Element {
 
   const apply = async (): Promise<void> => {
     if (busy) return
+    // Сначала право менять защиту: неверный пароль владельца важнее пустых полей.
+    if (!(await ownerConfirmed())) return
     if (user === '') {
       setError(t.protect.userRequired)
       return
@@ -76,13 +85,7 @@ function ProtectForm({ tab }: { tab: DocTab }): React.JSX.Element {
       setError(t.protect.mismatch)
       return
     }
-    if (!(await ownerConfirmed())) return
-    actions.setProtection({
-      userPassword: user,
-      ownerPassword: owner,
-      allowPrint: restricted ? allowPrint : true,
-      allowCopy: restricted ? allowCopy : true
-    })
+    actions.setProtection(protectOptions(protection, input))
     close()
   }
 
@@ -181,9 +184,9 @@ function ProtectForm({ tab }: { tab: DocTab }): React.JSX.Element {
       )}
       {field('protect-user', t.protect.user, user, setUser)}
       {field('protect-repeat', t.protect.repeat, repeat, setRepeat)}
-      {field('protect-owner', t.protect.owner, owner, setOwner)}
+      {field('protect-owner', protection ? t.protect.ownerNew : t.protect.owner, owner, setOwner)}
       <p className={ts.label} style={{ margin: 0 }}>
-        {t.protect.ownerHint}
+        {keepsOwner ? `${t.protect.ownerKeep} ${t.protect.ownerHint}` : t.protect.ownerHint}
       </p>
       {toggle('protect-print', t.protect.allowPrint, allowPrint, setAllowPrint)}
       {toggle('protect-copy', t.protect.allowCopy, allowCopy, setAllowCopy)}

@@ -1,8 +1,20 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import * as mupdf from 'mupdf'
-import { PDFDict, PDFDocument, PDFName, PDFRawStream, PDFStream, StandardFonts } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
+import {
+  decodePDFRawStream,
+  PDFArray,
+  PDFDict,
+  PDFDocument,
+  PDFName,
+  PDFRawStream,
+  PDFRef,
+  PDFStream,
+  StandardFonts
+} from 'pdf-lib'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { descenderSafe } from '@shared/pdf-ops/forms'
 import {
   applyFormValues,
   clearMetadata,
@@ -178,6 +190,83 @@ describe('applyFormValues', () => {
       PdfOpsError
     )
     await expect(applyFormValues(fixture, { size: 'XL' }, { font })).rejects.toThrow(/XL/)
+  })
+
+  it('flatten убирает виджеты из /Annots: ссылок на удалённые объекты нет', async () => {
+    const bytes = await applyFormValues(
+      await formFixture(),
+      { name: 'Мария', agree: 'Yes', city: 'Kazan' },
+      { font, flatten: true }
+    )
+    const doc = await PDFDocument.load(bytes)
+    const annots = doc.getPage(0).node.lookupMaybe(PDFName.of('Annots'), PDFArray)
+    const refs = annots ? annots.asArray() : []
+    expect(refs.filter((ref) => ref instanceof PDFRef && !doc.context.lookup(ref))).toEqual([])
+    expect(refs).toEqual([])
+    // MuPDF открывает страницу без «cannot find object in xref».
+    const mu = new mupdf.PDFDocument(bytes)
+    const page = mu.loadPage(0)
+    expect(page.getAnnotations()).toEqual([])
+    expect(page.getWidgets()).toEqual([])
+    page.destroy()
+    mu.destroy()
+  })
+
+  it('вид однострочного поля не обрезает нижние выносные элементы', async () => {
+    // Как в демо-договоре: поле высотой 25 пт, кегль 18 пт, рамка 1 пт.
+    const source = await PDFDocument.create()
+    const page = source.addPage([595, 842])
+    const helvetica = await source.embedFont(StandardFonts.Helvetica)
+    const form = source.getForm()
+    const fio = form.createTextField('fio')
+    fio.addToPage(page, { x: 160, y: 693, width: 281, height: 25, font: helvetica })
+    fio.setFontSize(18)
+    const city = form.createDropdown('city')
+    city.addOptions(['Saint Petersburg'])
+    city.addToPage(page, { x: 160, y: 593, width: 181, height: 25, font: helvetica })
+    city.setFontSize(18)
+    const bytes = await applyFormValues(
+      await source.save(),
+      { fio: 'Иванов Дмитрий', city: 'Saint Petersburg' },
+      { font }
+    )
+
+    const probe = await PDFDocument.create()
+    probe.registerFontkit(fontkit)
+    const pt = await probe.embedFont(font)
+    const descent = pt.heightAtSize(18) - pt.heightAtSize(18, { descender: false })
+    const doc = await PDFDocument.load(bytes)
+    for (const name of ['fio', 'city']) {
+      const normal = doc
+        .getForm()
+        .getField(name)
+        .acroField.getWidgets()[0]
+        ?.getAppearances()?.normal
+      if (!(normal instanceof PDFRawStream) && !(normal instanceof PDFStream)) throw new Error(name)
+      const content =
+        normal instanceof PDFRawStream
+          ? new TextDecoder('latin1').decode(decodePDFRawStream(normal).decode())
+          : normal.getContentsString()
+      const match = /([\d.]+) Tm/.exec(content)
+      // Низ области текста — рамка 1 пт и отступ 1 пт; базовая линия выше на вынос.
+      expect(Number(match?.[1])).toBeGreaterThanOrEqual(2 + descent - 0.01)
+    }
+  })
+
+  it('шрифт раскладки меняет только высоту без выноса', async () => {
+    const probe = await PDFDocument.create()
+    probe.registerFontkit(fontkit)
+    const pt = await probe.embedFont(font)
+    const safe = descenderSafe(pt, 21)
+    expect(safe.name).toBe(pt.name)
+    expect(safe.widthOfTextAtSize('Абв', 18)).toBe(pt.widthOfTextAtSize('Абв', 18))
+    expect(safe.heightAtSize(18)).toBe(pt.heightAtSize(18))
+    const descent = pt.heightAtSize(18) - pt.heightAtSize(18, { descender: false })
+    expect(safe.heightAtSize(18, { descender: false })).toBeCloseTo(21 - 2 * descent)
+    // Мелкий кегль помещается и так: обычное центрирование.
+    expect(descenderSafe(pt, 40).heightAtSize(10, { descender: false })).toBe(
+      pt.heightAtSize(10, { descender: false })
+    )
   })
 })
 

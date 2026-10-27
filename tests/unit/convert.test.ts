@@ -19,6 +19,7 @@ import {
   naturalSizePt,
   orientationMatrix
 } from '@shared/convert/images-to-pdf'
+import { compressionGain } from '@shared/convert/compress-gain'
 import { pageImageName, pageImageSize, pagesFromSpec } from '@shared/convert/page-images'
 import { encodeTextFile, isBlankText, joinPagesText } from '@shared/convert/text-file'
 import { compressPdf, extractText, linesToText } from '@shared/pdf-content'
@@ -210,18 +211,29 @@ describe('изображения в PDF', () => {
     expect(huge.width).toBe(14_400)
     expect(huge.height).toBe(7_200)
 
-    const portrait = layoutImagePage({ width: 100, height: 200 }, { pageSize: 'a4', marginMm: 0 })
+    const portrait = layoutImagePage({ width: 1000, height: 2000 }, { pageSize: 'a4', marginMm: 0 })
     expect([portrait.width, portrait.height]).toEqual([A4.width, A4.height])
     expect(portrait.rect.height).toBeCloseTo(A4.height)
     expect(portrait.rect.y).toBeCloseTo(0)
 
-    const landscape = layoutImagePage({ width: 400, height: 300 }, { pageSize: 'a4', marginMm: 15 })
+    const landscape = layoutImagePage(
+      { width: 1600, height: 1200 },
+      { pageSize: 'a4', marginMm: 15 }
+    )
     expect([landscape.width, landscape.height]).toEqual([A4.height, A4.width])
     const margin = (15 * 72) / 25.4
     expect(landscape.rect.y).toBeCloseTo(margin)
     expect(landscape.rect.height).toBeCloseTo(A4.width - 2 * margin)
     expect(landscape.rect.width / landscape.rect.height).toBeCloseTo(4 / 3)
     expect(landscape.rect.x + landscape.rect.width / 2).toBeCloseTo(A4.height / 2)
+
+    // Маленькая картинка (30×30 px при 96 dpi) не растягивается на всю страницу.
+    const tiny = layoutImagePage({ width: 22.5, height: 22.5 }, { pageSize: 'a4', marginMm: 15 })
+    expect([tiny.width, tiny.height]).toEqual([A4.width, A4.height])
+    expect(tiny.rect.width).toBeCloseTo(22.5)
+    expect(tiny.rect.height).toBeCloseTo(22.5)
+    expect(tiny.rect.x + tiny.rect.width / 2).toBeCloseTo(A4.width / 2)
+    expect(tiny.rect.y + tiny.rect.height / 2).toBeCloseTo(A4.height / 2)
   })
 
   it('размер «по картинке» берётся из dpi файла, иначе 96 dpi', () => {
@@ -292,6 +304,17 @@ describe('изображения в PDF', () => {
       )
     ).rejects.toThrow(/broken\.png/)
     await expect(imagesToPdf([], { pageSize: 'a4', marginMm: 0 })).rejects.toThrow(/хотя бы одну/)
+  })
+})
+
+describe('compressionGain', () => {
+  it('меньше 1 % — не выигрыш: «Применить» не предлагается', () => {
+    expect(compressionGain({ before: 100_000, after: 99_800 })).toBeNull()
+    expect(compressionGain({ before: 100_000, after: 100_000 })).toBeNull()
+    expect(compressionGain({ before: 100_000, after: 120_000 })).toBeNull()
+    expect(compressionGain({ before: 0, after: 0 })).toBeNull()
+    expect(compressionGain({ before: 100_000, after: 98_000 })).toBe(2)
+    expect(compressionGain({ before: 8_100_000, after: 179_000 })).toBe(98)
   })
 })
 

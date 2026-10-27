@@ -115,6 +115,42 @@ describe('Формы и метаданные (собранное приложе�
     expect(await layer.locator('input[name="agree"]').isChecked()).toBe(true)
   })
 
+  it('первое Ctrl+Z отменяет набор в поле; возврат к сохранённому снимает «Не сохранено»', async () => {
+    const target = await formFile('отмена.pdf')
+    const page = await launch(target)
+    const layer = page.locator('[data-page="1"] [data-forms-layer]')
+    const nameInput = layer.locator('input[name="name"]')
+    const city = layer.locator('select[name="city"]')
+    const agree = layer.locator('input[name="agree"]')
+    await nameInput.waitFor({ timeout: 20_000 })
+    const errors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text())
+    })
+
+    await city.selectOption('Kazan')
+    await page.waitForTimeout(300)
+    await nameInput.click()
+    await page.keyboard.type('Абв')
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => nameInput.inputValue()).toBe('')
+    await expect.poll(() => city.inputValue()).toBe('Kazan')
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => city.inputValue()).not.toBe('Kazan')
+    // Все шаги отменены — документ снова совпадает с файлом.
+    await expect.poll(() => statusText(page)).not.toContain('Не сохранено')
+
+    // Флажок, переключённый дважды, тоже ничего не меняет; ошибок в консоли нет.
+    await agree.check({ force: true })
+    await expect.poll(() => statusText(page)).toContain('Не сохранено')
+    await agree.focus()
+    await page.keyboard.press('Space')
+    await expect.poll(() => agree.isChecked()).toBe(false)
+    await expect.poll(() => statusText(page)).not.toContain('Не сохранено')
+    expect(await page.locator('[data-forms-panel]').textContent()).not.toContain('Изменено')
+    expect(errors.filter((e) => e.includes('[forms]'))).toEqual([])
+  })
+
   it('поля не мешают другим инструментам и вплавляются в страницу', async () => {
     const target = await formFile('flatten.pdf')
     const page = await launch(target)

@@ -538,10 +538,12 @@ export const en: Strings = {
       'The document was opened with its open password. To change or remove protection, enter the owner password.',
     noPrint: 'Printing is not allowed.',
     noCopy: 'Copying is not allowed.',
-    current: 'Owner password',
+    current: 'Current owner password',
     user: 'Open password',
     repeat: 'Repeat password',
     owner: 'Owner password (optional)',
+    ownerNew: 'New owner password (optional)',
+    ownerKeep: 'Leave it empty to keep the previous owner password and restrictions.',
     ownerHint: 'Restrictions apply only when the owner password differs from the open password.',
     allowPrint: 'Allow printing',
     allowCopy: 'Allow copying text and images',
@@ -558,6 +560,10 @@ export const en: Strings = {
     applied: 'Password set: it will be written to the file when you save',
     removed: 'Protection removed: the file will be saved without a password',
     needDoc: 'Open a document to protect it with a password',
+    printBlocked:
+      'The document owner does not allow printing. To print, open the file with the owner password',
+    copyBlocked:
+      'The document owner does not allow copying. To copy, open the file with the owner password',
     pending: (method: string) => `${method}, written on save`
   },
   settings: {

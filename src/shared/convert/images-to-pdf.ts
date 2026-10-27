@@ -65,7 +65,8 @@ export function naturalSizePt(info: ImageInfo): { width: number; height: number 
 /**
  * Раскладка страницы для картинки размера size (пт, после поворота по EXIF).
  * «По картинке» — страница равна картинке (в пределах допустимых размеров PDF),
- * «A4» — ориентация по картинке, картинка вписана в поля с сохранением пропорций.
+ * «A4» — ориентация по картинке, картинка вписана в поля с сохранением пропорций;
+ * картинка меньше полей стоит в центре в своём размере (не больше 100 %).
  */
 export function layoutImagePage(
   size: { width: number; height: number },
@@ -84,7 +85,8 @@ export function layoutImagePage(
   const margin = Math.max(0, Math.min(options.marginMm * PT_PER_MM, Math.min(width, height) / 4))
   const boxWidth = width - 2 * margin
   const boxHeight = height - 2 * margin
-  const scale = Math.min(boxWidth / size.width, boxHeight / size.height)
+  // Большая картинка уменьшается до полей, маленькая не растягивается (пиксели видны).
+  const scale = Math.min(boxWidth / size.width, boxHeight / size.height, 1)
   const w = size.width * scale
   const h = size.height * scale
   return {

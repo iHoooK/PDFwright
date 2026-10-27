@@ -1,6 +1,9 @@
 import { m } from '../messages'
 import fontkit from '@pdf-lib/fontkit'
 import {
+  defaultDropdownAppearanceProvider,
+  defaultTextFieldAppearanceProvider,
+  PDFArray,
   PDFCheckBox,
   PDFDict,
   PDFDropdown,
@@ -11,7 +14,9 @@ import {
   PDFSignature,
   PDFStream,
   PDFTextField,
+  reduceRotation,
   type PDFDocument,
+  type PDFWidgetAnnotation,
   type PDFField,
   type PDFForm,
   type PDFFont
@@ -156,6 +161,40 @@ function setValue(form: PDFForm, field: PDFField, value: FormValue): void {
   }
 }
 
+/** Высота области текста однострочного поля — как её считает pdf-lib (рамка и отступ 1 пт). */
+function innerHeight(widget: PDFWidgetAnnotation): number {
+  const rect = widget.getRectangle()
+  const rotation = reduceRotation(widget.getAppearanceCharacteristics()?.getRotation())
+  const height = rotation === 90 || rotation === 270 ? rect.width : rect.height
+  const border = widget.getBorderStyle()?.getWidth() ?? 0
+  return height - (border + 1) * 2
+}
+
+/**
+ * Шрифт для раскладки однострочного поля без обрезки нижних выносных элементов.
+ * pdf-lib центрирует строку по высоте без нижнего выноса: у крупного кегля «у»,
+ * «р», «g» уходят под рамку. Высота «без выноса», которую он видит, уменьшается
+ * так, чтобы базовая линия была не ниже выноса над нижним краем (и не выше
+ * обычного центрирования). Рисует поле настоящий шрифт.
+ */
+export function descenderSafe(font: PDFFont, boxHeight: number): PDFFont {
+  const heightAtSize: PDFFont['heightAtSize'] = (size, options) => {
+    const full = font.heightAtSize(size)
+    const ascent = font.heightAtSize(size, { descender: false })
+    if (options?.descender !== false) return full
+    // Базовая линия = низ + (boxHeight − h) / 2 ≥ низ + вынос.
+    const descent = full - ascent
+    return Math.max(0, Math.min(ascent, boxHeight - 2 * descent))
+  }
+  return new Proxy(font, {
+    get(target, key, receiver): unknown {
+      if (key === 'heightAtSize') return heightAtSize
+      const value: unknown = Reflect.get(target, key, receiver)
+      return typeof value === 'function' ? value.bind(target) : value
+    }
+  })
+}
+
 /**
  * Внешний вид изменённых полей и полей без него — встроенным шрифтом. Поле,
  * которое pdf-lib не умеет нарисовать (редкие виды кнопок), оставляем как было.
@@ -164,7 +203,15 @@ function updateAppearances(doc: PDFDocument, font: PDFFont | null): void {
   for (const field of doc.getForm().getFields()) {
     if (!field.needsAppearancesUpdate()) continue
     try {
-      if (font) field.defaultUpdateAppearances(font)
+      if (font && field instanceof PDFTextField && !field.isMultiline() && !field.isCombed()) {
+        field.updateAppearances(font, (f, widget, base) =>
+          defaultTextFieldAppearanceProvider(f, widget, descenderSafe(base, innerHeight(widget)))
+        )
+      } else if (font && field instanceof PDFDropdown) {
+        field.updateAppearances(font, (f, widget, base) =>
+          defaultDropdownAppearanceProvider(f, widget, descenderSafe(base, innerHeight(widget)))
+        )
+      } else if (font) field.defaultUpdateAppearances(font)
       else if (field instanceof PDFCheckBox || field instanceof PDFRadioGroup)
         field.defaultUpdateAppearances()
     } catch (error) {
@@ -196,6 +243,38 @@ function prepareFlatten(doc: PDFDocument): void {
   }
 }
 
+/** Ссылки на виджеты всех полей (до вплавления). */
+function widgetRefs(doc: PDFDocument): Set<PDFRef> {
+  // PDFRef.of отдаёт один и тот же объект для номера: сравнение по ссылке.
+  const refs = new Set<PDFRef>()
+  for (const field of doc.getForm().getFields()) {
+    for (const widget of field.acroField.getWidgets()) {
+      const ref = doc.context.getObjectRef(widget.dict)
+      if (ref) refs.add(ref)
+    }
+    refs.add(field.ref)
+  }
+  return refs
+}
+
+/**
+ * pdf-lib при вплавлении убирает из /Annots страницы только поле, а не его
+ * виджеты-потомки: в файле остаются ссылки на удалённые объекты. Убираем из
+ * /Annots виджеты вплавленных полей и всё, что ссылается в пустоту.
+ */
+function removeWidgetAnnots(doc: PDFDocument, widgets: ReadonlySet<PDFRef>): void {
+  for (const page of doc.getPages()) {
+    const annots = page.node.lookupMaybe(PDFName.of('Annots'), PDFArray)
+    if (!annots) continue
+    for (let index = annots.size() - 1; index >= 0; index -= 1) {
+      const item = annots.get(index)
+      if (!(item instanceof PDFRef)) continue
+      if (widgets.has(item) || doc.context.lookup(item) === undefined) annots.remove(index)
+    }
+  }
+  for (const ref of widgets) doc.context.delete(ref)
+}
+
 /**
  * Записывает значения полей в документ и обновляет их внешний вид шрифтом
  * options.font — так значения на кириллице видны и в других просмотрщиках.
@@ -224,7 +303,9 @@ export async function applyFormValues(
   updateAppearances(doc, font)
   if (options.flatten) {
     prepareFlatten(doc)
+    const widgets = widgetRefs(doc)
     form.flatten({ updateFieldAppearances: false })
+    removeWidgetAnnots(doc, widgets)
   }
   doc.setProducer(PRODUCER)
   doc.setModificationDate(new Date())

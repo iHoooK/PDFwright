@@ -4,7 +4,7 @@ import { IconDocument } from '@renderer/icons'
 import { Button, RadioGroup } from '@renderer/components/controls'
 import { activeDoc, useStore, type ConvertSource } from '@renderer/app/store'
 import { t } from '@renderer/i18n'
-import { pageCount, PageRangeError } from '@shared/pdf-ops'
+import { PageRangeError } from '@shared/pdf-ops'
 import { pagesFromSpec } from '@shared/convert/page-images'
 import dialogStyles from '@renderer/components/dialog.module.css'
 import ts from '@renderer/features/tools/tools.module.css'
@@ -56,8 +56,10 @@ export function useConvertSource(): SourceState {
       const file = await api.openPdfDialog()
       if (!file) return
       try {
-        const bytes = new Uint8Array((await api.readFile(file.path)).bytes)
-        setSource({ name: file.name, path: file.path, bytes, pages: await pageCount(bytes) })
+        // Зашифрованный файл спрашивает пароль, повреждённый — понятная ошибка.
+        const picked = await actions.readConvertFile(file)
+        if (!picked) return
+        setSource(picked)
         setActive(false)
         setError(null)
       } catch (e) {

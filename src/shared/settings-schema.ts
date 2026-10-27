@@ -63,6 +63,15 @@ export interface MarkupSettings {
   signatures: SavedSignature[]
 }
 
+export const COMPRESS_LEVELS = ['strong', 'medium', 'light'] as const
+/** Степень сжатия PDF (strong — сильное, medium — среднее, light — лёгкое). */
+export type CompressLevelSetting = (typeof COMPRESS_LEVELS)[number]
+
+export interface ConvertSettings {
+  /** Последняя выбранная степень в «Сжать PDF». */
+  compressLevel: CompressLevelSetting
+}
+
 export interface WindowSettings {
   width: number
   height: number
@@ -99,6 +108,7 @@ export interface AppSettings {
   viewer: ViewerSettings
   files: FilesSettings
   markup: MarkupSettings
+  convert: ConvertSettings
   window: WindowSettings
   session: SessionSettings
 }
@@ -119,6 +129,7 @@ export function createDefaultSettings(): AppSettings {
     viewer: { defaultZoom: 'fit-width', scrollMode: 'continuous' },
     files: { backupOnSave: false, recentLimit: 10 },
     markup: { saveMode: 'annotation', signatures: [] },
+    convert: { compressLevel: 'medium' },
     window: { width: 1280, height: 800, maximized: false },
     session: { restore: true, windows: [] }
   }
@@ -227,6 +238,7 @@ export function normalizeSettings(input: unknown): AppSettings {
   const viewer = isRecord(input.viewer) ? input.viewer : {}
   const files = isRecord(input.files) ? input.files : {}
   const markup = isRecord(input.markup) ? input.markup : {}
+  const convert = isRecord(input.convert) ? input.convert : {}
   const window = isRecord(input.window) ? input.window : {}
   const session = isRecord(input.session) ? input.session : {}
 
@@ -248,6 +260,13 @@ export function normalizeSettings(input: unknown): AppSettings {
       saveMode: pickEnum(markup.saveMode, MARKUP_SAVE_MODES, defaults.markup.saveMode),
       signatures: pickSignatures(markup.signatures)
     },
+    convert: {
+      compressLevel: pickEnum(
+        convert.compressLevel,
+        COMPRESS_LEVELS,
+        defaults.convert.compressLevel
+      )
+    },
     window: {
       width: pickInteger(window.width, defaults.window.width, WINDOW_MIN_WIDTH, 16_384),
       height: pickInteger(window.height, defaults.window.height, WINDOW_MIN_HEIGHT, 16_384),
@@ -263,7 +282,15 @@ export function normalizeSettings(input: unknown): AppSettings {
 /** Накладывает patch на текущие настройки и повторно валидирует результат. */
 export function applySettingsPatch(current: AppSettings, patch: SettingsPatch): AppSettings {
   const merged: Record<string, unknown> = { schemaVersion: current.schemaVersion }
-  for (const section of ['general', 'viewer', 'files', 'markup', 'window', 'session'] as const) {
+  for (const section of [
+    'general',
+    'viewer',
+    'files',
+    'markup',
+    'convert',
+    'window',
+    'session'
+  ] as const) {
     const sectionPatch: object = isRecord(patch[section]) ? patch[section] : {}
     merged[section] = { ...current[section], ...sectionPatch }
   }

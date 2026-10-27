@@ -60,6 +60,20 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ markup: { saveMode: 'flat' } }).markup.saveMode).toBe('annotation')
   })
 
+  it('запоминает степень сжатия PDF, неизвестная — «среднее»', () => {
+    expect(createDefaultSettings().convert.compressLevel).toBe('medium')
+    expect(normalizeSettings({ convert: { compressLevel: 'strong' } }).convert.compressLevel).toBe(
+      'strong'
+    )
+    expect(normalizeSettings({ convert: { compressLevel: 'max' } }).convert.compressLevel).toBe(
+      'medium'
+    )
+    const next = applySettingsPatch(createDefaultSettings(), {
+      convert: { compressLevel: 'light' }
+    })
+    expect(next.convert.compressLevel).toBe('light')
+  })
+
   it('не бросает исключений на NaN и Infinity', () => {
     expect(() => normalizeSettings({ window: { width: NaN, height: Infinity } })).not.toThrow()
   })
