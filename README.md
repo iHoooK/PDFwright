@@ -13,7 +13,7 @@
 - **Сравнение** двух версий документа с подсветкой отличий.
 - Интерфейс на русском и английском, светлая и тёмная тема.
 
-Подробности и ограничения — [RELEASE_NOTES.md](RELEASE_NOTES.md). План и статус работ: [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+Подробности и ограничения — [RELEASE_NOTES.md](RELEASE_NOTES.md). План и статус работ: [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md). Ручная проверка перед выпуском: [docs/MANUAL_CHECK.md](docs/MANUAL_CHECK.md).
 
 ## Установить готовую программу
 

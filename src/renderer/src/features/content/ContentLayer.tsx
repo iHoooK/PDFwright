@@ -156,6 +156,7 @@ function TextEditor({
   lineHeight,
   color,
   multiline,
+  autoWidth = false,
   onDone
 }: {
   value: string
@@ -164,6 +165,8 @@ function TextEditor({
   lineHeight: number
   color: string
   multiline: boolean
+  /** Поле растёт по самой длинной строке: строки переносятся только по Enter. */
+  autoWidth?: boolean
   onDone: (text: string | null) => void
 }): React.JSX.Element {
   const [value, setValue] = useState(initial)
@@ -204,10 +207,11 @@ function TextEditor({
       }
     }
   }
+  const longest = Math.max(...value.split('\n').map((line) => Array.from(line).length))
   const style: React.CSSProperties = {
     left: frame.x - 3,
     top: frame.y - 3,
-    width: Math.max(frame.width + 6, fontSize * 4),
+    width: Math.max(frame.width + 6, fontSize * 4, autoWidth ? (longest + 2) * fontSize * 0.6 : 0),
     fontSize,
     lineHeight: `${lineHeight}px`,
     color,
@@ -216,9 +220,10 @@ function TextEditor({
   return multiline ? (
     <textarea
       {...common}
-      wrap="soft"
+      wrap={autoWidth ? 'off' : 'soft'}
       style={{
         ...style,
+        overflow: 'hidden',
         height: Math.max(frame.height + 6, rows * lineHeight + 8),
         resize: 'none'
       }}
@@ -704,6 +709,7 @@ export const ContentLayer = memo(function ContentLayer({
         lineHeight={Math.max(10, fontSize * 1.4)}
         color={cssColor(style.color)}
         multiline
+        autoWidth
         onDone={(text) => {
           setEditing(null)
           if (text === null || text.trim() === '') return

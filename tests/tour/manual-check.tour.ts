@@ -1,7 +1,6 @@
 /// <reference lib="dom" />
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, parse, resolve } from 'node:path'
 import type { Page } from 'playwright'
 import { afterEach, beforeEach, describe, it } from 'vitest'
 import { APP_COMMAND_CHANNEL, type AppCommand } from '../../src/shared/ipc-contract'
@@ -61,7 +60,8 @@ async function settings(theme: 'light' | 'dark' = 'light'): Promise<void> {
 }
 
 beforeEach(async () => {
-  ctx.work = await mkdtemp(join(tmpdir(), 'pdfwright-tour-'))
+  // Папка в корне диска: на снимках путь к файлу без имени пользователя Windows.
+  ctx.work = await mkdtemp(join(parse(OUT).root, 'PDFwright-demo-'))
   await mkdir(OUT, { recursive: true })
   demo = await writeDemoDocuments(ctx.work)
   await settings()
