@@ -304,6 +304,9 @@ function annotationDict(
     P: page.ref,
     AP: { N: appearance }
   }
+  // Непрозрачность и в словаре: по ней внешний вид строят заново программы, которые
+  // перерисовывают пометки сами. При готовом /AP её не применяют повторно (ISO 32000-1, 12.5.2).
+  if (o.opacity < 1) dict.CA = round(o.opacity)
   switch (o.kind) {
     case 'highlight':
     case 'underline':
@@ -373,9 +376,11 @@ function notePopupDict(icon: Rect, parent: PDFRef): Record<string, unknown> {
  */
 export async function applyMarkup(
   bytes: Uint8Array,
-  objects: readonly MarkupObject[],
+  markup: readonly MarkupObject[],
   options: ApplyMarkupOptions
 ): Promise<Uint8Array> {
+  // Текстовый блок, у которого стёрли весь текст, в файл не пишется: пустой FreeText не виден.
+  const objects = markup.filter((o) => o.kind !== 'text' || o.text.trim().length > 0)
   if (objects.length === 0) return bytes
   const doc = await load(bytes)
   const total = doc.getPageCount()

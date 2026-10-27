@@ -297,6 +297,7 @@
 
 .swatches {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 .swatch {
@@ -305,9 +306,33 @@
   border-radius: 50%;
   border: 2px solid transparent;
 }
-.swatch[aria-pressed='true'] {
+.swatch[aria-pressed='true'],
+.swatchCustomOn {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--card) inset;
+}
+/* «Свой цвет»: радуга, а выбранный свой цвет — им самим. Поле палитры лежит поверх прозрачным. */
+.swatchCustom {
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
+  background: conic-gradient(#e81123, #ffb900, #16c60c, #0078d4, #886ce4, #e81123);
+}
+.swatchCustom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.swatchCustom:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .range {

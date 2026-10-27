@@ -1,10 +1,10 @@
-import type { DiffPart, LineChange } from '@shared/compare'
-import { splitWords } from '@shared/compare'
+import type { LineChange, WordPart } from '@shared/compare'
+import { isWord, splitWords } from '@shared/compare'
 import { t } from '@renderer/i18n'
 import type { PageResult } from './compare-page'
 import s from './compare.module.css'
 
-/** Сколько слов удалено и добавлено в изменениях страницы. */
+/** Сколько слов удалено и добавлено в изменениях страницы (знаки препинания не в счёт). */
 function countWords(changes: readonly LineChange[]): { removed: number; added: number } {
   let removed = 0
   let added = 0
@@ -13,6 +13,7 @@ function countWords(changes: readonly LineChange[]): { removed: number; added: n
     else if (change.kind === 'added') added += splitWords(change.text).length
     else if (change.kind === 'changed') {
       for (const word of change.words) {
+        if (!isWord(word.value)) continue
         if (word.kind === 'removed') removed += 1
         else if (word.kind === 'added') added += 1
       }
@@ -21,20 +22,21 @@ function countWords(changes: readonly LineChange[]): { removed: number; added: n
   return { removed, added }
 }
 
-function Words({ words }: { words: readonly DiffPart<string>[] }): React.JSX.Element {
+/** Строка по словам: пробел ставится там, где он был в строке (знак у слова — без него). */
+function Words({ words }: { words: readonly WordPart[] }): React.JSX.Element {
   return (
     <>
       {words.map((word, index) => {
-        const space = index < words.length - 1 ? ' ' : ''
-        if (word.kind === 'same') return <span key={index}>{word.value + space}</span>
+        const space = index > 0 && word.space ? ' ' : ''
+        if (word.kind === 'same') return <span key={index}>{space + word.value}</span>
         return (
           <span key={index}>
+            {space}
             {word.kind === 'removed' ? (
               <del data-diff="removed">{word.value}</del>
             ) : (
               <ins data-diff="added">{word.value}</ins>
             )}
-            {space}
           </span>
         )
       })}

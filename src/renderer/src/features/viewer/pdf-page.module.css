@@ -1,4 +1,13 @@
+/*
+ * Переменные, которые слои pdf.js ждут от своей .pdfViewer .page: без них
+ * ширина и высота текстового слоя (round(… var(--scale-round-x))) не
+ * вычисляются, слой растягивается на повёрнутую страницу, и поворот
+ * data-main-rotation сдвигает текст мимо растра (/Rotate и Ctrl+R).
+ */
 .page {
+  --user-unit: 1;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
   position: relative;
   background: var(--paper);
   box-shadow: var(--page-shadow);
@@ -87,10 +96,8 @@
 
 /*
  * Слой форм pdf.js (.annotationLayer из pdf_viewer.css) над текстовым слоем.
- * Размер слоя pdf.js считает через эти переменные, как в своём просмотрщике.
+ * Размер слоя pdf.js считает через переменные страницы (.page выше).
  */
 .forms {
   --user-unit: 1;
-  --scale-round-x: 1px;
-  --scale-round-y: 1px;
 }

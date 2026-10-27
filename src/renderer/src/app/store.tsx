@@ -66,6 +66,7 @@ import {
   type TextMarkKind
 } from '@shared/markup/model'
 import { NOTE_COLOR } from '@shared/markup/note'
+import { markColorFor } from '@shared/markup/colors'
 import type { AnnotationPatch, PageAnnotation } from '@shared/pdf-content/annotations'
 import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
 import type {
@@ -834,8 +835,16 @@ function reduce(state: State, action: Action): State {
           [action.tool]: { ...state.toolStyles[action.tool], ...action.patch }
         }
       }
-    case 'markKind':
-      return { ...state, markKind: action.kind }
+    case 'markKind': {
+      // Подчёркиванию и зачёркиванию нужен тёмный цвет линии, выделению — светлый.
+      const marker = state.toolStyles.marker
+      const color = markColorFor(action.kind, marker.color, MARK_COLORS)
+      return {
+        ...state,
+        markKind: action.kind,
+        toolStyles: { ...state.toolStyles, marker: { ...marker, color } }
+      }
+    }
     case 'shapeKind':
       return { ...state, shapeKind: action.kind }
     case 'activeSignature':
@@ -1665,9 +1674,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
       dispatch({
         type: 'markup',
         id: tab.id,
+        // Без select: из выбора уходит только удалённый объект (выбранный тем временем другой остаётся).
         change: (markup) =>
-          markup.some((o) => o.id === target) ? markup.filter((o) => o.id !== target) : markup,
-        select: null
+          markup.some((o) => o.id === target) ? markup.filter((o) => o.id !== target) : markup
       })
     }
     /**

@@ -11,6 +11,7 @@ import {
 import {
   geometryBounds,
   keepsAspect,
+  MIN_IMAGE_SIZE,
   MIN_OBJECT_SIZE,
   resizeObject,
   type MarkupObject
@@ -132,7 +133,9 @@ export function resizeInView<T extends MarkupObject>(
   const minSize =
     o.kind === 'text'
       ? Math.max(MIN_OBJECT_SIZE, o.fontSize * (1 + TEXT_PADDING * 2))
-      : MIN_OBJECT_SIZE
+      : o.kind === 'image'
+        ? MIN_IMAGE_SIZE
+        : MIN_OBJECT_SIZE
   const rect = dragFrame(frame, handle, pointer, {
     min: minSize * view.scale,
     keepAspect: keepsAspect(o) && !free

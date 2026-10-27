@@ -21,6 +21,8 @@ import {
   isBoxObject,
   isMovable,
   isResizable,
+  MIN_IMAGE_SIZE,
+  MIN_OBJECT_SIZE,
   moveObject,
   newMarkupId,
   visualBounds,
@@ -49,7 +51,11 @@ import type { Actions, Tool, ToolStyle } from '@renderer/app/store'
 import type { PdfDocument, Rotation } from '@renderer/pdf-engine/engine'
 import { t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
-import { usePageAnnotations } from '@renderer/features/annotations/page-annotations'
+import {
+  annotationId,
+  rgbToHex,
+  usePageAnnotations
+} from '@renderer/features/annotations/page-annotations'
 import { measureText } from './font'
 import { BoxObject, VectorObject } from './MarkupShapes'
 import { boxPlacement, type BoxPlacement } from './placement'
@@ -96,6 +102,27 @@ const NO_ANNOTATIONS: readonly PageAnnotation[] = []
 interface Editing {
   object: TextObject | NoteObject
   isNew: boolean
+  /** Правится текстовое поле (FreeText), которое уже есть в файле. */
+  annotation?: PageAnnotation
+}
+
+/**
+ * Текстовое поле документа как текстовый блок для правки на месте: рамка,
+ * кегль и цвет из файла, перенос по ширине рамки — как его вид строит движок.
+ */
+function freeTextObject(a: PageAnnotation, page: number): TextObject {
+  return {
+    id: annotationId(page, a.index),
+    page,
+    kind: 'text',
+    color: rgbToHex(a.color),
+    opacity: a.opacity,
+    rect: a.rect,
+    rotate: 0,
+    text: a.contents,
+    fontSize: a.fontSize ?? 12,
+    fixedWidth: true
+  }
 }
 
 /** Перенос выбранного: id объектов разметки и места аннотаций в списке, сдвиг в пунктах. */
@@ -149,7 +176,8 @@ function TextEditor({
         style={{ width, height, transform: `translate(-50%, -50%) rotate(${turn}deg)` }}
       >
         <textarea
-          className={cx(s.editor, wraps && s.editorWrap)}
+          // Под полем из файла его старый вид, нарисованный pdf.js: фон редактора его закрывает.
+          className={cx(s.editor, wraps && s.editorWrap, editing.annotation && s.editorOpaque)}
           aria-label={t.props.text}
           placeholder={t.markup.textPlaceholder}
           value={object.text}
@@ -268,6 +296,16 @@ export const MarkupLayer = memo(function MarkupLayer({
   useLayoutEffect(() => {
     editingRef.current = editing
   })
+  // Текущая группа нужна обработчикам страницы без их пересоздания на каждый выбор.
+  const groupRef = useRef<{ selected: readonly SelectionTarget[]; size: number }>({
+    selected,
+    size: groupSize
+  })
+  useLayoutEffect(() => {
+    groupRef.current = { selected, size: groupSize }
+  })
+  /** Концы линии из файла, пока их тянут за ручку (пространство страницы). */
+  const [lineDrag, setLineDrag] = useState<{ index: number; line: [Point, Point] } | null>(null)
 
   const loaded = usePageAnnotations(doc, bytes, pageNumber, tool === 'select')
   const annotations = loaded ?? NO_ANNOTATIONS
@@ -329,7 +367,17 @@ export const MarkupLayer = memo(function MarkupLayer({
     if (!current) return
     editingRef.current = null
     setEditing(null)
-    const { object, isNew } = current
+    const { object, isNew, annotation } = current
+    if (annotation) {
+      // Текстовое поле из файла: правка пишется в документ, пустое поле удаляется.
+      if (object.text === annotation.contents) return
+      if (object.text.trim().length > 0) {
+        actions.editAnnotation(pageNumber, annotation.index, { contents: object.text })
+      } else if (hasTarget(groupRef.current.selected, annotationTarget(pageNumber, annotation))) {
+        actions.removeSelected()
+      }
+      return
+    }
     if (object.kind === 'note') {
       // Заметка без текста не ставится; у поставленной текст можно и стереть.
       const before = objects.find((o) => o.id === object.id)
@@ -347,7 +395,7 @@ export const MarkupLayer = memo(function MarkupLayer({
     } else {
       actions.updateMarkup(object)
     }
-  }, [actions, objects])
+  }, [actions, objects, pageNumber])
 
   // Смена инструмента завершает правку текста.
   useEffect(() => {
@@ -432,25 +480,23 @@ export const MarkupLayer = memo(function MarkupLayer({
     [actions, annotations, gesture, inverse, objects, pageNumber, viewPoint]
   )
 
-  // Текущая группа нужна обработчикам страницы без их пересоздания на каждый выбор.
-  const groupRef = useRef<{ selected: readonly SelectionTarget[]; size: number }>({
-    selected,
-    size: groupSize
-  })
-  useLayoutEffect(() => {
-    groupRef.current = { selected, size: groupSize }
-  })
-
   // «Выделение»: выбор, группа, перенос, рамка с Shift и правка текста двойным щелчком.
   useEffect(() => {
     const page = rootRef.current?.parentElement
     if (!page || tool !== 'select') return
+    // Щелчок внутри фигуры выбирает её, если под указателем нет текста: по тексту внутри
+    // рамки по-прежнему выделяется текст (span'ы текстового слоя pdf.js).
+    const overText = (event: Event): boolean =>
+      event.target instanceof HTMLElement &&
+      event.target.tagName === 'SPAN' &&
+      event.target.closest('.textLayer') !== null
     const hit = (event: MouseEvent): SelectionTarget | null =>
       hitSources(
         sources,
         pageNumber,
         pagePoint(event.clientX, event.clientY),
-        HIT_TOLERANCE / scale
+        HIT_TOLERANCE / scale,
+        !overText(event)
       )
     const movable = (target: SelectionTarget): boolean => {
       if (target.source === 'markup') {
@@ -502,6 +548,21 @@ export const MarkupLayer = memo(function MarkupLayer({
       if (object?.kind === 'text' || object?.kind === 'note') {
         event.preventDefault()
         setEditing({ object, isNew: false })
+        return
+      }
+      // Текстовое поле из файла правится на месте так же, как свой текстовый блок.
+      const annotation =
+        target?.source === 'annotation' && target.subtype === 'FreeText'
+          ? annotations.find((a) => a.index === target.index)
+          : undefined
+      if (annotation?.can.text) {
+        event.preventDefault()
+        window.getSelection()?.removeAllRanges()
+        setEditing({
+          object: freeTextObject(annotation, pageNumber),
+          isNew: false,
+          annotation
+        })
       }
     }
     const onHover = (event: PointerEvent): void => {
@@ -662,7 +723,7 @@ export const MarkupLayer = memo(function MarkupLayer({
     gesture(
       (e) => {
         const view = dragFrame(frame, handle, viewPoint(e.clientX, e.clientY), {
-          min: 4 * scale,
+          min: (annotation.subtype === 'Stamp' ? MIN_IMAGE_SIZE : MIN_OBJECT_SIZE) * scale,
           keepAspect: annotation.subtype === 'Stamp' && !e.shiftKey
         })
         rect = transformRect(inverse, view)
@@ -671,6 +732,29 @@ export const MarkupLayer = memo(function MarkupLayer({
       () => {
         setResizing(null)
         if (rect) actions.editAnnotation(pageNumber, annotation.index, { rect })
+      }
+    )
+  }
+
+  /** Конец линии из файла за ручку: новые /L записывает движок, вид строит MuPDF. */
+  const startAnnotationEndpoint = (
+    event: React.PointerEvent,
+    annotation: PageAnnotation,
+    line: [Point, Point],
+    end: number
+  ): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    let result: [Point, Point] | null = null
+    gesture(
+      (e) => {
+        const p = pagePoint(e.clientX, e.clientY)
+        result = end === 0 ? [p, line[1]] : [line[0], p]
+        setLineDrag({ index: annotation.index, line: result })
+      },
+      () => {
+        setLineDrag(null)
+        if (result) actions.editAnnotation(pageNumber, annotation.index, { line: result })
       }
     )
   }
@@ -783,7 +867,7 @@ export const MarkupLayer = memo(function MarkupLayer({
       }
     } else if (target.source === 'annotation') {
       const annotation = annotations.find((a) => a.index === target.index)
-      if (!annotation) continue
+      if (!annotation || editing?.annotation?.index === annotation.index) continue
       const rect = annotationRect(annotation)
       const changed = rect !== annotation.rect
       const bounds = transformRect(matrix, rect)
@@ -796,6 +880,26 @@ export const MarkupLayer = memo(function MarkupLayer({
         />
       )
       if (!single || !annotation.can.resize) continue
+      const line = annotation.subtype === 'Line' ? annotation.line : null
+      if (line) {
+        // Линия и стрелка из файла: ручки на концах, как у своей разметки.
+        const ends = lineDrag?.index === annotation.index ? lineDrag.line : line
+        ends.forEach((point, end) => {
+          const p = apply(matrix, point)
+          frames.push(
+            <span
+              key={`${target.id}:end${end}`}
+              className={s.handle}
+              data-markup-handle={end === 0 ? 'from' : 'to'}
+              style={{ left: p.x, top: p.y }}
+              onPointerDown={(e) => {
+                startAnnotationEndpoint(e, annotation, [line[0], line[1]], end)
+              }}
+            />
+          )
+        })
+        continue
+      }
       for (const handle of FRAME_HANDLES) {
         const p = handlePoint(bounds, handle)
         frames.push(
@@ -878,6 +982,17 @@ export const MarkupLayer = memo(function MarkupLayer({
           {shown.map((o) => (
             <VectorObject key={o.id} o={o} />
           ))}
+          {lineDrag && (
+            <line
+              className={s.linePreview}
+              x1={lineDrag.line[0].x}
+              y1={lineDrag.line[0].y}
+              x2={lineDrag.line[1].x}
+              y2={lineDrag.line[1].y}
+              vectorEffect="non-scaling-stroke"
+              data-line-preview=""
+            />
+          )}
         </g>
       </svg>
       {shown.filter(isBoxObject).map((o) => (

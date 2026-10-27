@@ -225,7 +225,7 @@ describe('заметки и аннотации документа', () => {
 
     // Цвет из панели свойств: образец отмечается, когда цвет уже в файле.
     const props = page.locator('[data-annotation-props="Square"]')
-    const blue = props.getByRole('button', { name: '#0067c0' })
+    const blue = props.getByRole('button', { name: 'Синий' })
     await blue.click()
     await expect.poll(() => blue.getAttribute('aria-pressed')).toBe('true')
 

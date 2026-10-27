@@ -338,3 +338,13 @@ export function shiftInside(rect: Rect, box: PageBox): Point {
   }
   return { x: fit(rect.x, rect.width, x0, x1), y: fit(rect.y, rect.height, y0, y1) }
 }
+
+/**
+ * Сдвиг в пространстве страницы для сдвига на экране (dx вправо, dy вниз, в
+ * пунктах) с учётом поворота вида и /Rotate страницы: стрелка «вправо» двигает
+ * объект вправо на экране при любом повороте.
+ */
+export function viewDeltaToPage(rotation: number, dx: number, dy: number): Point {
+  const [a, b, c, d] = invert(viewMatrix([0, 0, 0, 0], rotation, 1))
+  return { x: a * dx + c * dy, y: b * dx + d * dy }
+}

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import type { Page } from 'playwright'
 import { describe, expect, it } from 'vitest'
-import { ctx, launch, shot, useElectronApp } from './helpers'
+import { ctx, launch, shot, statusText, useElectronApp } from './helpers'
 
 /** Фаза 13: сравнение двух версий документа. */
 useElectronApp()
@@ -71,6 +71,8 @@ describe('Сравнение двух версий', () => {
       .toEqual(['fresh'])
     expect(await text.locator('ins[data-diff="added"]').allTextContents()).toEqual(['frozen'])
     expect(await page.locator('[data-diff-page="2"]').getAttribute('aria-current')).toBe('true')
+    // Строка состояния показывает страницу сравнения (QA C12).
+    await expect.poll(() => statusText(page)).toContain('Страница 2 из 3')
     await shot(page, 'compare-columns')
 
     // «Наложение»: маска отличий поверх страницы 2.

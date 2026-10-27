@@ -105,6 +105,8 @@ export type MarkupObject =
 export type MarkupKind = MarkupObject['kind']
 
 export const MIN_OBJECT_SIZE = 4
+/** Картинку и подпись не сжать мельче этого (пт по каждой стороне): иначе её не найти и не схватить. */
+export const MIN_IMAGE_SIZE = 16
 
 export function isTextMark(o: MarkupObject): o is TextMarkObject {
   return o.kind === 'highlight' || o.kind === 'underline' || o.kind === 'strikeout'
@@ -259,6 +261,34 @@ export function hitObject(o: MarkupObject, p: Point, tolerance: number): boolean
       return radial <= o.width / 2 + tolerance
     }
   }
+}
+
+/**
+ * Точка внутри прямоугольника или эллипса (а не на контуре). Так фигуру
+ * выбирают щелчком посередине — там, где под указателем нет текста страницы.
+ */
+export function hitInside(o: MarkupObject, p: Point): boolean {
+  if (o.kind === 'rect') return containsPoint(o.rect, p)
+  if (o.kind !== 'ellipse') return false
+  const rx = o.rect.width / 2
+  const ry = o.rect.height / 2
+  if (rx <= 0 || ry <= 0) return false
+  const dx = (p.x - (o.rect.x + rx)) / rx
+  const dy = (p.y - (o.rect.y + ry)) / ry
+  return dx * dx + dy * dy <= 1
+}
+
+/** Верхняя фигура страницы, внутри которой лежит точка (см. hitInside). */
+export function hitTestInside(
+  objects: readonly MarkupObject[],
+  page: number,
+  p: Point
+): MarkupObject | null {
+  for (let i = objects.length - 1; i >= 0; i -= 1) {
+    const o = objects[i]
+    if (o?.page === page && hitInside(o, p)) return o
+  }
+  return null
 }
 
 /** Верхний объект страницы под точкой (последний добавленный рисуется сверху). */
