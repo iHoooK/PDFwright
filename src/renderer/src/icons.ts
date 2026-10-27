@@ -47,6 +47,7 @@ export {
   Print20Regular as IconPrint,
   ReOrderDotsVertical20Regular as IconGrip,
   Save20Regular as IconSave,
+  ScanText20Regular as IconOcr,
   Search20Regular as IconSearch,
   Settings20Regular as IconSettings,
   Shapes20Regular as IconShapes,

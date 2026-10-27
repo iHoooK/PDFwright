@@ -311,6 +311,106 @@ describe('аннотации документа', () => {
     expect(doc.getPage(0).node.Annots()?.size()).toBe(1)
   })
 
+  it('концы линии: новые /L, рамка и вид строятся заново (M9)', async () => {
+    const blank = await PDFDocument.create()
+    blank.addPage([595, 842])
+    const arrow: MarkupObject = {
+      id: 'a1',
+      page: 1,
+      kind: 'arrow',
+      color: '#c42b1c',
+      opacity: 0.5,
+      width: 2,
+      from: { x: 100, y: 100 },
+      to: { x: 200, y: 150 }
+    }
+    const bytes = await applyMarkup(await blank.save(), [arrow], { mode: 'annotation' })
+    const [line] = await annotationsOf(bytes)
+    if (!line) throw new Error('нет линии')
+    expect(line.subtype).toBe('Line')
+    const edited = await editAnnotations(bytes, [
+      {
+        pageIndex: 0,
+        annotation: line,
+        patch: {
+          line: [
+            { x: 100, y: 100 },
+            { x: 400, y: 600 }
+          ]
+        }
+      }
+    ])
+    const [after] = await annotationsOf(edited)
+    expect(after?.line?.[0].x).toBeCloseTo(100, 1)
+    expect(after?.line?.[0].y).toBeCloseTo(100, 1)
+    expect(after?.line?.[1].x).toBeCloseTo(400, 1)
+    expect(after?.line?.[1].y).toBeCloseTo(600, 1)
+    // Рамка охватывает новую линию, наконечник и непрозрачность на месте.
+    const rect = after?.rect ?? { x: 0, y: 0, width: 0, height: 0 }
+    expect(rect.x).toBeLessThanOrEqual(100)
+    expect(rect.y + rect.height).toBeGreaterThanOrEqual(600)
+    expect(after?.opacity).toBeCloseTo(0.5, 2)
+    const doc = new mupdf.PDFDocument(edited)
+    try {
+      expect(doc.loadPage(0).getAnnotations()[0]?.getLineEndingStyles().end).toBe('OpenArrow')
+    } finally {
+      doc.destroy()
+    }
+  })
+
+  it('растянутое текстовое поле переносит текст заново, а не сжимает старый вид (M9)', async () => {
+    const bytes = await foreignFixture()
+    const free = byType(await annotationsOf(bytes), 'FreeText')
+    const text = await editAnnotations(
+      bytes,
+      [
+        {
+          pageIndex: 0,
+          annotation: free,
+          patch: { contents: 'Одна строка текста поля, которая длиннее узкой рамки' }
+        }
+      ],
+      { font }
+    )
+    const before = byType(await annotationsOf(text), 'FreeText')
+    const narrow = { ...before.rect, width: 90 }
+    const resized = await editAnnotations(
+      text,
+      [{ pageIndex: 0, annotation: before, patch: { rect: narrow } }],
+      { font }
+    )
+    const after = byType(await annotationsOf(resized), 'FreeText')
+    expect(after.rect.width).toBeCloseTo(90, 3)
+    // Вид построен под новую ширину (BBox = рамка): просмотрщики его не сжимают.
+    const doc = new mupdf.PDFDocument(resized)
+    try {
+      const ap = doc.loadPage(0).getAnnotations()[3]?.getObject().get('AP').get('N')
+      const bbox = ap?.get('BBox')
+      expect(bbox?.get(2).asNumber()).toBeCloseTo(90, 3)
+    } finally {
+      doc.destroy()
+    }
+    // Текст перенёсся: рамка стала выше.
+    expect(after.rect.height).toBeGreaterThan(before.rect.height)
+    expect(annotationText(resized)).toContain('Одна')
+  })
+
+  it('непрозрачность текстового поля пишется и в /CA (M10)', async () => {
+    const bytes = await foreignFixture()
+    const free = byType(await annotationsOf(bytes), 'FreeText')
+    const edited = await editAnnotations(
+      bytes,
+      [{ pageIndex: 0, annotation: free, patch: { opacity: 0.4 } }],
+      { font }
+    )
+    const doc = await PDFDocument.load(edited)
+    const annots = doc.getPage(0).node.Annots()
+    const dicts = (annots?.asArray() ?? []).map((ref) => doc.context.lookup(ref, PDFDict))
+    const freeDict = dicts.find((d) => d.get(PDFName.of('Subtype')) === PDFName.of('FreeText'))
+    expect(freeDict?.get(PDFName.of('CA'))?.toString()).toBe('0.4')
+    expect(byType(await annotationsOf(edited), 'FreeText').opacity).toBeCloseTo(0.4, 3)
+  })
+
   it('устаревшая ссылка на аннотацию — понятная ошибка', async () => {
     const bytes = await foreignFixture()
     const square = byType(await annotationsOf(bytes), 'Square')

@@ -76,6 +76,8 @@ export interface AnnotationRef {
 export interface AnnotationPatch {
   /** Новая рамка: перенос или изменение размера, геометрия пересчитывается. */
   readonly rect?: PdfSpaceRect
+  /** Новые концы линии (/L): вид и рамку линии MuPDF строит заново. */
+  readonly line?: readonly [PdfSpacePoint, PdfSpacePoint]
   readonly color?: RgbColor
   readonly opacity?: number
   /** Текст FreeText или заметки. */
@@ -476,14 +478,17 @@ function writeFreeText(
   dict.put('AP', { N: form })
   dict.put('Contents', doc.newString(text))
   dict.put('DA', `(/Helv ${pdfNumber(style.size)} Tf ${r} ${g} ${b} rg)`)
-  // Непрозрачность уже во внешнем виде; /CA поверх неё затемнила бы текст дважды.
-  dict.delete('CA')
+  // Непрозрачность и во внешнем виде, и в словаре: при готовом /AP просмотрщики /CA не
+  // применяют (ISO 32000-1, 12.5.2), а программы, строящие вид заново, берут её отсюда.
+  if (style.opacity < 1) dict.put('CA', style.opacity)
+  else dict.delete('CA')
   dict.delete('RC')
 }
 
 function patchAnnotation(
   mupdf: Mupdf,
   doc: MuDocument,
+  page: MuPage,
   annot: PDFAnnotation,
   current: PageAnnotation,
   patch: AnnotationPatch,
@@ -491,6 +496,7 @@ function patchAnnotation(
 ): void {
   const dict = annot.getObject()
   const { can } = current
+  let resized = false
   if (patch.rect && (can.move || can.resize)) {
     const from = rectToBox(current.rect)
     const target = rectToBox(patch.rect)
@@ -498,10 +504,26 @@ function patchAnnotation(
     const to: BoxRect = can.resize
       ? target
       : [target[0], target[1], target[0] + (from[2] - from[0]), target[1] + (from[3] - from[1])]
+    resized =
+      Math.abs(to[2] - to[0] - (from[2] - from[0])) > RECT_TOLERANCE ||
+      Math.abs(to[3] - to[1] - (from[3] - from[1])) > RECT_TOLERANCE
     moveGeometry(dict, from, to)
   }
+  if (patch.line && current.subtype === 'Line' && can.resize) {
+    // MuPDF принимает точки в координатах своей страницы (ось Y вниз).
+    const toPage = page.getTransform()
+    const [a, b] = patch.line.map((p) => transformPoint(toPage, p.x, p.y))
+    if (a && b) {
+      annot.setLine(a, b)
+      // Непрозрачность могла быть только во внешнем виде: при перерисовке она не теряется.
+      annot.setOpacity(current.opacity)
+      annot.update()
+    }
+  }
   const restyle = patch.color !== undefined || patch.opacity !== undefined
-  if (current.subtype === 'FreeText' && (restyle || patch.contents !== undefined)) {
+  // Растянутое текстовое поле не сжимается вместе со старым видом: текст переносится заново.
+  const relayout = resized && font !== null
+  if (current.subtype === 'FreeText' && (restyle || patch.contents !== undefined || relayout)) {
     if (!font) {
       throw new PdfContentError(
         m({ ru: 'Нет шрифта для текста аннотации.', en: 'No font for the annotation text.' })
@@ -552,7 +574,7 @@ export async function editAnnotations(
         const current = readPage(page)
         for (const { edit, annot } of found) {
           const read = current.find((a) => a.index === edit.annotation.index)
-          if (read) patchAnnotation(mupdf, doc, annot, read, edit.patch, options.font ?? null)
+          if (read) patchAnnotation(mupdf, doc, page, annot, read, edit.patch, options.font ?? null)
         }
       })
     }

@@ -1,5 +1,13 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode
+} from 'react'
 import { IconChevronDown } from '@renderer/icons'
+import { t } from '@renderer/i18n'
 import { cx } from './cx'
 import s from './controls.module.css'
 
@@ -279,7 +287,35 @@ interface SwatchesProps {
   label: string
 }
 
+/**
+ * Образцы цвета и «Свой цвет…» (системная палитра). Кнопки озвучиваются
+ * названием цвета, а не кодом. Свой цвет применяется, когда палитру закрыли
+ * (событие change), а не на каждое движение по ней: правка содержимого и
+ * аннотаций документа пересобирает файл.
+ */
 export function Swatches({ colors, value, onChange, label }: SwatchesProps): React.JSX.Element {
+  const customRef = useRef<HTMLInputElement | null>(null)
+  const onChangeRef = useRef(onChange)
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange
+  })
+  useEffect(() => {
+    const input = customRef.current
+    if (!input) return
+    const commit = (): void => {
+      onChangeRef.current(input.value.toLowerCase())
+    }
+    input.addEventListener('change', commit)
+    return () => {
+      input.removeEventListener('change', commit)
+    }
+  }, [])
+  const current = value.toLowerCase()
+  const isCustom = !colors.some((color) => color.toLowerCase() === current)
+  // Неуправляемое поле: палитра открывается с текущим цветом, значение читает change.
+  useEffect(() => {
+    if (customRef.current && /^#[0-9a-f]{6}$/.test(current)) customRef.current.value = current
+  }, [current])
   return (
     <div className={s.swatches} role="group" aria-label={label}>
       {colors.map((color) => (
@@ -288,13 +324,21 @@ export function Swatches({ colors, value, onChange, label }: SwatchesProps): Rea
           type="button"
           className={s.swatch}
           style={{ background: color }}
-          aria-label={color}
-          aria-pressed={color === value}
+          aria-label={t.colors.name(color)}
+          title={t.colors.name(color)}
+          aria-pressed={color.toLowerCase() === current}
           onClick={() => {
             onChange(color)
           }}
         />
       ))}
+      <label
+        className={cx(s.swatch, s.swatchCustom, isCustom && s.swatchCustomOn)}
+        style={isCustom ? { background: value } : undefined}
+        title={isCustom ? `${t.colors.custom} · ${t.colors.name(value)}` : t.colors.custom}
+      >
+        <input ref={customRef} type="color" aria-label={t.colors.custom} data-custom-color="" />
+      </label>
     </div>
   )
 }

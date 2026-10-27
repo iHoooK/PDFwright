@@ -1,7 +1,20 @@
-import type { Strings } from './ru'
+import { colorName, type Strings } from './ru'
 
 /** "1 page", "2 pages". */
 const count = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/** Palette color names (store.tsx: INK_COLORS, MARKER_COLORS). */
+const EN_COLOR_NAMES: Readonly<Record<string, string | undefined>> = {
+  '#1b1b1b': 'Black',
+  '#c42b1c': 'Red',
+  '#0067c0': 'Blue',
+  '#0f7b0f': 'Green',
+  '#ffd86b': 'Yellow',
+  '#9be39b': 'Light green',
+  '#9fd3ff': 'Light blue',
+  '#ffb0c8': 'Pink',
+  '#d7bfff': 'Lilac'
+}
 
 /** English UI strings: same keys as ru.ts. */
 export const en: Strings = {
@@ -31,10 +44,17 @@ export const en: Strings = {
     removeRecent: 'Remove from list',
     pages: 'pages',
     pageCount: (n: number) => (n === 1 ? '1 page' : `${n} pages`),
-    soon: 'Coming in a future version'
+    soon: 'Coming in a future version',
+    ocr: 'Recognize text',
+    ocrHint: 'Make a scan searchable and copyable'
   },
   ocr: {
     title: 'Recognize text',
+    command: 'Recognize text…',
+    commandHint: 'Find text in page images so the scan becomes searchable',
+    openDocument: 'Open PDF…',
+    duplicateWarning:
+      'Pages that already have text will get it a second time, and search will find it twice. Recognize them only if their existing text is wrong.',
     lead: 'PDFwright finds text in page images and adds it as an invisible layer, so search, selection and copying work. The pages look the same.',
     noDocument: 'Open a document to recognize text in it.',
     pages: 'Pages',
@@ -231,6 +251,10 @@ export const en: Strings = {
     partName: (base: string, from: number, to: number) =>
       from === to ? `${base}_p${from}.pdf` : `${base}_p${from}-${to}.pdf`
   },
+  colors: {
+    name: (hex: string) => colorName(EN_COLOR_NAMES, hex) ?? `Color ${hex}`,
+    custom: 'Custom color…'
+  },
   props: {
     color: 'Color',
     opacity: 'Opacity',
@@ -333,7 +357,7 @@ export const en: Strings = {
     notePlaceholder: 'Note text',
     noteText: 'Note text',
     selectHint:
-      'Click a markup object or a document annotation. Ctrl+click adds to the selection; Shift-drag over an empty area selects with a box. Drag by the frame, Delete removes.',
+      'Click a markup object or a document annotation. Ctrl+click adds to the selection; Shift-drag over an empty area selects with a box. Drag by the frame or nudge with the arrow keys (Shift for bigger steps), Delete removes.',
     kinds: {
       Text: 'Document note',
       FreeText: 'Text box',

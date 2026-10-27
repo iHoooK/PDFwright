@@ -141,13 +141,21 @@ function CompareView({
     scroller.scrollTo({ top: row.offsetTop - PAD, behavior: 'auto' })
   }, [])
 
+  // Пока к отличиям не переходили, «Следующее отличие» начинает с открытой страницы.
+  const visited = useRef(false)
   const goTo = useCallback(
     (page: number) => {
+      visited.current = true
       setSelected(page)
       scrollToRow(page)
     },
     [scrollToRow]
   )
+
+  // Строка состояния окна показывает страницу сравнения, а не ту, что была в документе.
+  useEffect(() => {
+    if (selected <= base.numPages) actions.pageFromScroll(selected)
+  }, [selected, base, actions])
 
   // После смены режима выбранная страница остаётся на экране.
   const selectedRef = useRef(selected)
@@ -169,9 +177,12 @@ function CompareView({
   const finished = results.size >= total
 
   const onNext = (): void => {
-    const page = nextDifference(differing, selected)
+    const first = !visited.current
+    const page = nextDifference(differing, selected, first)
     if (page === null) {
       actions.toast(finished ? t.compare.same : t.compare.noneYet)
+    } else if (first && page === selected) {
+      goTo(page)
     } else if (page <= selected && !finished) {
       actions.toast(t.compare.stillRunning)
     } else if (page === selected) {

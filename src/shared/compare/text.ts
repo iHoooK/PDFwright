@@ -11,9 +11,14 @@ export interface DiffPart<T> {
   value: T
 }
 
+/** Слово или знаки препинания строки; space — перед ним в строке был пробел. */
+export interface WordPart extends DiffPart<string> {
+  space: boolean
+}
+
 export type LineChange =
   | { kind: DiffKind; text: string }
-  | { kind: 'changed'; before: string; after: string; words: DiffPart<string>[] }
+  | { kind: 'changed'; before: string; after: string; words: WordPart[] }
 
 /** Предел таблицы LCS: дальше середина считается заменённой целиком. */
 const MAX_CELLS = 4_000_000
@@ -82,8 +87,37 @@ export function splitWords(line: string): string[] {
   return line.split(/\s+/).filter((word) => word.length > 0)
 }
 
-export function diffWords(before: string, after: string): DiffPart<string>[] {
-  return diffSequences(splitWords(before), splitWords(after))
+interface Token {
+  text: string
+  space: boolean
+}
+
+/**
+ * Слова и знаки препинания строки. Знаки у слова — отдельные части, чтобы
+ * «анкету» и «анкету,» совпали словом, а запятая считалась добавленной.
+ * Точка, запятая, дефис и апостроф между буквами или цифрами остаются в
+ * слове: «30.12.2026», «1,5», «какой-то».
+ */
+function tokenize(line: string): Token[] {
+  const out: Token[] = []
+  const re = /[\p{L}\p{N}]+(?:[.,'’/-][\p{L}\p{N}]+)*|[^\s\p{L}\p{N}]+/gu
+  let end = 0
+  for (const match of line.matchAll(re)) {
+    const start = match.index
+    out.push({ text: match[0], space: start > end && /\s/.test(line.slice(end, start)) })
+    end = start + match[0].length
+  }
+  return out
+}
+
+/** Часть строки — слово (есть буква или цифра), а не только знаки препинания. */
+export function isWord(text: string): boolean {
+  return /[\p{L}\p{N}]/u.test(text)
+}
+
+export function diffWords(before: string, after: string): WordPart[] {
+  const parts = diffSequences(tokenize(before), tokenize(after), (x, y) => x.text === y.text)
+  return parts.map((part) => ({ kind: part.kind, value: part.value.text, space: part.value.space }))
 }
 
 /**

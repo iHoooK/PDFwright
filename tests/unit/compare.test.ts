@@ -6,6 +6,7 @@ import {
   diffWords,
   hasTextChanges,
   isDifference,
+  isWord,
   linesFromPieces,
   MASK_ADDED,
   MASK_REMOVED,
@@ -141,10 +142,10 @@ describe('diffLines и diffWords', () => {
         before: 'Цена 100 рублей',
         after: 'Цена 120 рублей',
         words: [
-          { kind: 'same', value: 'Цена' },
-          { kind: 'removed', value: '100' },
-          { kind: 'added', value: '120' },
-          { kind: 'same', value: 'рублей' }
+          { kind: 'same', value: 'Цена', space: false },
+          { kind: 'removed', value: '100', space: true },
+          { kind: 'added', value: '120', space: true },
+          { kind: 'same', value: 'рублей', space: true }
         ]
       },
       { kind: 'same', text: 'Подписи сторон' },
@@ -168,9 +169,30 @@ describe('diffLines и diffWords', () => {
 
   it('слова разделяются любыми пробелами', () => {
     expect(diffWords('one  two\tthree', 'one three')).toEqual([
-      { kind: 'same', value: 'one' },
-      { kind: 'removed', value: 'two' },
-      { kind: 'same', value: 'three' }
+      { kind: 'same', value: 'one', space: false },
+      { kind: 'removed', value: 'two', space: true },
+      { kind: 'same', value: 'three', space: true }
+    ])
+  })
+
+  it('слово со знаком препинания совпадает со словом без него (QA C12)', () => {
+    const words = diffWords('Заполните анкету', 'Заполните анкету, проверьте данные')
+    expect(words.filter((w) => w.kind === 'removed')).toEqual([])
+    expect(words.map((w) => [w.kind, w.value, w.space])).toEqual([
+      ['same', 'Заполните', false],
+      ['same', 'анкету', true],
+      ['added', ',', false],
+      ['added', 'проверьте', true],
+      ['added', 'данные', true]
+    ])
+    expect(isWord(',')).toBe(false)
+    expect(isWord('данные')).toBe(true)
+    // Числа и даты с точками и запятыми внутри — одно слово.
+    expect(diffWords('до 30.12.2026 года', 'до 31.12.2026 года').map((w) => w.value)).toEqual([
+      'до',
+      '30.12.2026',
+      '31.12.2026',
+      'года'
     ])
   })
 })
@@ -204,5 +226,12 @@ describe('страницы', () => {
     expect(nextDifference([5, 2, 9], 9)).toBe(2)
     expect(nextDifference([5, 2, 9], 0)).toBe(2)
     expect(nextDifference([], 1)).toBeNull()
+  })
+
+  it('первое нажатие не пропускает отличие на открытой странице (QA C12)', () => {
+    expect(nextDifference([1, 2], 1, true)).toBe(1)
+    expect(nextDifference([1, 2], 1)).toBe(2)
+    expect(nextDifference([2, 5], 1, true)).toBe(2)
+    expect(nextDifference([2, 5], 6, true)).toBe(2)
   })
 })

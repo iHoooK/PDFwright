@@ -1,4 +1,4 @@
-import { IconClose, IconImage, IconMerge, IconOpen, IconSplit } from '@renderer/icons'
+import { IconClose, IconImage, IconMerge, IconOcr, IconOpen, IconSplit } from '@renderer/icons'
 import { locale, t } from '@renderer/i18n'
 import { cx } from '@renderer/components/cx'
 import { IconButton } from '@renderer/components/controls'
@@ -73,6 +73,19 @@ export function StartScreen(): React.JSX.Element {
             <IconImage />
             <b>{t.start.images}</b>
             <small>{t.start.imagesHint}</small>
+          </button>
+          <button
+            type="button"
+            className={s.tile}
+            data-start-ocr=""
+            onClick={() => {
+              // Без открытого документа окно распознавания предложит открыть PDF.
+              actions.openTool('ocr')
+            }}
+          >
+            <IconOcr />
+            <b>{t.start.ocr}</b>
+            <small>{t.start.ocrHint}</small>
           </button>
         </div>
 

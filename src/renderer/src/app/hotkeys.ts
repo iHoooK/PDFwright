@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+import { shiftInside, unionRects, viewDeltaToPage, type Point } from '@shared/markup/geometry'
+import { isMovable, moveObject, visualBounds } from '@shared/markup/model'
 import { t } from '@renderer/i18n'
-import { TOOL_KEYS, TOOLS, useStore, type Tool } from './store'
+import { activeDoc, TOOL_KEYS, TOOLS, useStore, type State, type Tool } from './store'
 
 /**
  * Горячие клавиши интерфейса (docs/DESIGN.md, план 1.4). Сочетания с Ctrl
@@ -19,8 +21,46 @@ function isTypingTarget(target: EventTarget | null): boolean {
   )
 }
 
+/** Стрелки двигают выбранный объект на экране: шаг 1 пт, с Shift — 10 пт. */
+const ARROWS: Readonly<Record<string, readonly [number, number] | undefined>> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1]
+}
+const NUDGE = 1
+const NUDGE_LARGE = 10
+
+/**
+ * Сдвиг выбранного «Выделением» в пространстве страницы для сдвига на экране
+ * (dx, dy пт) или null, если двигать нечего. Объекты разметки не уходят за
+ * край страницы — как при перетаскивании.
+ */
+function nudgeDelta(state: State, dx: number, dy: number): Point | null {
+  const tab = activeDoc(state)
+  const doc = tab?.doc
+  const selection = state.selection
+  if (!tab || !doc || tab.busy || !selection) return null
+  const group = state.selectionGroup.length > 0 ? state.selectionGroup : [selection]
+  const ids = new Set(group.filter((x) => x.source === 'markup').map((x) => x.id))
+  const members = tab.markup.filter((o) => ids.has(o.id) && isMovable(o))
+  const annotation = group.find((x) => x.source === 'annotation')
+  const page = members[0]?.page ?? (annotation?.source === 'annotation' ? annotation.page : null)
+  if (page === null) return null
+  const geometry = doc.geometryOf(page)
+  const delta = viewDeltaToPage(geometry.rotate + state.rotation, dx, dy)
+  if (members.length === 0) return delta
+  const moved = members.map((o) => visualBounds(moveObject(o, delta.x, delta.y)))
+  const fix = shiftInside(unionRects(moved), geometry.box)
+  return { x: delta.x + fix.x, y: delta.y + fix.y }
+}
+
 export function useHotkeys(): void {
   const { state, actions } = useStore()
+  const stateRef = useRef(state)
+  useLayoutEffect(() => {
+    stateRef.current = state
+  })
   const inViewer = state.screen === 'viewer'
   const pagesMode = state.pagesMode
   const selection = state.selection
@@ -105,6 +145,16 @@ export function useHotkeys(): void {
       }
       if (!pagesMode && selection !== null && key === 'Escape') {
         actions.select(null)
+        return
+      }
+      const arrow = ARROWS[key]
+      if (!pagesMode && arrow && selection !== null && selection.source !== 'content') {
+        const step = event.shiftKey ? NUDGE_LARGE : NUDGE
+        const delta = nudgeDelta(stateRef.current, arrow[0] * step, arrow[1] * step)
+        if (delta) {
+          event.preventDefault()
+          actions.moveSelected(delta.x, delta.y)
+        }
         return
       }
       if (key === 'PageDown') {

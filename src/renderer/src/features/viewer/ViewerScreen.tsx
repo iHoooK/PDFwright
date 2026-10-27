@@ -8,6 +8,7 @@ import {
   IconInsert,
   IconMarker,
   IconNote,
+  IconOcr,
   IconPages,
   IconPanelLeft,
   IconPanelRight,
@@ -366,6 +367,16 @@ export function ViewerScreen(): React.JSX.Element {
                     disabled={!ready || busy}
                   >
                     {t.compare.command}
+                  </Button>
+                  <Button
+                    icon={<IconOcr />}
+                    title={t.ocr.commandHint}
+                    onClick={() => {
+                      actions.openTool('ocr')
+                    }}
+                    disabled={!ready || busy}
+                  >
+                    {t.ocr.command}
                   </Button>
                 </div>
               </div>

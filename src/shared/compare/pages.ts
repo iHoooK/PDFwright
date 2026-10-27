@@ -25,8 +25,16 @@ export function isDifference(status: PageStatus): boolean {
   return status === 'changed' || status === 'added' || status === 'removed'
 }
 
-/** Следующая страница с отличием после current; после последней — снова первая. */
-export function nextDifference(differing: readonly number[], current: number): number | null {
+/**
+ * Следующая страница с отличием после current; после последней — снова первая.
+ * inclusive — сама current тоже подходит: первое нажатие «Следующее отличие»
+ * не пропускает отличие на странице, которая открыта при входе в сравнение.
+ */
+export function nextDifference(
+  differing: readonly number[],
+  current: number,
+  inclusive = false
+): number | null {
   const sorted = [...differing].sort((p, q) => p - q)
-  return sorted.find((page) => page > current) ?? sorted[0] ?? null
+  return sorted.find((page) => (inclusive ? page >= current : page > current)) ?? sorted[0] ?? null
 }

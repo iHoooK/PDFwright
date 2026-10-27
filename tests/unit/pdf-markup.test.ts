@@ -320,4 +320,48 @@ describe('applyMarkup', () => {
     expect(gs?.lookup(PDFName.of('ca'), PDFNumber)?.asNumber()).toBeCloseTo(0.8)
     expect(gs?.get(PDFName.of('BM'))?.toString()).toBe('/Multiply')
   })
+
+  it('непрозрачность и в словаре аннотации /CA, у непрозрачных её нет (M10)', async () => {
+    const opaque: MarkupObject = {
+      ...base,
+      id: 'o',
+      page: 1,
+      opacity: 1,
+      kind: 'rect',
+      width: 2,
+      rect: { x: 100, y: 300, width: 50, height: 50 }
+    }
+    const out = await applyMarkup(fixture, [...everyKind().slice(3, 5), opaque], {
+      mode: 'annotation'
+    })
+    const annots = annotsOf(await PDFDocument.load(out), 0)
+    expect(annots[0]?.lookup(PDFName.of('CA'), PDFNumber).asNumber()).toBeCloseTo(0.8)
+    expect(annots[1]?.lookup(PDFName.of('CA'), PDFNumber).asNumber()).toBeCloseTo(0.8)
+    expect(annots[2]?.get(PDFName.of('CA'))).toBeUndefined()
+    // MuPDF читает ту же непрозрачность.
+    const mu = mupdf.Document.openDocument(out, 'application/pdf') as mupdf.PDFDocument
+    expect(mu.loadPage(0).getAnnotations()[0]?.getOpacity()).toBeCloseTo(0.8)
+  })
+
+  it('пустой текстовый блок в файл не пишется (M8)', async () => {
+    const empty: TextObject = {
+      ...base,
+      id: 'empty',
+      page: 1,
+      kind: 'text',
+      rect: { x: 300, y: 200, width: 160, height: 40 },
+      rotate: 0,
+      text: '  \n',
+      fontSize: 12
+    }
+    const out = await applyMarkup(fixture, [empty], { mode: 'annotation', font })
+    expect(out).toBe(fixture)
+    const withInk = await applyMarkup(fixture, [...everyKind().slice(3, 4), empty], {
+      mode: 'annotation',
+      font
+    })
+    expect(annotsOf(await PDFDocument.load(withInk), 0).map((a) => nameOf(a, 'Subtype'))).toEqual([
+      '/Ink'
+    ])
+  })
 })

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { type MarkupObject, type ShapeKind, type TextMarkKind } from '@shared/markup/model'
 import { fitTextBox } from '@shared/markup/text-layout'
 import type { MarkupSaveMode } from '@shared/settings-schema'
@@ -146,6 +146,20 @@ function StyleFields({ idPrefix, colors, value, onChange }: StyleFieldsProps): R
 function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
   const { state, actions } = useStore()
   const pageBox = activeDoc(state)?.doc?.geometryOf(object.page).box
+  // Текст блока стёрт в этом поле: пустой блок удаляется, когда поле теряет фокус или
+  // карточка закрывается (щелчок мимо снимает выбор раньше, чем поле теряет фокус).
+  const emptied = useRef(false)
+  const dropEmpty = useRef(() => {
+    if (!emptied.current) return
+    emptied.current = false
+    actions.removeMarkup(object.id)
+  })
+  useEffect(
+    () => () => {
+      dropEmpty.current()
+    },
+    []
+  )
   const colors = paletteOf(object.kind)
   const hasWidth =
     object.kind === 'ink' ||
@@ -191,10 +205,12 @@ function ObjectCard({ object }: { object: MarkupObject }): React.JSX.Element {
             value={object.text}
             rows={Math.min(6, Math.max(2, object.text.split('\n').length))}
             onChange={(event) => {
-              actions.updateMarkup(
-                fitTextBox({ ...object, text: event.target.value }, measureText, pageBox),
-                'text'
-              )
+              const text = event.target.value
+              emptied.current = text.trim().length === 0
+              actions.updateMarkup(fitTextBox({ ...object, text }, measureText, pageBox), 'text')
+            }}
+            onBlur={() => {
+              dropEmpty.current()
             }}
           />
         </div>

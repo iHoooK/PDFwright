@@ -219,7 +219,21 @@ export function OcrDialog(): React.JSX.Element {
     >
       <p className={ts.lead}>{t.ocr.lead}</p>
       {pdf === null ? (
-        <p className={ts.error}>{t.ocr.noDocument}</p>
+        <>
+          <p className={ts.error}>{t.ocr.noDocument}</p>
+          {/* Со стартового экрана: открытый документ появится в этом же окне. */}
+          {tab?.status !== 'loading' && (
+            <div>
+              <Button
+                onClick={() => {
+                  void actions.openDialog()
+                }}
+              >
+                {t.ocr.openDocument}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <div className={ts.field}>
@@ -293,6 +307,12 @@ export function OcrDialog(): React.JSX.Element {
                 disabled={running !== null}
               />
             </div>
+            {/* Текст поверх уже имеющегося дублируется: поиск находит его дважды. */}
+            {!skipText && (
+              <p className={s.hint} data-ocr-duplicate-warning="">
+                {t.ocr.duplicateWarning}
+              </p>
+            )}
           </div>
         </>
       )}

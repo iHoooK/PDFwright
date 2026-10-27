@@ -1,5 +1,11 @@
 import type { Point } from '@shared/markup/geometry'
-import { hitObject, hitTest, type MarkupObject } from '@shared/markup/model'
+import {
+  hitInside,
+  hitObject,
+  hitTest,
+  hitTestInside,
+  type MarkupObject
+} from '@shared/markup/model'
 import type { PageAnnotation } from '@shared/pdf-content/annotations'
 import { pickPageObject } from '@shared/pdf-content/hit-test'
 import type { PageGraphic, PageImage, PageTextBlock, PageTextLine } from '@shared/pdf-content/types'
@@ -34,6 +40,8 @@ export interface SelectionSource {
   readonly id: SelectionTarget['source']
   /** Объект под точкой (координаты страницы, допуск в пунктах) или null. */
   hitTest: (page: number, point: Point, tolerance: number) => SelectionTarget | null
+  /** Фигура, внутри которой точка (не на контуре), — второй проход hitSources. */
+  hitInside?: (page: number, point: Point) => SelectionTarget | null
 }
 
 export function markupSource(objects: readonly MarkupObject[]): SelectionSource {
@@ -41,6 +49,10 @@ export function markupSource(objects: readonly MarkupObject[]): SelectionSource 
     id: 'markup',
     hitTest: (page, point, tolerance) => {
       const hit = hitTest(objects, page, point, tolerance)
+      return hit ? { source: 'markup', id: hit.id } : null
+    },
+    hitInside: (page, point) => {
+      const hit = hitTestInside(objects, page, point)
       return hit ? { source: 'markup', id: hit.id } : null
     }
   }
@@ -60,6 +72,14 @@ export function annotationSource(
         if (a && hitObject(annotationShape(a, page), point, tolerance)) {
           return annotationTarget(page, a)
         }
+      }
+      return null
+    },
+    hitInside: (at, point) => {
+      if (at !== page) return null
+      for (let i = annotations.length - 1; i >= 0; i -= 1) {
+        const a = annotations[i]
+        if (a && hitInside(annotationShape(a, page), point)) return annotationTarget(page, a)
       }
       return null
     }
@@ -95,15 +115,25 @@ export function contentSource(
   }
 }
 
-/** Опрос источников по порядку: разметка лежит поверх содержимого и выбирается первой. */
+/**
+ * Опрос источников по порядку: разметка лежит поверх содержимого и выбирается
+ * первой. Сначала — попадание по самим объектам (контуры, строки, рамки); если
+ * мимо и inside разрешён (под указателем нет текста страницы), — щелчок внутри фигуры.
+ */
 export function hitSources(
   sources: readonly SelectionSource[],
   page: number,
   point: Point,
-  tolerance: number
+  tolerance: number,
+  inside = false
 ): SelectionTarget | null {
   for (const source of sources) {
     const target = source.hitTest(page, point, tolerance)
+    if (target) return target
+  }
+  if (!inside) return null
+  for (const source of sources) {
+    const target = source.hitInside?.(page, point) ?? null
     if (target) return target
   }
   return null

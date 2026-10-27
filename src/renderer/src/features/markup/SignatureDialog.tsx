@@ -79,9 +79,16 @@ export function SignatureDialog({ open, onClose, onSave }: Props): React.JSX.Ele
     ctx.lineJoin = 'round'
     ctx.lineWidth = (event.pointerType === 'pen' ? 1 + event.pressure * 3 : 2.4) * DENSITY
     ctx.beginPath()
-    ctx.moveTo(from.x, from.y)
-    ctx.lineTo(to.x, to.y)
-    ctx.stroke()
+    if (from.x === to.x && from.y === to.y) {
+      // Щелчок без движения — точка (над «i», в инициалах): отрезок нулевой длины не рисуется.
+      ctx.fillStyle = INK
+      ctx.arc(to.x, to.y, ctx.lineWidth / 2, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      ctx.moveTo(from.x, from.y)
+      ctx.lineTo(to.x, to.y)
+      ctx.stroke()
+    }
     last.current = to
   }
 
