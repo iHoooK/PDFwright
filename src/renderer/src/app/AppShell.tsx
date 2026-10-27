@@ -31,12 +31,11 @@ export function AppShell(): React.JSX.Element {
   const { state, actions } = useStore()
   useHotkeys()
   const doc = activeDoc(state)
-  // Строка состояния и заголовок окна говорят о документе, только когда он на экране.
-  const shown = state.screen === 'viewer' ? doc : null
+  // Строка состояния и заголовок окна говорят о документе, только когда он на экране
+  // (в сравнении — страница, которую показывает сравнение).
+  const shown = state.screen === 'viewer' || state.screen === 'compare' ? doc : null
   const dark = resolvedTheme() === 'dark'
-  const title = windowTitle(
-    state.screen === 'viewer' || state.screen === 'compare' ? (doc?.name ?? null) : null
-  )
+  const title = windowTitle(shown?.name ?? null)
   useEffect(() => {
     document.title = title
   }, [title])
@@ -166,7 +165,7 @@ export function AppShell(): React.JSX.Element {
           <span>{shown ? shown.name : t.app.name}</span>
         )}
         <span className={s.grow} />
-        {shown?.status === 'ready' && (
+        {shown?.status === 'ready' && state.screen === 'viewer' && (
           <span>
             <kbd>Ctrl</kbd> + <kbd>F</kbd> {t.viewer.searchHint}
           </span>
