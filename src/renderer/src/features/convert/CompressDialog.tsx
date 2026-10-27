@@ -5,6 +5,7 @@ import { useStore, type ConvertSource } from '@renderer/app/store'
 import { t } from '@renderer/i18n'
 import { pdfContent } from '@renderer/pdf-content/client'
 import type { CompressLevel, CompressResult } from '@shared/pdf-content/compress'
+import { compressionGain } from '@shared/convert/compress-gain'
 import { formatBytes } from '@shared/update-messages'
 import { basenameOf, dirnameOf, joinPath, safeFileName, stripExtension } from '@shared/paths'
 import ts from '@renderer/features/tools/tools.module.css'
@@ -22,10 +23,11 @@ interface Estimates {
  * истории или сохраняется новым файлом.
  */
 export function CompressDialog(): React.JSX.Element {
-  const { actions, api } = useStore()
+  const { state, actions, api } = useStore()
   const source = useConvertSource()
   const doc = source.source
-  const [level, setLevel] = useState<CompressLevel>('medium')
+  // Степень запоминается в настройках: в следующий раз диалог открывается с ней.
+  const [level, setLevel] = useState<CompressLevel>(state.settings.convert.compressLevel)
   const [estimates, setEstimates] = useState<Estimates | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -54,8 +56,10 @@ export function CompressDialog(): React.JSX.Element {
     }
   }, [doc, level, result])
 
-  const smaller = result !== null && result.after < result.before
-  const percent = result ? Math.round((1 - result.after / result.before) * 100) : 0
+  // Выигрыш меньше 1 % не предлагается: «−0 %» с активной кнопкой только путает.
+  const gain = result ? compressionGain(result) : null
+  const smaller = gain !== null
+  const percent = gain ?? 0
 
   const apply = (): void => {
     if (!result || !smaller) return
@@ -126,6 +130,7 @@ export function CompressDialog(): React.JSX.Element {
           onChange={(next) => {
             setError(null)
             setLevel(next)
+            void actions.updateSettings({ convert: { compressLevel: next } })
           }}
           options={[
             { value: 'strong', label: t.convert.levelStrong },
@@ -134,7 +139,8 @@ export function CompressDialog(): React.JSX.Element {
           ]}
         />
       </div>
-      <p className={s.warning}>{t.convert.compressWarning}</p>
+      {/* Отменить Ctrl+Z можно только применение к открытому документу. */}
+      {source.active && <p className={s.warning}>{t.convert.compressWarning}</p>}
       {doc && (
         <div className={s.sizes} aria-live="polite">
           <span>

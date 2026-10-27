@@ -3,6 +3,7 @@ import { METADATA_FIELDS, type DocumentMetadata } from '@shared/pdf-ops'
 import { Button } from '@renderer/components/controls'
 import { Dialog } from '@renderer/components/Dialog'
 import { activeDoc, useStore, type DocTab } from '@renderer/app/store'
+import { protectionWritten } from '@renderer/app/saved-state'
 import { locale, t } from '@renderer/i18n'
 import { createCancelToken, type DocumentProperties } from '@renderer/pdf-engine/engine'
 import s from '@renderer/components/dialog.module.css'
@@ -21,7 +22,10 @@ function formatDate(date: Date | null): string {
 function encryption(tab: DocTab, props: DocumentProperties | null): string {
   const protection = tab.protection ?? null
   if (protection?.kind === 'file') return protection.info.method
-  if (protection?.kind === 'new') return t.protect.pending('AES-256')
+  if (protection?.kind === 'new') {
+    // Новый пароль уже записан, если файл сохранён с этой же защитой.
+    return protectionWritten(protection, tab.saved) ? 'AES-256' : t.protect.pending('AES-256')
+  }
   if (!props) return '—'
   return props.encrypted ? t.properties.yes : t.properties.no
 }

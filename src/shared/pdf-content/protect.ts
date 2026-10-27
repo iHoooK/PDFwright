@@ -34,6 +34,17 @@ export interface ProtectionInfo {
   /** Ограничения документа (флаги /P): разрешены ли печать и копирование. */
   canPrint: boolean
   canCopy: boolean
+  /**
+   * У документа отдельный пароль владельца: введённый пароль не даёт сразу и
+   * права на открытие, и права владельца (как бывает, когда пароли совпадают).
+   */
+  separateOwner: boolean
+}
+
+/** Что запрещено в программе: ограничения действуют, пока не введён пароль владельца. */
+export function restrictionsOf(info: ProtectionInfo | null): { print: boolean; copy: boolean } {
+  if (!info || info.access === 'owner') return { print: false, copy: false }
+  return { print: !info.canPrint, copy: !info.canCopy }
 }
 
 export interface UnlockResult {
@@ -128,7 +139,8 @@ function authenticate(doc: MuDocument, password: string): ProtectionInfo | null 
     method: methodOf(dict),
     access: (result & 4) !== 0 ? 'owner' : 'user',
     canPrint: (permissions & PERMISSION_PRINT) !== 0,
-    canCopy: (permissions & PERMISSION_COPY) !== 0
+    canCopy: (permissions & PERMISSION_COPY) !== 0,
+    separateOwner: (result & 6) !== 6
   }
 }
 

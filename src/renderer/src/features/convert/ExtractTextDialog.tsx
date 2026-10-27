@@ -29,6 +29,8 @@ export function ExtractTextDialog(): React.JSX.Element {
   const { actions, api } = useStore()
   const source = useConvertSource()
   const doc = source.source
+  // Запрет копирования владельцем распространяется и на извлечение текста.
+  const blocked = doc?.noCopy === true
   const pages = usePages(doc?.pages ?? 0)
   const [markPages, setMarkPages] = useState(false)
   const [extracted, setExtracted] = useState<Extracted | null>(null)
@@ -37,7 +39,7 @@ export function ExtractTextDialog(): React.JSX.Element {
 
   // Текст читается в worker'е MuPDF; ввод диапазона не дёргает его на каждую букву.
   useEffect(() => {
-    if (!doc || pages.pages.length === 0) return
+    if (!doc || blocked || pages.pages.length === 0) return
     let alive = true
     const list = pages.pages
     const timer = window.setTimeout(() => {
@@ -65,7 +67,7 @@ export function ExtractTextDialog(): React.JSX.Element {
       alive = false
       window.clearTimeout(timer)
     }
-  }, [doc, pages.pages])
+  }, [doc, blocked, pages.pages])
 
   const current = extracted?.for === doc && extracted.pages === pages.pages ? extracted : null
   const text = useMemo(
@@ -112,7 +114,8 @@ export function ExtractTextDialog(): React.JSX.Element {
     actions.openTool(null)
   }
 
-  const reading = doc !== null && pages.pages.length > 0 && current === null && error === null
+  const reading =
+    doc !== null && !blocked && pages.pages.length > 0 && current === null && error === null
 
   return (
     <Dialog
@@ -159,6 +162,7 @@ export function ExtractTextDialog(): React.JSX.Element {
             ? t.convert.textStats(text.length, current.texts.length)
             : ' '}
       </p>
+      {blocked && <p className={ts.error}>{t.protect.copyBlocked}</p>}
       {(error ?? source.error) !== null && <p className={ts.error}>{error ?? source.error}</p>}
     </Dialog>
   )

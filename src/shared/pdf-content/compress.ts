@@ -174,8 +174,8 @@ export async function compressPdf(
     mupdf,
     bytes,
     m({
-      ru: 'Документ зашифрован. Сжатие защищённых паролем файлов появится в следующих версиях.',
-      en: 'The document is encrypted. Compressing password-protected files will come in a future version.'
+      ru: 'Документ защищён паролем: откройте его в PDFwright паролем и сожмите открытый документ.',
+      en: 'The document is password-protected: open it in PDFwright with the password and compress the open document.'
     })
   )
   try {

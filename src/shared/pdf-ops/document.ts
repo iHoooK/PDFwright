@@ -27,8 +27,8 @@ export async function load(bytes: Uint8Array): Promise<PDFDocument> {
   if (doc.isEncrypted) {
     throw new PdfOpsError(
       m({
-        ru: 'Документ зашифрован. Правка защищённых паролем файлов появится в следующих версиях.',
-        en: 'The document is encrypted. Editing password-protected files will come in a future version.'
+        ru: 'Документ защищён паролем: откройте его в PDFwright паролем и повторите.',
+        en: 'The document is password-protected: open it in PDFwright with the password and try again.'
       })
     )
   }

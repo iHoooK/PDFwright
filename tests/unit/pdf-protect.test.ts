@@ -13,8 +13,16 @@ import {
   permissionsValue,
   protectPdf,
   relockPdf,
+  restrictionsOf,
   unlockPdf
 } from '@shared/pdf-content/protect'
+import {
+  initialPermissions,
+  isRestricted,
+  keptOwnerPassword,
+  protectOptions,
+  type ProtectionState
+} from '@renderer/features/protect/protect-form'
 
 /** Двухстраничный документ с текстом, закладкой-ссылкой и метаданными. */
 async function makePlain(): Promise<Uint8Array> {
@@ -86,7 +94,9 @@ describe('protectPdf и unlockPdf', () => {
       method: 'AES-256',
       access: 'owner',
       canPrint: true,
-      canCopy: true
+      canCopy: true,
+      // Пароли совпадают: введённый пароль даёт и права владельца.
+      separateOwner: false
     })
     expect(needsPassword(unlocked.bytes)).toBe(false)
     expect(new TextDecoder('latin1').decode(unlocked.bytes)).not.toContain('/Encrypt')
@@ -126,10 +136,12 @@ describe('protectPdf и unlockPdf', () => {
       method: 'AES-256',
       access: 'user',
       canPrint: false,
-      canCopy: false
+      canCopy: false,
+      separateOwner: true
     })
     const owner = await inspectProtection(locked, 'boss')
     expect(owner?.access).toBe('owner')
+    expect(owner?.separateOwner).toBe(true)
     // Пароль владельца тоже открывает документ.
     expect((await unlockPdf(locked, 'boss')).info?.access).toBe('owner')
   })
@@ -169,6 +181,24 @@ describe('protectPdf и unlockPdf', () => {
     ).rejects.toThrow(/уже зашифрован/)
   })
 
+  it('запреты владельца действуют в программе только без пароля владельца', async () => {
+    const locked = await protectPdf(plain, {
+      userPassword: 'reader',
+      ownerPassword: 'boss',
+      allowPrint: false,
+      allowCopy: false
+    })
+    expect(restrictionsOf(await inspectProtection(locked, 'reader'))).toEqual({
+      print: true,
+      copy: true
+    })
+    expect(restrictionsOf(await inspectProtection(locked, 'boss'))).toEqual({
+      print: false,
+      copy: false
+    })
+    expect(restrictionsOf(null)).toEqual({ print: false, copy: false })
+  })
+
   it('значение /P для ограничений', () => {
     expect(permissionsValue({ allowPrint: true, allowCopy: true })).toBe(-4)
     const noPrint = permissionsValue({ allowPrint: false, allowCopy: true })
@@ -178,6 +208,85 @@ describe('protectPdf и unlockPdf', () => {
     const noCopy = permissionsValue({ allowPrint: true, allowCopy: false })
     expect(noCopy & 16).toBe(0)
     expect(noCopy & 4).toBe(4)
+  })
+})
+
+describe('форма «Защита паролем»: смена пароля на открытие', () => {
+  const restrictedInfo = {
+    method: 'AES-256',
+    canPrint: false,
+    canCopy: false,
+    separateOwner: true
+  }
+  const asUser: ProtectionState = {
+    kind: 'file',
+    password: 'reader',
+    info: { ...restrictedInfo, access: 'user' }
+  }
+  const asOwner: ProtectionState = {
+    kind: 'file',
+    password: 'boss',
+    info: { ...restrictedInfo, access: 'owner' }
+  }
+  const input = { user: 'new-open', owner: '', current: '', allowPrint: false, allowCopy: false }
+
+  it('открыт паролем на открытие: пароль владельца из подтверждения, запреты те же', () => {
+    expect(initialPermissions(asUser)).toEqual({ allowPrint: false, allowCopy: false })
+    const options = protectOptions(asUser, { ...input, current: 'boss' })
+    expect(options).toEqual({
+      userPassword: 'new-open',
+      ownerPassword: 'boss',
+      allowPrint: false,
+      allowCopy: false
+    })
+  })
+
+  it('открыт паролем владельца: он и остаётся владельцем', () => {
+    expect(keptOwnerPassword(asOwner, '')).toBe('boss')
+    expect(isRestricted(asOwner, input)).toBe(true)
+    expect(protectOptions(asOwner, input).ownerPassword).toBe('boss')
+    // Новый пароль владельца заменяет прежний.
+    expect(protectOptions(asOwner, { ...input, owner: 'chief' }).ownerPassword).toBe('chief')
+  })
+
+  it('пароли совпадали — отдельного пароля владельца нет, запретов тоже', () => {
+    const same: ProtectionState = {
+      kind: 'file',
+      password: 'one',
+      info: {
+        method: 'AES-256',
+        access: 'owner',
+        canPrint: true,
+        canCopy: true,
+        separateOwner: false
+      }
+    }
+    expect(keptOwnerPassword(same, '')).toBe('')
+    expect(protectOptions(same, { ...input, allowPrint: false })).toEqual({
+      userPassword: 'new-open',
+      ownerPassword: '',
+      allowPrint: true,
+      allowCopy: true
+    })
+  })
+
+  it('новая защита до сохранения: её пароль владельца и запреты сохраняются', async () => {
+    const pending: ProtectionState = {
+      kind: 'new',
+      options: { userPassword: 'a', ownerPassword: 'b', allowPrint: true, allowCopy: false }
+    }
+    expect(initialPermissions(pending)).toEqual({ allowPrint: true, allowCopy: false })
+    const options = protectOptions(pending, { ...input, allowPrint: true, allowCopy: false })
+    expect(options).toEqual({
+      userPassword: 'new-open',
+      ownerPassword: 'b',
+      allowPrint: true,
+      allowCopy: false
+    })
+    // Файл, записанный с этими параметрами: новый пароль — открытие, прежний — владелец.
+    const locked = await protectPdf(plain, options)
+    expect(access(locked, 'new-open')).toBe(2)
+    expect(access(locked, 'b')).toBe(4)
   })
 })
 

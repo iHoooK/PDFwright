@@ -18,6 +18,7 @@ import { SettingsScreen } from '@renderer/features/settings/SettingsScreen'
 import { KitScreen } from '@renderer/features/kit/KitScreen'
 import { CompareScreen } from '@renderer/features/compare/CompareScreen'
 import { ConvertDialogs } from '@renderer/features/convert/ConvertDialogs'
+import { PasswordDialog } from '@renderer/features/viewer/PasswordDialog'
 import logo from '../assets/logo.svg'
 import { activeDoc, useStore, type DocTab } from './store'
 import { useHotkeys } from './hotkeys'
@@ -224,6 +225,8 @@ export function AppShell(): React.JSX.Element {
       />
 
       <ConvertDialogs />
+      {/* Пароль спрашивается и при открытии вкладки, и из диалогов конвертации — поверх них. */}
+      <PasswordDialog />
       <Toast message={state.toast} />
     </div>
   )

@@ -37,7 +37,6 @@ import { ImageCommand, MarkupPanel } from '@renderer/features/markup/MarkupPanel
 import { FormsPanel } from '@renderer/features/forms/FormsPanel'
 import { DocumentView } from './DocumentView'
 import { PagesGrid } from './PagesGrid'
-import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { ProtectDialog } from '@renderer/features/protect/ProtectDialog'
 import { OutlinePanel, SearchPanel, ThumbsPanel } from './SidebarPanels'
@@ -378,7 +377,6 @@ export function ViewerScreen(): React.JSX.Element {
           {t.viewer.busy}
         </div>
       )}
-      <PasswordDialog />
       <PropertiesDialog />
       <ProtectDialog />
       <MergeDialog />

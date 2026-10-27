@@ -6,6 +6,7 @@ import * as mupdf from 'mupdf'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 import { readImageInfo } from '../../src/shared/convert/image-info'
+import { protectPdf } from '../../src/shared/pdf-content/protect'
 import { ctx, launch, ROOT, shot, statusText, tool, useElectronApp } from './helpers'
 
 /** Фаза 6: PDF в картинки, картинки в PDF, извлечение текста, сжатие. */
@@ -225,6 +226,59 @@ describe('Конвертация (собранное приложение)', () 
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
     const text = new TextDecoder().decode(bytes.subarray(3))
     expect(text).toContain('— Страница 1 —\r\n\r\nПервая строка\r\nВторая строка\r\nТретья строка')
+  })
+
+  it('«Выбрать файл…»: пароль зашифрованного файла, понятная ошибка битого, степень запоминается', async () => {
+    const target = join(ctx.work, 'документ.pdf')
+    await copyFile(join(ROOT, 'tests/fixtures/simple.pdf'), target)
+    const locked = join(ctx.work, 'секрет.pdf')
+    await writeFile(
+      locked,
+      await protectPdf(new Uint8Array(await readFile(target)), {
+        userPassword: 'открыть',
+        ownerPassword: 'владелец',
+        allowPrint: true,
+        allowCopy: true
+      })
+    )
+    const broken = join(ctx.work, 'битый.pdf')
+    await writeFile(broken, 'это не PDF, а просто текст')
+    const page = await launch(target)
+
+    await command('tools.compress')
+    const dialog = page.getByRole('dialog', { name: 'Сжать PDF' })
+    await expect.poll(() => dialog.isVisible()).toBe(true)
+    // Открытый документ: предупреждение про Ctrl+Z на месте.
+    await expect.poll(() => dialog.textContent()).toContain('изменение отменяет Ctrl+Z')
+
+    await stubOpenDialog([locked])
+    await dialog.getByRole('button', { name: 'Выбрать файл…' }).click()
+    const ask = page.getByRole('dialog', { name: 'Документ защищён паролем' })
+    await ask.getByLabel('Документ защищён паролем').fill('открыть')
+    await ask.getByRole('button', { name: 'Открыть' }).click()
+    await expect.poll(() => dialog.textContent(), { timeout: 30_000 }).toContain('секрет.pdf')
+    const text = (await dialog.textContent()) ?? ''
+    expect(text).not.toContain('зашифрован')
+    expect(text).not.toContain('следующих версиях')
+    // Внешний файл не меняется на месте: Ctrl+Z здесь ни при чём.
+    expect(text).not.toContain('изменение отменяет Ctrl+Z')
+    expect(text).not.toContain('−0 %')
+
+    await stubOpenDialog([broken])
+    await dialog.getByRole('button', { name: 'Выбрать файл…' }).click()
+    await expect
+      .poll(() => dialog.textContent(), { timeout: 15_000 })
+      .toContain('Файл не является PDF или повреждён.')
+    expect(await dialog.textContent()).not.toContain('Failed to parse')
+
+    // Степень сжатия запоминается до следующего открытия диалога.
+    await dialog.getByRole('radio', { name: /Лёгкое/ }).click()
+    await page.keyboard.press('Escape')
+    await expect.poll(() => dialog.isVisible()).toBe(false)
+    await command('tools.compress')
+    await expect
+      .poll(() => dialog.getByRole('radio', { name: /Лёгкое/ }).getAttribute('aria-checked'))
+      .toBe('true')
   })
 
   it('сжимает документ со сканом шагом истории: Ctrl+Z возвращает исходные байты', async () => {
