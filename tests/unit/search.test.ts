@@ -29,6 +29,24 @@ describe('findMatches', () => {
   it('схлопывает повторные пробелы в запросе', () => {
     expect(findMatches(items, 'плата   вносится')).toHaveLength(1)
   })
+
+  it('не склеивает слова соседних строк: по концу строки встаёт пробел', () => {
+    // Так pdf.js отдаёт строки: пустой фрагмент с hasEOL или hasEOL у самой строки.
+    const lines = ['ул. Образцовая, 1', '', 'Договор оказания', 'Стороны заключили', 'настоящий']
+    const breaks = [false, true, true, true, false]
+    const [heading] = findMatches(lines, 'договор', breaks)
+    expect(heading?.snippet).toContain('1 Договор оказания')
+    expect(heading?.pieces).toEqual([{ item: 2, start: 0, end: 7 }])
+    const [across] = findMatches(lines, 'заключили настоящий', breaks)
+    expect(across?.snippet).toContain('заключили настоящий')
+    expect(across?.pieces).toEqual([
+      { item: 3, start: 8, end: 17 },
+      { item: 4, start: 0, end: 9 }
+    ])
+    // Без отметок концов строк поведение прежнее.
+    expect(findMatches(lines, 'заключилинастоящий')).toHaveLength(1)
+    expect(findMatches(lines, 'заключилинастоящий', breaks)).toHaveLength(0)
+  })
 })
 
 describe('segmentItem', () => {

@@ -33,6 +33,21 @@ const PAD = 24
 const GAP = 20
 
 /**
+ * Где прокрутка показывает страницу от верха (top) и до низа (bottom), px.
+ * Считается по рамкам, а не offsetTop: offsetParent — не область прокрутки.
+ */
+function pageSpan(scroller: HTMLElement, page: HTMLElement): { top: number; bottom: number } {
+  const offset =
+    page.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
+  return {
+    top: Math.max(0, offset - PAD),
+    bottom: offset + page.offsetHeight + PAD - scroller.clientHeight
+  }
+}
+/** Допуск края прокрутки, px: при масштабе экрана Windows scrollTop дробный. */
+const EDGE = 2
+
+/**
  * Область документа: раскладка страниц, видимость (рендерим только страницы
  * около экрана), определение текущей страницы по прокрутке, масштаб
  * «по ширине / целиком» и переход к странице по запросу из панелей.
@@ -106,7 +121,10 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
 
   // Текущая страница — та, что пересекает горизонтальную ось центра экрана.
   const suppressScrollUntil = useRef(0)
+  /** Время последней прокрутки: «По одной» листает, только когда край уже достигнут. */
+  const lastScrollAt = useRef(0)
   const onScroll = useCallback(() => {
+    lastScrollAt.current = performance.now()
     const scroller = scrollerRef.current
     if (!scroller || performance.now() < suppressScrollUntil.current) return
     const middle = scroller.getBoundingClientRect().top + scroller.clientHeight / 2
@@ -127,6 +145,8 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
   }, [actions, state.page])
 
   // Переход к странице по запросу (миниатюра, закладка, поиск, PageDown).
+  /** «По одной», листание назад: предыдущая страница открывается с низа, как в других просмотрщиках. */
+  const landAtBottom = useRef<number | null>(null)
   useEffect(() => {
     const request = state.scrollRequest
     const scroller = scrollerRef.current
@@ -134,8 +154,70 @@ export function DocumentView({ tab, doc }: { tab: DocTab; doc: PdfDocument }): R
     const target = scroller.querySelector<HTMLElement>(`[data-page="${request.page}"]`)
     if (!target) return
     suppressScrollUntil.current = performance.now() + 200
-    scroller.scrollTo({ top: target.offsetTop - PAD, behavior: 'auto' })
+    const { top, bottom } = pageSpan(scroller, target)
+    const y = landAtBottom.current === request.page ? Math.max(top, bottom) : top
+    scroller.scrollTo({ top: y, behavior: 'auto' })
   }, [state.scrollRequest, resolvedZoom, scrollMode])
+
+  // «По одной»: у края страницы колесо, стрелки и пробел переходят на соседнюю.
+  const page = state.page
+  const lastPage = tab.pages
+  useEffect(() => {
+    const scroller = scrollerRef.current
+    if (!scroller || scrollMode !== 'single') return
+    let flippedAt = 0
+    const atTop = (): boolean => scroller.scrollTop <= EDGE
+    const atBottom = (): boolean =>
+      scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - EDGE
+    // Край считается достигнутым, когда прокрутка у него уже остановилась: один
+    // разгон колеса не пролистывает страницу сразу после того, как доехал до края.
+    const resting = (): boolean => performance.now() - lastScrollAt.current > 150
+    const flip = (delta: 1 | -1): boolean => {
+      const next = page + delta
+      if (next < 1 || next > lastPage) return false
+      const now = performance.now()
+      if (now - flippedAt < 400 || !resting()) return true
+      flippedAt = now
+      landAtBottom.current = delta < 0 ? next : null
+      actions.setPage(next)
+      return true
+    }
+    const onWheel = (event: WheelEvent): void => {
+      if (event.ctrlKey || event.deltaY === 0) return
+      landAtBottom.current = null
+      const edge = event.deltaY > 0 ? atBottom() : atTop()
+      if (edge && flip(event.deltaY > 0 ? 1 : -1)) event.preventDefault()
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.ctrlKey || event.altKey || event.metaKey || event.defaultPrevented) return
+      const target = event.target
+      const space = event.key === ' '
+      if (target instanceof HTMLElement) {
+        if (target.isContentEditable) return
+        if (target.closest('input, textarea, select, dialog, [role="menu"]')) return
+        // Пробел на кнопке нажимает её, а не листает документ.
+        if (space && target.closest('button, a, [role="button"]')) return
+      }
+      const forward = event.key === 'ArrowDown' || (space && !event.shiftKey)
+      const backward = event.key === 'ArrowUp' || (space && event.shiftKey)
+      if (!forward && !backward) return
+      event.preventDefault()
+      landAtBottom.current = null
+      if (forward ? atBottom() : atTop()) {
+        lastScrollAt.current = 0
+        flip(forward ? 1 : -1)
+        return
+      }
+      const step = space ? scroller.clientHeight * 0.9 : 48
+      scroller.scrollBy({ top: forward ? step : -step, behavior: 'auto' })
+    }
+    scroller.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('keydown', onKey)
+    return () => {
+      scroller.removeEventListener('wheel', onWheel)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [actions, scrollMode, page, lastPage])
 
   // Ctrl+колесо — масштаб.
   useEffect(() => {

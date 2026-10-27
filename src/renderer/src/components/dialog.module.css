@@ -6,11 +6,23 @@
   padding: 0;
   box-shadow: var(--shadow);
   max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+/*
+ * Заголовок и кнопки всегда на виду, прокручивается только содержимое: в
+ * невысоком окне иначе «Записать» и «Закрыть» уезжали вниз вместе с полями.
+ * display только у открытого окна — закрытый <dialog> должен оставаться скрытым.
+ */
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
 }
 .dialog::backdrop {
   background: rgba(0, 0, 0, 0.35);
 }
 .head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -23,11 +35,16 @@
   font-weight: 600;
 }
 .body {
-  padding: 0 20px 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 2px 20px 18px;
   display: grid;
+  align-content: start;
   gap: 12px;
 }
 .footer {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: 8px;

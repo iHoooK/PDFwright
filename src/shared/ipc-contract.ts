@@ -28,6 +28,7 @@ export const IpcChannels = {
   filePrint: 'file:print',
   recentList: 'recent:list',
   recentRemove: 'recent:remove',
+  recentAdd: 'recent:add',
   updateCheck: 'update:check',
   updateDownload: 'update:download',
   updateCancel: 'update:cancel',
@@ -40,6 +41,18 @@ export const APP_COMMAND_CHANNEL = 'app:command'
 export const APP_OPEN_FILE_CHANNEL = 'app:open-file'
 /** Канал main → renderer: прогресс скачивания обновления. */
 export const UPDATE_PROGRESS_CHANNEL = 'update:progress'
+
+/**
+ * Сообщение ошибки чтения пропавшего файла. Electron передаёт в renderer только
+ * текст ошибки (с префиксом «Error invoking remote method…»), поэтому renderer
+ * узнаёт её по этому маркеру и показывает понятное «Файл не найден».
+ */
+export const FILE_MISSING_ERROR = 'PDFWRIGHT_FILE_MISSING'
+
+export function isFileMissingError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes(FILE_MISSING_ERROR)
+}
 
 export const APP_COMMANDS = [
   'file.open',
@@ -122,6 +135,11 @@ export interface WriteManyItem {
   bytes: ArrayBuffer
 }
 
+export interface WriteManyOptions {
+  /** Не перезаписывать существующие файлы: занятое имя получает « (2)», « (3)»… */
+  unique?: boolean
+}
+
 /** Итог смены языка: окна перезагружены или ждут сохранения документов. */
 export interface LanguageApplyResult {
   applied: boolean
@@ -159,6 +177,8 @@ export interface RecentFile {
   path: string
   name: string
   lastOpenedMs: number
+  /** Число страниц при последнем открытии; нет — ещё не известно. */
+  pages?: number
 }
 
 export interface UpdateInfoSummary {
@@ -196,12 +216,16 @@ export interface PdfwrightApi {
   openImagesDialog: () => Promise<PickedImage[]>
   /** Путь для сохранения текста; расширение .txt добавляется само. */
   saveTextDialog: (options: SaveDialogOptions) => Promise<string | null>
+  /** Читает файл; в «Недавние» он не попадает (это делает addRecentFile после открытия). */
   readFile: (path: string) => Promise<FileReadResult>
   writeFile: (request: WriteFileRequest) => Promise<void>
-  writeFiles: (files: WriteManyItem[]) => Promise<void>
+  /** Пишет файлы и возвращает их пути (с unique — свободные имена рядом с занятыми). */
+  writeFiles: (files: WriteManyItem[], options?: WriteManyOptions) => Promise<string[]>
   printFile: (path: string) => Promise<void>
   getRecentFiles: () => Promise<RecentFile[]>
   removeRecentFile: (path: string) => Promise<RecentFile[]>
+  /** Документ открыт во вкладке: файл поднимается в начало «Недавних». */
+  addRecentFile: (path: string, pages?: number) => Promise<RecentFile[]>
   /** Сколько документов с несохранёнными изменениями: main спрашивает подтверждение при закрытии окна. */
   setDirtyCount: (count: number) => Promise<void>
   /** Файлы, с которыми открыто окно (аргументы запуска, сеанс, «Открыть в новом окне»); отдаются один раз. */
@@ -246,10 +270,14 @@ export interface IpcHandlers {
   [IpcChannels.dialogSaveText]: (options: SaveDialogOptions) => Promise<string | null>
   [IpcChannels.fileRead]: (path: string) => Promise<FileReadResult>
   [IpcChannels.fileWrite]: (request: WriteFileRequest) => Promise<void>
-  [IpcChannels.fileWriteMany]: (files: WriteManyItem[]) => Promise<void>
+  [IpcChannels.fileWriteMany]: (
+    files: WriteManyItem[],
+    options?: WriteManyOptions
+  ) => Promise<string[]>
   [IpcChannels.filePrint]: (path: string) => Promise<void>
   [IpcChannels.recentList]: () => RecentFile[] | Promise<RecentFile[]>
   [IpcChannels.recentRemove]: (path: string) => RecentFile[] | Promise<RecentFile[]>
+  [IpcChannels.recentAdd]: (path: string, pages?: number) => Promise<RecentFile[]>
   [IpcChannels.updateCheck]: () => Promise<UpdateCheckResult>
   [IpcChannels.updateDownload]: () => Promise<void>
   [IpcChannels.updateCancel]: () => void

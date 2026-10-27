@@ -77,7 +77,9 @@ export function PagesGrid({ tab, doc }: { tab: DocTab; doc: PdfDocument }): Reac
             <PageThumbnail
               doc={doc}
               pageNumber={page}
-              rotation={state.rotation}
+              // Поворот вида здесь не действует: миниатюры показывают страницы так,
+              // как они записаны в файле, а повернуть их можно кнопками режима.
+              rotation={0}
               selected={state.selectedPages.has(page)}
               markup={markup.get(page)}
               onClick={(event) => {

@@ -10,6 +10,7 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { parsePdfDate } from '@shared/pdf-date'
 import { normalizeTurn, type PageBox, type PageGeometry } from '@shared/markup/geometry'
 import { t } from '@renderer/i18n'
+import { flattenOutline, type OutlineEntry } from './outline'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -47,11 +48,7 @@ export interface PageSize {
   height: number
 }
 
-export interface OutlineEntry {
-  title: string
-  depth: number
-  dest: string | unknown[] | null
-}
+export type { OutlineEntry }
 
 export interface DocumentProperties {
   title: string | null
@@ -185,17 +182,25 @@ export class PdfDocument {
     return content.items.map((item) => ('str' in item ? item.str : ''))
   }
 
-  async getOutline(): Promise<OutlineEntry[]> {
-    const outline = await this.proxy.getOutline()
-    const entries: OutlineEntry[] = []
-    const walk = (nodes: OutlineNode[], depth: number): void => {
-      for (const node of nodes) {
-        entries.push({ title: node.title, depth, dest: node.dest })
-        if (depth < 8) walk(node.items, depth + 1)
-      }
+  /**
+   * Текст страницы для поиска: строки фрагментов и где после фрагмента конец
+   * строки (`hasEOL`). По концам строк поиск ставит пробел, чтобы слова
+   * соседних строк не склеивались.
+   */
+  async getSearchText(pageNumber: number): Promise<{ items: string[]; breaks: boolean[] }> {
+    const content = await this.getTextContent(pageNumber)
+    const items: string[] = []
+    const breaks: boolean[] = []
+    for (const item of content.items) {
+      items.push('str' in item ? item.str : '')
+      breaks.push('hasEOL' in item && item.hasEOL)
     }
-    walk(outline, 0)
-    return entries
+    return { items, breaks }
+  }
+
+  async getOutline(): Promise<OutlineEntry[]> {
+    // Без закладок pdf.js отдаёт null, а не пустой список.
+    return flattenOutline(await this.proxy.getOutline())
   }
 
   /** Номер страницы (с 1) для назначения закладки или null, если разрешить нельзя. */
@@ -263,12 +268,6 @@ export interface FieldObject {
   editable?: boolean
 }
 export type FieldObjects = Map<string, FieldObject[]>
-
-interface OutlineNode {
-  title: string
-  dest: string | unknown[] | null
-  items: OutlineNode[]
-}
 
 function sizeFromPage(page: PDFPageProxy): PageSize {
   const viewport = page.getViewport({ scale: 1 })

@@ -1,7 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron'
-import { readFile, stat } from 'node:fs/promises'
-import { basename, isAbsolute } from 'node:path'
+import { readdir, readFile, stat } from 'node:fs/promises'
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import {
+  FILE_MISSING_ERROR,
   IpcChannels,
   type LanguageApplyResult,
   type AppInfo,
@@ -11,7 +12,8 @@ import {
 } from '@shared/ipc-contract'
 import { isAllowedExternalUrl } from '@shared/external-links'
 import { isPortableBuild } from '../services/app-paths'
-import { toBuffer, writeAtomicBytes } from '../services/fs-utils'
+import { isMissingFile, toBuffer, writeAtomicBytes } from '../services/fs-utils'
+import { freePath } from '@shared/paths'
 import { printPdfFile } from '../services/print-service'
 import { mainStrings, type MainStrings } from '../strings'
 import { interfaceLanguage } from '../language'
@@ -196,10 +198,15 @@ export function registerIpcHandlers({
     return /\.txt$/i.test(result.filePath) ? result.filePath : `${result.filePath}.txt`
   })
 
+  // Чтение не трогает «Недавние»: туда попадает только документ, открытый во вкладке
+  // (recent:add после успешного открытия), а не источник объединения или сравнения.
   handle(IpcChannels.fileRead, async (path) => {
     const safePath = requireAbsolutePath(path)
-    const [buffer, info] = await Promise.all([readFile(safePath), stat(safePath)])
-    await recent.touch(safePath)
+    const [buffer, info] = await Promise.all([readFile(safePath), stat(safePath)]).catch(
+      (error: unknown) => {
+        throw isMissingFile(error) ? new Error(FILE_MISSING_ERROR) : error
+      }
+    )
     // Отдаём ровно байты файла: Buffer может ссылаться на общий пул большего размера.
     const bytes = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
     return { bytes, size: info.size, modifiedMs: info.mtimeMs }
@@ -215,9 +222,15 @@ export function registerIpcHandlers({
     await recent.touch(safePath)
   })
 
-  handle(IpcChannels.fileWriteMany, async (files) => {
+  handle(IpcChannels.fileWriteMany, async (files, options) => {
     const value: unknown = files
     if (!Array.isArray(value)) throw new TypeError('file:write-many ожидает массив')
+    const settingsValue: unknown = options
+    const unique =
+      typeof settingsValue === 'object' &&
+      settingsValue !== null &&
+      'unique' in settingsValue &&
+      settingsValue.unique === true
     const items = value.map((item: unknown) => {
       const { path, bytes } = (typeof item === 'object' && item !== null ? item : {}) as {
         path?: unknown
@@ -225,7 +238,20 @@ export function registerIpcHandlers({
       }
       return { path: requireAbsolutePath(path), data: toBuffer(bytes) }
     })
-    for (const item of items) await writeAtomicBytes(item.path, item.data, false)
+    const written: string[] = []
+    // Свободные имена считаются и по диску, и по уже выбранным в этом наборе.
+    const planned = new Set<string>()
+    for (const item of items) {
+      let target = item.path
+      if (unique) {
+        const onDisk = await filesIn(dirname(resolve(item.path)))
+        target = freePath(resolve(item.path), (lower) => planned.has(lower) || onDisk.has(lower))
+      }
+      planned.add(target.toLowerCase())
+      await writeAtomicBytes(target, item.data, false)
+      written.push(target)
+    }
+    return written
   })
 
   handle(IpcChannels.filePrint, (path) =>
@@ -233,6 +259,12 @@ export function registerIpcHandlers({
   )
   handle(IpcChannels.recentList, () => recent.list())
   handle(IpcChannels.recentRemove, (path) => recent.remove(requireAbsolutePath(path)))
+  handle(IpcChannels.recentAdd, (path, pages) => {
+    const value: unknown = pages
+    const count =
+      typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
+    return recent.touch(requireAbsolutePath(path), count)
+  })
 
   handle(IpcChannels.updateCheck, () => updates.check())
   handleFrom(IpcChannels.updateDownload, (sender) => {
@@ -247,6 +279,16 @@ export function registerIpcHandlers({
       updates.install()
     })
   })
+}
+
+/** Полные пути файлов папки в нижнем регистре; папки ещё нет — пусто. */
+async function filesIn(dir: string): Promise<Set<string>> {
+  try {
+    return new Set((await readdir(dir)).map((name) => join(dir, name).toLowerCase()))
+  } catch (error) {
+    if (isMissingFile(error)) return new Set()
+    throw error
+  }
 }
 
 async function showOpen(

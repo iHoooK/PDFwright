@@ -5,8 +5,8 @@ import { RECENT_LIMIT_MAX } from '@shared/settings-schema'
 import { isMissingFile, writeAtomic } from './fs-utils'
 
 /**
- * Список недавних файлов: только пути и время открытия, без содержимого
- * (см. PRIVACY.md). Хранится в userData/recent.json.
+ * Список недавних файлов: только пути, время открытия и число страниц, без
+ * содержимого (см. PRIVACY.md). Хранится в userData/recent.json.
  */
 export class RecentFilesStore {
   private items: RecentFile[] = []
@@ -39,9 +39,16 @@ export class RecentFilesStore {
     return this.items
   }
 
-  async touch(path: string): Promise<RecentFile[]> {
+  /** Поднимает файл в начало списка; без pages число страниц остаётся прежним. */
+  async touch(path: string, pages?: number): Promise<RecentFile[]> {
     if (!this.loaded) await this.load()
-    const entry: RecentFile = { path, name: basename(path), lastOpenedMs: Date.now() }
+    const known = pages ?? this.items.find((i) => i.path === path)?.pages
+    const entry: RecentFile = {
+      path,
+      name: basename(path),
+      lastOpenedMs: Date.now(),
+      ...(known === undefined ? {} : { pages: known })
+    }
     this.items = [entry, ...this.items.filter((i) => i.path !== path)].slice(0, this.limit())
     await this.persist()
     return this.items
@@ -67,14 +74,19 @@ export function normalizeRecent(raw: unknown): RecentFile[] {
   const result: RecentFile[] = []
   for (const item of raw) {
     if (typeof item !== 'object' || item === null) continue
-    const { path, lastOpenedMs } = item as { path?: unknown; lastOpenedMs?: unknown }
+    const { path, lastOpenedMs, pages } = item as {
+      path?: unknown
+      lastOpenedMs?: unknown
+      pages?: unknown
+    }
     if (typeof path !== 'string' || path.length === 0 || seen.has(path)) continue
     seen.add(path)
     result.push({
       path,
       name: basename(path),
       lastOpenedMs:
-        typeof lastOpenedMs === 'number' && Number.isFinite(lastOpenedMs) ? lastOpenedMs : 0
+        typeof lastOpenedMs === 'number' && Number.isFinite(lastOpenedMs) ? lastOpenedMs : 0,
+      ...(typeof pages === 'number' && Number.isInteger(pages) && pages > 0 ? { pages } : {})
     })
     if (result.length >= RECENT_LIMIT_MAX) break
   }

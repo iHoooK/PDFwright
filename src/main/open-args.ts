@@ -1,17 +1,19 @@
 import { isAbsolute, resolve } from 'node:path'
 
 /**
- * Достаёт путь к PDF из аргументов запуска: двойной клик по файлу в Проводнике
- * передаёт его последним аргументом. Флаги Electron/Chromium (`--...`) и
- * служебный `.` из `electron .` игнорируются. Берётся последний аргумент
- * с расширением .pdf; относительный путь разрешается от cwd.
+ * Достаёт пути к PDF из аргументов запуска: двойной клик по файлу в Проводнике
+ * передаёт его последним аргументом, а несколько файлов, брошенных на ярлык, —
+ * подряд. Флаги Electron/Chromium (`--...`) и служебный `.` из `electron .`
+ * игнорируются. Берутся все аргументы с расширением .pdf по порядку, без
+ * повторов; относительный путь разрешается от cwd.
  */
-export function extractPdfPath(argv: readonly string[], cwd: string): string | null {
-  for (let i = argv.length - 1; i >= 1; i -= 1) {
-    const arg = argv[i]
-    if (arg === undefined || arg.startsWith('--') || arg === '.') continue
+export function extractPdfPaths(argv: readonly string[], cwd: string): string[] {
+  const paths: string[] = []
+  for (const arg of argv.slice(1)) {
+    if (arg.startsWith('--') || arg === '.') continue
     if (!/\.pdf$/i.test(arg)) continue
-    return isAbsolute(arg) ? arg : resolve(cwd, arg)
+    const path = isAbsolute(arg) ? arg : resolve(cwd, arg)
+    if (!paths.includes(path)) paths.push(path)
   }
-  return null
+  return paths
 }

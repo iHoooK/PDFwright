@@ -24,17 +24,31 @@ export function normalizeQuery(query: string): string {
   return query.trim().toLocaleLowerCase('ru').replace(/\s+/g, ' ')
 }
 
-export function findMatches(items: readonly string[], rawQuery: string): TextMatch[] {
+/**
+ * breaks[i] — после фрагмента i конец строки (`hasEOL` у pdf.js). Там в
+ * склеенный текст встаёт пробел: слова соседних строк не слипаются ни
+ * в контексте результата, ни в самом поиске. Этого пробела нет ни в одном
+ * фрагменте, поэтому подсветка его пропускает.
+ */
+export function findMatches(
+  items: readonly string[],
+  rawQuery: string,
+  breaks: readonly boolean[] = []
+): TextMatch[] {
   const query = normalizeQuery(rawQuery)
   if (query.length === 0) return []
 
   // Склеиваем фрагменты и запоминаем, где начинается каждый.
   const offsets: number[] = []
   let joined = ''
-  for (const item of items) {
+  items.forEach((item, index) => {
     offsets.push(joined.length)
     joined += item
-  }
+    const next = items[index + 1]
+    if (breaks[index] === true && next !== undefined && !/\s$/.test(joined) && !/^\s/.test(next)) {
+      joined += ' '
+    }
+  })
   const haystack = joined.toLocaleLowerCase('ru')
   if (haystack.length !== joined.length) return findMatchesSlow(items, query)
 

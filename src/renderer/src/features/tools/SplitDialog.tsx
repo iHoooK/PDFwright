@@ -101,9 +101,10 @@ function SplitForm(): React.JSX.Element {
           path: joinPath(folder, safeFileName(t.tools.partName(base, part.from, part.to))),
           bytes: toArrayBuffer(part.bytes)
         }))
-        await api.writeFiles(files)
-        setDone(files.map((f) => f.path))
-        actions.toast(t.tools.splitDone(files.length))
+        // Существующие файлы не перезаписываются: занятое имя получает « (2)».
+        const written = await api.writeFiles(files, { unique: true })
+        setDone(written)
+        actions.toast(t.tools.splitDone(written.length))
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e))
       } finally {

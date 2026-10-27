@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   IconAdd,
   IconClose,
@@ -24,13 +24,22 @@ import { activeDoc, useStore, type DocTab } from './store'
 import { useHotkeys } from './hotkeys'
 import { ContextMenu } from './ContextMenu'
 import { resolvedTheme } from './theme'
+import { windowTitle } from './window-title'
 import s from './app.module.css'
 
 export function AppShell(): React.JSX.Element {
   const { state, actions } = useStore()
   useHotkeys()
   const doc = activeDoc(state)
+  // Строка состояния и заголовок окна говорят о документе, только когда он на экране.
+  const shown = state.screen === 'viewer' ? doc : null
   const dark = resolvedTheme() === 'dark'
+  const title = windowTitle(
+    state.screen === 'viewer' || state.screen === 'compare' ? (doc?.name ?? null) : null
+  )
+  useEffect(() => {
+    document.title = title
+  }, [title])
   const [tabMenu, setTabMenu] = useState<{ tab: DocTab; x: number; y: number } | null>(null)
   const [moveConfirm, setMoveConfirm] = useState<DocTab | null>(null)
   const closeTabMenu = useCallback(() => {
@@ -147,21 +156,23 @@ export function AppShell(): React.JSX.Element {
       </main>
 
       <footer className={s.statusbar}>
-        {doc?.status === 'ready' ? (
+        {shown?.status === 'ready' ? (
           <>
-            <span>{t.viewer.pageOf(state.page, doc.pages)}</span>
-            <span>{pageSizeLabel(doc)}</span>
+            <span>{t.viewer.pageOf(state.page, shown.pages)}</span>
+            <span>{pageSizeLabel(shown, state.page)}</span>
             <span>{state.resolvedZoom}%</span>
           </>
         ) : (
-          <span>{doc ? doc.name : t.app.name}</span>
+          <span>{shown ? shown.name : t.app.name}</span>
         )}
         <span className={s.grow} />
-        <span>
-          <kbd>Ctrl</kbd> + <kbd>F</kbd> {t.viewer.searchHint}
-        </span>
-        {doc?.status === 'ready' &&
-          (doc.dirty ? (
+        {shown?.status === 'ready' && (
+          <span>
+            <kbd>Ctrl</kbd> + <kbd>F</kbd> {t.viewer.searchHint}
+          </span>
+        )}
+        {shown?.status === 'ready' &&
+          (shown.dirty ? (
             <span className={s.warn}>{t.viewer.unsaved}</span>
           ) : (
             <span className={s.ok}>{t.viewer.saved}</span>
@@ -227,13 +238,14 @@ export function AppShell(): React.JSX.Element {
       <ConvertDialogs />
       {/* Пароль спрашивается и при открытии вкладки, и из диалогов конвертации — поверх них. */}
       <PasswordDialog />
-      <Toast message={state.toast} />
+      <Toast message={state.toast} action={state.toastAction} />
     </div>
   )
 }
 
-function pageSizeLabel(doc: DocTab): string {
-  const size = doc.doc?.sizeOf(1)
+/** Размер текущей страницы: у документа страницы бывают разные. */
+function pageSizeLabel(doc: DocTab, page: number): string {
+  const size = doc.doc?.sizeOf(page)
   if (!size) return ''
   const mm = (pt: number): number => Math.round((pt / 72) * 25.4)
   return `${mm(size.width)} × ${mm(size.height)} ${t.units.mm}`
