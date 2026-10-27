@@ -9,6 +9,7 @@
     "electron.vite.config.ts",
     "vitest.config.ts",
     "vitest.e2e.config.ts",
+    "vitest.tour.config.ts",
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
@@ -18,6 +19,7 @@
     "src/renderer/src/features/forms/form-values.ts",
     "src/renderer/src/features/protect/protect-form.ts",
     "tests/unit/**/*.ts",
-    "tests/e2e/**/*.ts"
+    "tests/e2e/**/*.ts",
+    "tests/tour/**/*.ts"
   ]
 }
