@@ -1,18 +1,18 @@
 .viewer {
   display: grid;
-  grid-template-columns: var(--w-sidebar) 1fr var(--w-props);
+  grid-template-columns: var(--w-sidebar) minmax(0, 1fr) var(--w-props);
   grid-template-rows: var(--h-cmdbar) 1fr;
   min-height: 0;
   position: relative;
 }
 .noLeft {
-  grid-template-columns: 0 1fr var(--w-props);
+  grid-template-columns: 0 minmax(0, 1fr) var(--w-props);
 }
 .noRight {
-  grid-template-columns: var(--w-sidebar) 1fr 0;
+  grid-template-columns: var(--w-sidebar) minmax(0, 1fr) 0;
 }
 .noLeft.noRight {
-  grid-template-columns: 0 1fr 0;
+  grid-template-columns: 0 minmax(0, 1fr) 0;
 }
 .pagesMode {
   grid-template-rows: var(--h-cmdbar) auto 1fr;
