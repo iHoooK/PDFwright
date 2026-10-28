@@ -252,6 +252,8 @@ function createBrowserMock(): PdfwrightApi {
         progressListeners.delete(listener)
       }
     },
+    pendingUpdate: () => Promise.resolve(null),
+    onUpdateAvailable: () => () => undefined,
     getPathForFile: (file) => {
       const path = pathFor(file)
       files.set(path, file)

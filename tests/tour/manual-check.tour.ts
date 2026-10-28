@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join, parse, resolve } from 'node:path'
 import type { Page } from 'playwright'
 import { afterEach, beforeEach, describe, it } from 'vitest'
-import { APP_COMMAND_CHANNEL, type AppCommand } from '../../src/shared/ipc-contract'
+import {
+  APP_COMMAND_CHANNEL,
+  UPDATE_AVAILABLE_CHANNEL,
+  type AppCommand
+} from '../../src/shared/ipc-contract'
 import {
   clickPage,
   ctx,
@@ -217,5 +221,32 @@ describe('снимки инструкции', () => {
     await command('app.settings')
     await page.waitForTimeout(600)
     await snap(page, '22-settings')
+    await page.getByRole('button', { name: 'О разработчике' }).click()
+    await snap(page, '23-author')
+  })
+
+  it('предупреждение о новой версии', async () => {
+    const page = await launch(demo.first)
+    if (!ctx.app) throw new Error('программа не запущена')
+    await ctx.app.evaluate(
+      ({ BrowserWindow }, [channel, payload]) => {
+        BrowserWindow.getAllWindows()[0]?.webContents.send(channel, payload)
+      },
+      [
+        UPDATE_AVAILABLE_CHANNEL,
+        {
+          canInstall: true,
+          info: {
+            version: '1.0.1',
+            releaseDate: null,
+            releaseNotes: null,
+            size: 120_000_000,
+            page: 'https://github.com/iHoooK/PDFwright/releases/tag/v1.0.1'
+          }
+        }
+      ] as const
+    )
+    await page.getByRole('alertdialog').waitFor()
+    await snap(page, '24-update-notice')
   })
 })

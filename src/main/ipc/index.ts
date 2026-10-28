@@ -8,6 +8,7 @@ import {
   type AppInfo,
   type IpcHandlers,
   type StartupFiles,
+  type UpdateAvailable,
   type WindowTabs
 } from '@shared/ipc-contract'
 import { isAllowedExternalUrl } from '@shared/external-links'
@@ -39,6 +40,8 @@ export interface IpcDependencies {
   recent: RecentFilesStore
   windows: WindowsBridge
   updates: UpdateService
+  /** Новая версия, найденная автоматической проверкой, или null. */
+  pendingUpdate: () => UpdateAvailable | null
   /** Язык в настройках изменился: main ставит меню и язык сообщений заново. */
   onLanguageChange: () => void
 }
@@ -70,6 +73,7 @@ export function registerIpcHandlers({
   recent,
   windows,
   updates,
+  pendingUpdate,
   onLanguageChange
 }: IpcDependencies): void {
   const text = (): MainStrings => mainStrings(interfaceLanguage(settings))
@@ -267,6 +271,7 @@ export function registerIpcHandlers({
   })
 
   handle(IpcChannels.updateCheck, () => updates.check())
+  handle(IpcChannels.updatePending, () => pendingUpdate())
   handleFrom(IpcChannels.updateDownload, (sender) => {
     windows.setUpdateOwner(sender)
     return updates.download()

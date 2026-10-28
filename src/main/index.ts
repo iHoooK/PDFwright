@@ -11,6 +11,7 @@ import { installAppProtocol, registerAppScheme, rendererDirFromMain } from './pr
 import { isPortableBuild } from './services/app-paths'
 import { RecentFilesStore } from './services/recent-files'
 import { UpdateService } from './services/update-service'
+import { UpdateSchedule } from './update-schedule'
 import { SettingsStore } from './services/settings-store'
 import { planSessionRestore } from './window-plan'
 import { WindowManager } from './windows'
@@ -48,13 +49,22 @@ async function bootstrap(startupFiles: string[]): Promise<void> {
   applyContentSecurityPolicy(csp)
   installAppProtocol(rendererDirFromMain(import.meta.dirname), csp)
   const windows = new WindowManager(settings)
+  const updates = new UpdateService(isPortableBuild(), (progress) => {
+    windows.sendUpdateProgress(progress)
+  })
+  const schedule = new UpdateSchedule({
+    enabled: () => app.isPackaged && settings.get().updates.autoCheck,
+    check: () => updates.check(),
+    notify: (update) => {
+      windows.sendUpdateAvailable(update)
+    }
+  })
   registerIpcHandlers({
     settings,
     recent,
     windows,
-    updates: new UpdateService(isPortableBuild(), (progress) => {
-      windows.sendUpdateProgress(progress)
-    }),
+    updates,
+    pendingUpdate: () => schedule.pending,
     onLanguageChange: () => {
       applyLanguage()
     }
@@ -73,6 +83,7 @@ async function bootstrap(startupFiles: string[]): Promise<void> {
   applyLanguage()
 
   await openStartupWindows(windows, settings, startupFiles)
+  schedule.start()
 
   app.on('second-instance', (_event, argv, workingDirectory) => {
     const files = extractPdfPaths(argv, workingDirectory)

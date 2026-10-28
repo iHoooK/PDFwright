@@ -294,6 +294,20 @@ export function SettingsScreen(): React.JSX.Element {
                 </Button>
               </div>
             </SettingCard>
+            <SettingCard
+              icon={<IconUpdate />}
+              title={t.settings.autoCheck}
+              hint={t.settings.autoCheckHint}
+            >
+              <Toggle
+                checked={settings.updates.autoCheck}
+                onLabel={t.settings.on}
+                offLabel={t.settings.off}
+                onChange={(autoCheck) => {
+                  void actions.updateSettings({ updates: { autoCheck } })
+                }}
+              />
+            </SettingCard>
             <ConfirmDialog
               open={update.confirmInstall}
               title={t.settings.updatesInstallTitle}

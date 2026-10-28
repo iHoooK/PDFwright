@@ -32,7 +32,8 @@ export const IpcChannels = {
   updateCheck: 'update:check',
   updateDownload: 'update:download',
   updateCancel: 'update:cancel',
-  updateInstall: 'update:install'
+  updateInstall: 'update:install',
+  updatePending: 'update:pending'
 } as const
 
 /** Канал main → renderer: команды меню приложения и системных ускорителей. */
@@ -41,6 +42,8 @@ export const APP_COMMAND_CHANNEL = 'app:command'
 export const APP_OPEN_FILE_CHANNEL = 'app:open-file'
 /** Канал main → renderer: прогресс скачивания обновления. */
 export const UPDATE_PROGRESS_CHANNEL = 'update:progress'
+/** Канал main → renderer: автоматическая проверка нашла новую версию. */
+export const UPDATE_AVAILABLE_CHANNEL = 'update:available'
 
 /**
  * Сообщение ошибки чтения пропавшего файла. Electron передаёт в renderer только
@@ -194,6 +197,24 @@ export type UpdateCheckResult =
   | { status: 'none'; current: string }
   | { status: 'available'; info: UpdateInfoSummary; canInstall: boolean }
 
+/** Новая версия, найденная автоматической проверкой. */
+export interface UpdateAvailable {
+  info: UpdateInfoSummary
+  canInstall: boolean
+}
+
+/** Проверка формы события UPDATE_AVAILABLE_CHANNEL в preload. */
+export function isUpdateAvailable(value: unknown): value is UpdateAvailable {
+  if (typeof value !== 'object' || value === null) return false
+  const { info, canInstall } = value as Partial<UpdateAvailable>
+  return (
+    typeof canInstall === 'boolean' &&
+    typeof info === 'object' &&
+    typeof info.version === 'string' &&
+    typeof info.page === 'string'
+  )
+}
+
 export interface UpdateProgress {
   percent: number
   transferred: number
@@ -236,12 +257,16 @@ export interface PdfwrightApi {
   setWindowTabs: (tabs: WindowTabs) => Promise<void>
   /** Открывает файл в новом окне программы. */
   openInNewWindow: (path: string) => Promise<void>
-  /** Обновления: только по явной команде пользователя. */
+  /** Проверка обновлений по кнопке; сама программа проверяет их при запуске и раз в 12 часов. */
   checkForUpdates: () => Promise<UpdateCheckResult>
   downloadUpdate: () => Promise<void>
   cancelUpdateDownload: () => Promise<void>
   installUpdate: () => Promise<void>
   onUpdateProgress: (listener: (progress: UpdateProgress) => void) => () => void
+  /** Новая версия, найденная автоматической проверкой до открытия окна, или null. */
+  pendingUpdate: () => Promise<UpdateAvailable | null>
+  /** Подписка на новые версии, найденные автоматической проверкой. */
+  onUpdateAvailable: (listener: (update: UpdateAvailable) => void) => () => void
   /** Путь к файлу, брошенному в окно (sandbox не даёт File.path). */
   getPathForFile: (file: File) => string
   /** Подписка на команды меню; возвращает функцию отписки. */
@@ -282,4 +307,5 @@ export interface IpcHandlers {
   [IpcChannels.updateDownload]: () => Promise<void>
   [IpcChannels.updateCancel]: () => void
   [IpcChannels.updateInstall]: () => void
+  [IpcChannels.updatePending]: () => UpdateAvailable | null
 }

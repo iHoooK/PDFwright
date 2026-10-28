@@ -629,7 +629,17 @@ export const en: Strings = {
     scrollSpread: 'Two-page spread',
     updates: 'Updates',
     updatesLead:
-      'Updates are checked only when you click the button. The app contacts GitHub; your documents and settings are not sent.',
+      'The app contacts GitHub only to learn the latest version number; your documents and settings are not sent.',
+    autoCheck: 'Check for updates automatically',
+    autoCheckHint: 'At startup and every 12 hours; the app will tell you about a new version',
+    noticeTitle: 'A new version of PDFwright is available',
+    noticeText: (v: string, size: string) =>
+      `Version ${v} is out. We recommend updating: the installer (${size}) will be downloaded and verified, then the app will offer to install it.`,
+    noticeTextPortable: (v: string) =>
+      `Version ${v} is out. We recommend updating: download the new archive from the release page.`,
+    noticeUpdate: 'Update',
+    noticeDownload: 'Open the release page',
+    noticeLater: 'Later',
     installed: (v: string) => `Installed version: ${v}`,
     updatesHint: 'Click “Check for updates” to find out about a new version.',
     updatesChecking: 'Checking GitHub for the latest version…',
@@ -672,11 +682,11 @@ export const en: Strings = {
     dataFolder: 'Data folder',
     showFolder: 'Show',
     author: 'About the developer',
-    authorLead: 'The author and his channels.',
+    authorLead: 'The author and the Promptix channels.',
     authorText:
-      "My name is Andrey, and I make Promptix: small free apps for Windows. Each one solves a single task, works without the internet or accounts, and doesn't track its users. PDFwright is one of them.",
+      'My name is Andrey, and I am the author of Promptix. In this project I build websites, games and free apps for Windows. Each app solves a clear task of its own, works without accounts or ads, and does not send your data anywhere. PDFwright is one of them: viewing and editing PDFs right on your computer.',
     authorText2:
-      'On YouTube I show how these apps come to life, from idea to release. Questions and suggestions go to Telegram. If PDFwright has been useful to you, you can support its development through DonationAlerts or Boosty.',
+      'On YouTube I stream live as I build games, websites and apps, sometimes together with viewers. Questions and suggestions go to Telegram. If PDFwright has been useful to you, you can support its development through DonationAlerts or Boosty.',
     on: 'On',
     off: 'Off',
     hotkeys: 'Keyboard shortcuts',

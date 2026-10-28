@@ -2,9 +2,11 @@ import { app, BrowserWindow, dialog, screen, shell, type WebContents } from 'ele
 import { join } from 'node:path'
 import {
   APP_OPEN_FILE_CHANNEL,
+  UPDATE_AVAILABLE_CHANNEL,
   UPDATE_PROGRESS_CHANNEL,
   type LanguageApplyResult,
   type StartupFiles,
+  type UpdateAvailable,
   type UpdateProgress,
   type WindowTabs
 } from '@shared/ipc-contract'
@@ -248,6 +250,13 @@ export class WindowManager {
   /** Прогресс скачивания обновления видит окно, которое его начало. */
   setUpdateOwner(sender: WebContents): void {
     this.updateOwner = sender
+  }
+
+  /** Автоматическая проверка нашла новую версию: предупреждают все окна. */
+  sendUpdateAvailable(update: UpdateAvailable): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send(UPDATE_AVAILABLE_CHANNEL, update)
+    }
   }
 
   sendUpdateProgress(progress: UpdateProgress): void {

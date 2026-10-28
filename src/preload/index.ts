@@ -3,8 +3,10 @@ import {
   APP_COMMAND_CHANNEL,
   APP_OPEN_FILE_CHANNEL,
   IpcChannels,
+  UPDATE_AVAILABLE_CHANNEL,
   UPDATE_PROGRESS_CHANNEL,
   isAppCommand,
+  isUpdateAvailable,
   type PdfwrightApi
 } from '@shared/ipc-contract'
 
@@ -57,6 +59,16 @@ const api: PdfwrightApi = {
     ipcRenderer.on(UPDATE_PROGRESS_CHANNEL, handler)
     return () => {
       ipcRenderer.off(UPDATE_PROGRESS_CHANNEL, handler)
+    }
+  },
+  pendingUpdate: () => ipcRenderer.invoke(IpcChannels.updatePending),
+  onUpdateAvailable: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, update: unknown): void => {
+      if (isUpdateAvailable(update)) listener(update)
+    }
+    ipcRenderer.on(UPDATE_AVAILABLE_CHANNEL, handler)
+    return () => {
+      ipcRenderer.off(UPDATE_AVAILABLE_CHANNEL, handler)
     }
   },
   getPathForFile: (file) => webUtils.getPathForFile(file),

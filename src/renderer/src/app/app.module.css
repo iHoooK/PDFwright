@@ -129,3 +129,52 @@
 .warn {
   color: var(--danger);
 }
+
+/* Предупреждение о новой версии: карточка в правом нижнем углу окна. */
+.updateNotice {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--h-statusbar) + 18px);
+  z-index: 20;
+  display: flex;
+  gap: 12px;
+  width: min(380px, calc(100vw - 36px));
+  padding: 14px 16px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.updateIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 18px;
+}
+.updateBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+}
+.updateBody b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.updateBody p {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.updateActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}

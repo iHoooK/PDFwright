@@ -11,6 +11,7 @@ import {
 } from '@renderer/icons'
 import { t } from '@renderer/i18n'
 import { IconButton, Toast } from '@renderer/components/controls'
+import { UpdateNotice } from './UpdateNotice'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { StartScreen } from '@renderer/features/start/StartScreen'
 import { ViewerScreen } from '@renderer/features/viewer/ViewerScreen'
@@ -238,6 +239,7 @@ export function AppShell(): React.JSX.Element {
       {/* Пароль спрашивается и при открытии вкладки, и из диалогов конвертации — поверх них. */}
       <PasswordDialog />
       <Toast message={state.toast} action={state.toastAction} />
+      <UpdateNotice />
     </div>
   )
 }

@@ -74,6 +74,14 @@ describe('normalizeSettings', () => {
     expect(next.convert.compressLevel).toBe('light')
   })
 
+  it('автоматическая проверка обновлений включена по умолчанию и выключается', () => {
+    expect(createDefaultSettings().updates.autoCheck).toBe(true)
+    expect(normalizeSettings({ updates: { autoCheck: 'yes' } }).updates.autoCheck).toBe(true)
+    const off = applySettingsPatch(createDefaultSettings(), { updates: { autoCheck: false } })
+    expect(off.updates.autoCheck).toBe(false)
+    expect(normalizeSettings(JSON.parse(JSON.stringify(off))).updates.autoCheck).toBe(false)
+  })
+
   it('не бросает исключений на NaN и Infinity', () => {
     expect(() => normalizeSettings({ window: { width: NaN, height: Infinity } })).not.toThrow()
   })

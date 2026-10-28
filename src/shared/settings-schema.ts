@@ -72,6 +72,11 @@ export interface ConvertSettings {
   compressLevel: CompressLevelSetting
 }
 
+export interface UpdateSettings {
+  /** Проверять новую версию самой программе: при запуске и раз в 12 часов. */
+  autoCheck: boolean
+}
+
 export interface WindowSettings {
   width: number
   height: number
@@ -109,6 +114,7 @@ export interface AppSettings {
   files: FilesSettings
   markup: MarkupSettings
   convert: ConvertSettings
+  updates: UpdateSettings
   window: WindowSettings
   session: SessionSettings
 }
@@ -130,6 +136,7 @@ export function createDefaultSettings(): AppSettings {
     files: { backupOnSave: false, recentLimit: 10 },
     markup: { saveMode: 'annotation', signatures: [] },
     convert: { compressLevel: 'medium' },
+    updates: { autoCheck: true },
     window: { width: 1280, height: 800, maximized: false },
     session: { restore: true, windows: [] }
   }
@@ -239,6 +246,7 @@ export function normalizeSettings(input: unknown): AppSettings {
   const files = isRecord(input.files) ? input.files : {}
   const markup = isRecord(input.markup) ? input.markup : {}
   const convert = isRecord(input.convert) ? input.convert : {}
+  const updates = isRecord(input.updates) ? input.updates : {}
   const window = isRecord(input.window) ? input.window : {}
   const session = isRecord(input.session) ? input.session : {}
 
@@ -267,6 +275,9 @@ export function normalizeSettings(input: unknown): AppSettings {
         defaults.convert.compressLevel
       )
     },
+    updates: {
+      autoCheck: pickBoolean(updates.autoCheck, defaults.updates.autoCheck)
+    },
     window: {
       width: pickInteger(window.width, defaults.window.width, WINDOW_MIN_WIDTH, 16_384),
       height: pickInteger(window.height, defaults.window.height, WINDOW_MIN_HEIGHT, 16_384),
@@ -288,6 +299,7 @@ export function applySettingsPatch(current: AppSettings, patch: SettingsPatch): 
     'files',
     'markup',
     'convert',
+    'updates',
     'window',
     'session'
   ] as const) {

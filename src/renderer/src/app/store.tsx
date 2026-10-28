@@ -16,6 +16,7 @@ import {
   type AppInfo,
   type PdfwrightApi,
   type RecentFile,
+  type UpdateAvailable,
   type UpdateInfoSummary
 } from '@shared/ipc-contract'
 import { describeUpdateError } from '@shared/update-messages'
@@ -308,6 +309,8 @@ export interface UpdateState {
   percent: number
   message: string | null
   confirmInstall: boolean
+  /** Предупреждение о новой версии от автоматической проверки на экране. */
+  notice: boolean
 }
 
 export interface PasswordRequest {
@@ -560,7 +563,8 @@ const initial: State = {
     canInstall: false,
     percent: 0,
     message: null,
-    confirmInstall: false
+    confirmInstall: false,
+    notice: false
   }
 }
 
@@ -1127,6 +1131,8 @@ export interface Actions {
   checkUpdates: () => void
   downloadUpdate: () => void
   cancelUpdate: () => void
+  /** Прячет предупреждение о новой версии до следующего запуска. */
+  dismissUpdateNotice: () => void
   installUpdate: (confirmed: boolean) => void
 }
 
@@ -1301,9 +1307,32 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
     const unsubscribeProgress = api.onUpdateProgress((progress) => {
       dispatch({ type: 'update', patch: { phase: 'downloading', percent: progress.percent } })
     })
+    // Автоматическая проверка нашла новую версию (до открытия окна или сейчас).
+    const showUpdate = (found: UpdateAvailable): void => {
+      const { phase } = stateRef.current.update
+      if (phase === 'checking' || phase === 'downloading' || phase === 'downloaded') return
+      dispatch({
+        type: 'update',
+        patch: {
+          phase: 'available',
+          info: found.info,
+          canInstall: found.canInstall,
+          message: null,
+          notice: true
+        }
+      })
+    }
+    api
+      .pendingUpdate()
+      .then((found) => {
+        if (found) showUpdate(found)
+      })
+      .catch(() => undefined)
+    const unsubscribeAvailable = api.onUpdateAvailable(showUpdate)
     return () => {
       unsubscribeOpen()
       unsubscribeProgress()
+      unsubscribeAvailable()
     }
   }, [api, openPath, toast])
 
@@ -2657,6 +2686,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
               }
             })
           })
+      },
+      dismissUpdateNotice: () => {
+        dispatch({ type: 'update', patch: { notice: false } })
       },
       cancelUpdate: () => {
         api.cancelUpdateDownload().catch(() => undefined)

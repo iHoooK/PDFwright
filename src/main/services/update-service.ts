@@ -9,9 +9,9 @@ import { PROJECT_REPOSITORY, RELEASES_PAGE } from '@shared/external-links'
 import type { UpdateCheckResult, UpdateProgress } from '@shared/ipc-contract'
 
 /**
- * Обновления через GitHub Releases на electron-updater. Ничего не происходит
- * без явной команды пользователя: проверка, скачивание и установка — отдельные
- * вызовы из renderer. Целостность установщика проверяет сам electron-updater
+ * Обновления через GitHub Releases на electron-updater. Проверку запускает
+ * кнопка в Параметрах или расписание (`update-schedule.ts`); скачивание и
+ * установка — только по команде пользователя. Целостность установщика проверяет сам electron-updater
  * по sha512 из latest.yml релиза; draft и pre-release не предлагаются.
  */
 export class UpdateService {
@@ -111,6 +111,8 @@ export class UpdateService {
   }
 
   async download(): Promise<void> {
+    // Предупреждение могло прийти из другого окна или после ручной проверки без новой версии.
+    if (!this.available) await this.check()
     if (!this.available) throw new Error('Сначала проверьте обновления.')
     if (this.portable) throw new Error('Для portable-версии скачайте архив со страницы релиза.')
     if (this.busy) throw new Error('Обновление уже выполняется.')
