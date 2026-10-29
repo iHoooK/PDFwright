@@ -685,7 +685,7 @@ export const en: Strings = {
     author: 'About the developer',
     authorLead: 'The author and the Promptix channels.',
     authorText:
-      'My name is Andrey, and I am the author of Promptix. In this project I build websites, games and free apps for Windows. Each app solves a clear task of its own, works without accounts or ads, and does not send your data anywhere. PDFwright is one of them: viewing and editing PDFs right on your computer.',
+      'My name is Andrey, and I am the author of Promptix. In this project I build websites, games and apps. Each app solves a clear task of its own, works without accounts or ads, and does not send your data anywhere. PDFwright is one of them: viewing and editing PDFs right on your computer.',
     authorText2:
       'On YouTube I stream live as I build games, websites and apps, sometimes together with viewers. Questions and suggestions go to Telegram. If PDFwright has been useful to you, you can support its development through DonationAlerts or Boosty.',
     on: 'On',
