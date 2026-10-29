@@ -18,6 +18,8 @@ Service data (settings, recent files) is stored in `%APPDATA%\PDFwright`, downlo
 %LocalAppData%\pdfwright-updater
 ```
 
+On a Mac, service data is stored in `~/Library/Application Support/PDFwright`; the update check requests `latest-mac.yml` there, and the app does not download installers.
+
 To remove it, close the app and delete these folders. The uninstaller does not touch user documents.
 
 When building the app yourself, `npm ci` downloads open-source dependencies from npm. After that the app runs locally; `npm run dev` does not send documents or settings over the network.

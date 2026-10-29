@@ -1,0 +1,112 @@
+name: Release PDFwright for Mac
+
+# Первая доставка Mac-файлов в уже опубликованный релиз (docs/MACOS_PLAN.md, правило 5
+# и M2.5). Тег mac-v1.0.0 → сборка на двух Mac-машинах (mac-release-build.yml) → шесть
+# Mac-файлов добавляются в существующий релиз v1.0.0, к его описанию добавляется
+# раздел «Для Mac» (installer/release-notes-mac.md). Windows-файлы, заголовок релиза и
+# отметка latest не меняются. Следующие версии выходят общим тегом v* (release.yml).
+#
+# Ручной запуск (Actions → Run workflow) — проверка без загрузки: собирает файлы,
+# сверяет релиз v<версия> и показывает, что было бы загружено и каким станет описание.
+on:
+  push:
+    tags: ['mac-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check that the tag matches package.json
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            if [[ "$GITHUB_REF_NAME" != "mac-v$version" ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version (expected mac-v$version)"
+              exit 1
+            fi
+            publish=true
+          else
+            publish=false
+            echo "::notice::Dry run: Mac files for v$version are built and checked, the release is not changed"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    uses: ./.github/workflows/mac-release-build.yml
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: v${{ needs.version.outputs.version }}
+      PUBLISH: ${{ needs.version.outputs.publish }}
+      MAC_FILES: >-
+        PDFwright-Mac-AppleSilicon.dmg PDFwright-Mac-Intel.dmg
+        PDFwright-Portable-Mac-AppleSilicon.zip PDFwright-Portable-Mac-Intel.zip
+        latest-mac.yml SHA256SUMS-Mac.txt
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: PDFwright-mac
+          path: build
+
+      # Релиз уже опубликован с пятью Windows-файлами; их не заменяем и не удаляем.
+      - name: Check the existing release
+        run: |
+          gh release view "$TAG" --json name,isDraft,isPrerelease,assets,body > build/release.json
+          jq -r '"Release: \(.name), draft=\(.isDraft), prerelease=\(.isPrerelease)"' build/release.json
+          jq -r '.assets[].name' build/release.json | sort > build/assets.txt
+          echo "Assets now:"; cat build/assets.txt
+          for name in PDFwright-Setup-x64.exe PDFwright-Setup-x64.exe.blockmap latest.yml PDFwright-Portable-x64.zip SHA256SUMS.txt; do
+            if ! grep -qx "$name" build/assets.txt; then echo "::error::Windows file $name is missing in release $TAG"; exit 1; fi
+          done
+          for name in $MAC_FILES; do
+            test -f "build/$name"
+            if grep -qx "$name" build/assets.txt; then echo "::warning::$name is already in release $TAG and will be replaced"; fi
+          done
+
+      - name: Release notes with the Mac section
+        run: |
+          jq -r '.body' build/release.json | tr -d '\r' > build/notes-now.md
+          if grep -q '^## Для Mac' build/notes-now.md; then
+            echo "The release notes already have the Mac section"
+            cp build/notes-now.md build/notes-new.md
+          else
+            { cat build/notes-now.md; echo; cat installer/release-notes-mac.md; } > build/notes-new.md
+          fi
+          diff -u build/notes-now.md build/notes-new.md || true
+
+      - name: Upload Mac files to the release
+        if: env.PUBLISH == 'true'
+        run: |
+          files=""
+          for name in $MAC_FILES; do files="$files build/$name"; done
+          # --clobber заменяет только Mac-файлы с теми же именами (повторный запуск).
+          gh release upload "$TAG" $files --clobber
+          gh release edit "$TAG" --notes-file build/notes-new.md
+          gh release view "$TAG" --json assets --jq '.assets[] | "\(.name) \(.size)"'
+
+      - name: Dry run summary
+        if: env.PUBLISH != 'true'
+        run: |
+          for name in $MAC_FILES; do
+            echo "::notice title=Would upload to $TAG::$name ($(stat -c %s "build/$name") bytes)"
+          done

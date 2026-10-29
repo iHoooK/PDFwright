@@ -1,0 +1,95 @@
+name: Build PDFwright for Mac
+
+# Общая Mac-сборка выпуска для release.yml (тег v*) и release-mac.yml (тег mac-v*),
+# docs/MACOS_PLAN.md, фаза M2. Каждый процессор собирается на своей Mac-машине той же
+# командой, что и на Mac автора: проверки, сборка, ad-hoc подпись, Info.plist, .zip, .dmg
+# и запуск программы из .dmg. Затем общий latest-mac.yml (оба .zip и оба .dmg) и
+# SHA256SUMS-Mac.txt. Результат — артефакт PDFwright-mac с шестью файлами релиза.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Mac ${{ matrix.arch }}
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+          - arch: x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release build
+        run: bash scripts/build-release-mac.sh --arch ${{ matrix.arch }}
+
+      - name: Upload build
+        uses: actions/upload-artifact@v7
+        with:
+          name: PDFwright-mac-${{ matrix.arch }}
+          path: |
+            build/mac-${{ matrix.arch }}/latest-mac.yml
+            build/mac-${{ matrix.arch }}/PDFwright-*.dmg
+            build/mac-${{ matrix.arch }}/PDFwright-*.zip
+          if-no-files-found: error
+
+  files:
+    name: Mac release files
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: PDFwright-mac-*
+          path: build
+
+      # Каждый процессор принёс свой latest-mac.yml; здесь из них получается общий.
+      - name: Merge latest-mac.yml and write SHA256SUMS-Mac.txt
+        run: node scripts/mac-release-files.mjs build/release build/PDFwright-mac-arm64 build/PDFwright-mac-x64
+
+      - name: Verify release files
+        working-directory: build/release
+        run: |
+          for name in PDFwright-Mac-AppleSilicon.dmg PDFwright-Mac-Intel.dmg \
+            PDFwright-Portable-Mac-AppleSilicon.zip PDFwright-Portable-Mac-Intel.zip \
+            latest-mac.yml SHA256SUMS-Mac.txt; do
+            if [[ ! -f "$name" ]]; then echo "::error::Release file not found: $name"; exit 1; fi
+            echo "::notice title=$name::$(stat -c %s "$name") bytes"
+          done
+          sha256sum -c SHA256SUMS-Mac.txt
+          grep -c '^  - url: PDFwright-Portable-Mac-\(AppleSilicon\|Intel\)\.zip$' latest-mac.yml | grep -qx 2
+          cat latest-mac.yml
+
+      - name: Upload release files
+        uses: actions/upload-artifact@v7
+        with:
+          name: PDFwright-mac
+          path: |
+            build/release/PDFwright-Mac-AppleSilicon.dmg
+            build/release/PDFwright-Mac-Intel.dmg
+            build/release/PDFwright-Portable-Mac-AppleSilicon.zip
+            build/release/PDFwright-Portable-Mac-Intel.zip
+            build/release/latest-mac.yml
+            build/release/SHA256SUMS-Mac.txt
+          if-no-files-found: error
