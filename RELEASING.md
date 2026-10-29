@@ -36,14 +36,14 @@ git push origin v1.0.0
    git push origin mac-v1.0.0
    ```
 
-4. `.github/workflows/release-mac.yml` проверит, что тег совпадает с версией в `package.json`, соберёт файлы командой `bash scripts/build-release-mac.sh` на `macos-latest` (Apple Silicon) и `macos-15-intel` (Intel), загрузит шесть Mac-файлов в релиз v1.0.0 и добавит к его описанию раздел «Для Mac» из [installer/release-notes-mac.md](installer/release-notes-mac.md). Это займёт примерно 20–30 минут.
+4. `.github/workflows/release-mac.yml` проверит, что тег совпадает с версией в `package.json`, соберёт файлы командой `bash scripts/build-release-mac.sh` на `macos-latest` (Apple Silicon) и `macos-15-intel` (Intel), загрузит шесть Mac-файлов в релиз v1.0.0 и добавит к его описанию раздел «Для Mac» из [installer/release-section-mac.md](installer/release-section-mac.md). Это займёт примерно 20–30 минут.
 5. Откройте релиз v1.0.0: прежние пять Windows-файлов на месте, добавлены шесть Mac-файлов, в описании есть раздел «Для Mac». Скачайте Mac-файлы и сверьте суммы: `shasum -a 256 -c SHA256SUMS-Mac.txt`.
 
 Если workflow упал после загрузки части файлов, запустите его заново (**Re-run all jobs**): Mac-файлы с теми же именами заменяются, Windows-файлы не трогаются. Дальше Mac-версия выходит только вместе с Windows-версией по общему тегу `v*`.
 
 ## Выпустить новую версию
 
-1. Обновите [RELEASE_NOTES.md](RELEASE_NOTES.md): он целиком станет описанием релиза. Раздел «Для Mac» (файлы и первый запуск) workflow добавит сам из [installer/release-notes-mac.md](installer/release-notes-mac.md), если в RELEASE_NOTES.md нет своего раздела `## Для Mac`.
+1. Обновите [RELEASE_NOTES.md](RELEASE_NOTES.md): он целиком станет описанием релиза. Раздел «Для Mac» (файлы и первый запуск) workflow добавит сам из [installer/release-section-mac.md](installer/release-section-mac.md), если в RELEASE_NOTES.md нет своего раздела `## Для Mac`.
 2. Поднимите версию и создайте тег одной командой (она же делает коммит):
 
    ```bash
@@ -75,7 +75,7 @@ Mac-файлы собираются только на Mac (Node.js 24 и Xcode C
 bash scripts/build-release-mac.sh
 ```
 
-Создайте релиз на GitHub руками: тег `v1.0.1` на том же коммите, заголовок `PDFwright v1.0.1`, описание из `RELEASE_NOTES.md` с разделом «Для Mac» (из `installer/release-notes-mac.md`), и загрузите пять Windows-файлов и шесть Mac-файлов из папок `build/` обеих сборок. Имена файлов менять нельзя. Не используйте автоматический `Source code (zip)` вместо portable-версии.
+Создайте релиз на GitHub руками: тег `v1.0.1` на том же коммите, заголовок `PDFwright v1.0.1`, описание из `RELEASE_NOTES.md` с разделом «Для Mac» (из `installer/release-section-mac.md`), и загрузите пять Windows-файлов и шесть Mac-файлов из папок `build/` обеих сборок. Имена файлов менять нельзя. Не используйте автоматический `Source code (zip)` вместо portable-версии.
 
 ## Проверить опубликованный выпуск
 

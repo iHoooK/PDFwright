@@ -102,7 +102,7 @@ jobs:
           if grep -q '^## Для Mac' RELEASE_NOTES.md; then
             cp RELEASE_NOTES.md build/release-notes.md
           else
-            { cat RELEASE_NOTES.md; echo; cat installer/release-notes-mac.md; } > build/release-notes.md
+            { cat RELEASE_NOTES.md; echo; cat installer/release-section-mac.md; } > build/release-notes.md
           fi
 
       - name: Publish release

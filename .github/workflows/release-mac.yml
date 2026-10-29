@@ -3,7 +3,7 @@ name: Release PDFwright for Mac
 # Первая доставка Mac-файлов в уже опубликованный релиз (docs/MACOS_PLAN.md, правило 5
 # и M2.5). Тег mac-v1.0.0 → сборка на двух Mac-машинах (mac-release-build.yml) → шесть
 # Mac-файлов добавляются в существующий релиз v1.0.0, к его описанию добавляется
-# раздел «Для Mac» (installer/release-notes-mac.md). Windows-файлы, заголовок релиза и
+# раздел «Для Mac» (installer/release-section-mac.md). Windows-файлы, заголовок релиза и
 # отметка latest не меняются. Следующие версии выходят общим тегом v* (release.yml).
 #
 # Ручной запуск (Actions → Run workflow) — проверка без загрузки: собирает файлы,
@@ -90,7 +90,7 @@ jobs:
             echo "The release notes already have the Mac section"
             cp build/notes-now.md build/notes-new.md
           else
-            { cat build/notes-now.md; echo; cat installer/release-notes-mac.md; } > build/notes-new.md
+            { cat build/notes-now.md; echo; cat installer/release-section-mac.md; } > build/notes-new.md
           fi
           diff -u build/notes-now.md build/notes-new.md || true
 
