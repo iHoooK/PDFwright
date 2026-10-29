@@ -202,3 +202,119 @@ describe('меню приложения в Windows', () => {
     ])
   })
 })
+
+describe('меню приложения на Mac', () => {
+  beforeEach(() => {
+    setPlatform('darwin')
+    electron.app.isPackaged = true
+    electron.Menu.buildFromTemplate.mockClear()
+  })
+  afterEach(() => {
+    setPlatform(realPlatform)
+  })
+
+  function macMenu(): (ItemView | '---')[] {
+    installApplicationMenu({ newWindow: () => undefined, strings: mainStrings('ru') })
+    return view(installedTemplate())
+  }
+  function submenu(label: string): (ItemView | '---')[] {
+    const found = macMenu().find((item) => item !== '---' && item.label === label)
+    if (!found || found === '---' || !found.submenu) throw new Error(`нет меню ${label}`)
+    return found.submenu
+  }
+
+  it('первое — меню программы: о программе, параметры, службы, скрыть и завершить', () => {
+    expect(macMenu()[0]).toEqual({
+      label: 'PDFwright',
+      submenu: [
+        { label: 'О программе PDFwright', command: 'help.about' },
+        '---',
+        { label: 'Параметры…', accelerator: 'Cmd+,', command: 'app.settings' },
+        '---',
+        { label: 'Службы', role: 'services', submenu: [] },
+        '---',
+        { label: 'Скрыть PDFwright', role: 'hide' },
+        { label: 'Скрыть остальные', role: 'hideOthers' },
+        { label: 'Показать все', role: 'unhide' },
+        '---',
+        { label: 'Завершить PDFwright', role: 'quit' }
+      ]
+    })
+  })
+
+  it('меню по порядку: программа, Файл, Правка, Инструменты, Вид, Окно, Справка', () => {
+    expect(macMenu().map((item) => item !== '---' && item.label)).toEqual([
+      'PDFwright',
+      'Файл',
+      'Правка',
+      'Инструменты',
+      'Вид',
+      'Окно',
+      'Справка'
+    ])
+  })
+
+  it('«Правка»: отмена шлёт команду в renderer, правка текста — системными ролями', () => {
+    expect(submenu('Правка')).toEqual([
+      { label: 'Отменить', accelerator: 'Cmd+Z', id: 'edit.undo', command: 'edit.undo' },
+      { label: 'Повторить', accelerator: 'Shift+Cmd+Z', id: 'edit.redo', command: 'edit.redo' },
+      '---',
+      { label: 'Вырезать', role: 'cut' },
+      { label: 'Копировать', role: 'copy' },
+      { label: 'Вставить', role: 'paste' },
+      { label: 'Выделить всё', role: 'selectAll' },
+      '---',
+      { label: 'Найти…', accelerator: 'Cmd+F', command: 'edit.find' }
+    ])
+  })
+
+  it('«Окно»: свернуть, масштаб и все окна вперёд; список окон добавляет macOS', () => {
+    const menu = macMenu().find((item) => item !== '---' && item.label === 'Окно')
+    expect(menu).toEqual({
+      label: 'Окно',
+      role: 'window',
+      submenu: [
+        { label: 'Свернуть', role: 'minimize' },
+        { label: 'Изменить масштаб', role: 'zoom' },
+        '---',
+        { label: 'Все окна — на передний план', role: 'front' }
+      ]
+    })
+  })
+
+  it('выход и параметры не повторяются в «Файле» и «Виде», «О программе» — не в «Справке»', () => {
+    const file = submenu('Файл')
+    expect(file.at(-1)).toEqual({
+      label: 'Закрыть документ',
+      accelerator: 'CmdOrCtrl+W',
+      command: 'file.close'
+    })
+    const commands = (items: (ItemView | '---')[]): (string | undefined)[] =>
+      items.map((item) => (item === '---' ? item : (item.command ?? item.role)))
+    expect(commands(file)).not.toContain('quit')
+    expect(commands(submenu('Вид'))).not.toContain('app.settings')
+    expect(submenu('Справка')).toEqual([{ label: 'Страница релизов', command: 'help.releases' }])
+    expect(macMenu().find((item) => item !== '---' && item.label === 'Справка')).toMatchObject({
+      role: 'help'
+    })
+  })
+
+  it('по-английски меню программы и «Окно» с английскими подписями', () => {
+    installApplicationMenu({ newWindow: () => undefined, strings: mainStrings('en') })
+    const english = view(installedTemplate())
+    expect(english.map((item) => item !== '---' && item.label)).toEqual([
+      'PDFwright',
+      'File',
+      'Edit',
+      'Tools',
+      'View',
+      'Window',
+      'Help'
+    ])
+    const appMenu = english[0]
+    expect(appMenu !== '---' && appMenu?.submenu?.at(-1)).toEqual({
+      label: 'Quit PDFwright',
+      role: 'quit'
+    })
+  })
+})

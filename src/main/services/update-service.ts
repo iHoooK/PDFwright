@@ -13,17 +13,23 @@ import type { UpdateCheckResult, UpdateProgress } from '@shared/ipc-contract'
  * кнопка в Параметрах или расписание (`update-schedule.ts`); скачивание и
  * установка — только по команде пользователя. Целостность установщика проверяет сам electron-updater
  * по sha512 из latest.yml релиза; draft и pre-release не предлагаются.
+ * На Mac программа без подписи Apple, и Squirrel.Mac её не обновит: там, как
+ * у portable-версии, новая версия только находится, а ставится вручную со
+ * страницы релиза.
  */
 export class UpdateService {
   private cancellation: CancellationToken | null = null
   private available: UpdateInfo | null = null
   private downloaded = false
   private busy = false
+  private readonly mac: boolean
 
   constructor(
     private readonly portable: boolean,
-    onProgress: (progress: UpdateProgress) => void
+    onProgress: (progress: UpdateProgress) => void,
+    platform: NodeJS.Platform = process.platform
   ) {
+    this.mac = platform === 'darwin'
     autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.allowPrerelease = false
@@ -66,7 +72,7 @@ export class UpdateService {
       const file = info.files[0]
       return {
         status: 'available',
-        canInstall: !this.portable,
+        canInstall: !this.portable && !this.mac,
         info: {
           version: info.version,
           releaseDate: info.releaseDate,
@@ -115,6 +121,7 @@ export class UpdateService {
     if (!this.available) await this.check()
     if (!this.available) throw new Error('Сначала проверьте обновления.')
     if (this.portable) throw new Error('Для portable-версии скачайте архив со страницы релиза.')
+    if (this.mac) throw new Error('На Mac скачайте новую версию со страницы релиза.')
     if (this.busy) throw new Error('Обновление уже выполняется.')
     this.busy = true
     this.cancellation = new CancellationToken()

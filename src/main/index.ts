@@ -6,7 +6,8 @@ import { installApplicationMenu } from './menu'
 import { mainStrings } from './strings'
 import { interfaceLanguage } from './language'
 import { setMessageLanguage } from '@shared/messages'
-import { extractPdfPaths } from './open-args'
+import { extractPdfPaths, isPdfPath } from './open-args'
+import { OpenFileQueue } from './open-file-queue'
 import { installAppProtocol, registerAppScheme, rendererDirFromMain } from './protocol'
 import { isPortableBuild } from './services/app-paths'
 import { RecentFilesStore } from './services/recent-files'
@@ -25,16 +26,28 @@ const APP_USER_MODEL_ID = 'ru.promptix.pdfwright'
 const testUserData = process.env.PDFWRIGHT_USER_DATA
 if (!app.isPackaged && testUserData) app.setPath('userData', testUserData)
 
+const mac = process.platform === 'darwin'
+
+/** Файлы из Finder и Dock (Mac): событие open-file приходит и до готовности окон. */
+const finderFiles = new OpenFileQueue()
+
 // Один экземпляр: второй запуск передаёт аргументы первому и завершается.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   registerAppScheme()
+  if (mac) {
+    // Обработчик ставится сразу: при запуске с файлом событие приходит до ready.
+    app.on('open-file', (event, path) => {
+      event.preventDefault()
+      if (isPdfPath(path)) finderFiles.push(path)
+    })
+  }
   void bootstrap(extractPdfPaths(process.argv, process.cwd()))
 }
 
-async function bootstrap(startupFiles: string[]): Promise<void> {
-  app.setAppUserModelId(APP_USER_MODEL_ID)
+async function bootstrap(argvFiles: string[]): Promise<void> {
+  if (process.platform === 'win32') app.setAppUserModelId(APP_USER_MODEL_ID)
 
   const settings = SettingsStore.forUserData(app.getPath('userData'))
   await settings.load()
@@ -82,8 +95,16 @@ async function bootstrap(startupFiles: string[]): Promise<void> {
   }
   applyLanguage()
 
+  // На Mac файлы запуска приходят из Finder, а не аргументами; к этому моменту они в очереди.
+  const startupFiles = mac ? [...new Set([...argvFiles, ...finderFiles.take()])] : argvFiles
   await openStartupWindows(windows, settings, startupFiles)
   schedule.start()
+  // Файлы, пришедшие позже (и пока открывались первые окна), — как из второго экземпляра.
+  if (mac) {
+    finderFiles.attach((path) => {
+      windows.openFile(path)
+    })
+  }
 
   app.on('second-instance', (_event, argv, workingDirectory) => {
     const files = extractPdfPaths(argv, workingDirectory)
@@ -91,12 +112,14 @@ async function bootstrap(startupFiles: string[]): Promise<void> {
     for (const file of files) windows.openFile(file)
   })
 
+  // Mac: щелчок по значку в Dock, когда окон нет.
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) windows.create()
   })
 
   app.on('window-all-closed', () => {
-    app.quit()
+    // На Mac программа остаётся в Dock без окон: окно откроет щелчок по значку, выход — ⌘Q.
+    if (!mac) app.quit()
   })
 
   app.on('before-quit', () => {

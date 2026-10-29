@@ -44,6 +44,8 @@ export const APP_OPEN_FILE_CHANNEL = 'app:open-file'
 export const UPDATE_PROGRESS_CHANNEL = 'update:progress'
 /** Канал main → renderer: автоматическая проверка нашла новую версию. */
 export const UPDATE_AVAILABLE_CHANNEL = 'update:available'
+/** Канал main → renderer (только Mac): окно вошло в полноэкранный режим или вышло из него. */
+export const WINDOW_FULLSCREEN_CHANNEL = 'window:fullscreen'
 
 /**
  * Сообщение ошибки чтения пропавшего файла. Electron передаёт в renderer только
@@ -224,6 +226,11 @@ export interface UpdateProgress {
 
 /** Контракт, который preload публикует в renderer как `window.pdfwright`. */
 export interface PdfwrightApi {
+  /**
+   * Система (process.platform): известна синхронно, до первого рендера, — по ней
+   * выбираются подписи сочетаний и стили шапки (`darwin` — Mac).
+   */
+  platform: string
   getAppInfo: () => Promise<AppInfo>
   getSettings: () => Promise<AppSettings>
   updateSettings: (patch: SettingsPatch) => Promise<AppSettings>
@@ -273,6 +280,8 @@ export interface PdfwrightApi {
   onCommand: (listener: (command: AppCommand) => void) => () => void
   /** Подписка на запросы открыть файл; возвращает функцию отписки. */
   onOpenFile: (listener: (path: string) => void) => () => void
+  /** Mac: окно вошло в полноэкранный режим или вышло из него; возвращает функцию отписки. */
+  onFullScreen: (listener: (fullScreen: boolean) => void) => () => void
 }
 
 /** Сигнатуры обработчиков в main: ключ — канал, значение — (args) => result. */

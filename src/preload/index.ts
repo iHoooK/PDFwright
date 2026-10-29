@@ -5,6 +5,7 @@ import {
   IpcChannels,
   UPDATE_AVAILABLE_CHANNEL,
   UPDATE_PROGRESS_CHANNEL,
+  WINDOW_FULLSCREEN_CHANNEL,
   isAppCommand,
   isUpdateAvailable,
   type PdfwrightApi
@@ -15,6 +16,8 @@ import {
  * сам ipcRenderer, require и Node API ему недоступны (sandbox + contextIsolation).
  */
 const api: PdfwrightApi = {
+  // process.platform доступен и в sandbox-preload: renderer узнаёт систему без IPC.
+  platform: process.platform,
   getAppInfo: () => ipcRenderer.invoke(IpcChannels.appGetInfo),
   getSettings: () => ipcRenderer.invoke(IpcChannels.settingsGet),
   updateSettings: (patch) => ipcRenderer.invoke(IpcChannels.settingsUpdate, patch),
@@ -88,6 +91,15 @@ const api: PdfwrightApi = {
     ipcRenderer.on(APP_OPEN_FILE_CHANNEL, handler)
     return () => {
       ipcRenderer.off(APP_OPEN_FILE_CHANNEL, handler)
+    }
+  },
+  onFullScreen: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, fullScreen: unknown): void => {
+      if (typeof fullScreen === 'boolean') listener(fullScreen)
+    }
+    ipcRenderer.on(WINDOW_FULLSCREEN_CHANNEL, handler)
+    return () => {
+      ipcRenderer.off(WINDOW_FULLSCREEN_CHANNEL, handler)
     }
   }
 }

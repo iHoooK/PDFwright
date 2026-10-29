@@ -51,6 +51,22 @@ const ru = {
     releases: 'Страница релизов',
     about: 'О программе'
   },
+  /** Пункты, которые есть только в меню Mac: меню программы, «Правка» и «Окно». */
+  macMenu: {
+    about: 'О программе PDFwright',
+    settings: 'Параметры…',
+    services: 'Службы',
+    hide: 'Скрыть PDFwright',
+    hideOthers: 'Скрыть остальные',
+    showAll: 'Показать все',
+    quit: 'Завершить PDFwright',
+    cut: 'Вырезать',
+    paste: 'Вставить',
+    window: 'Окно',
+    minimize: 'Свернуть',
+    zoom: 'Изменить масштаб',
+    front: 'Все окна — на передний план'
+  },
   dialogs: {
     openPdf: 'Открыть PDF',
     openPdfs: 'Выберите PDF-файлы',
@@ -121,6 +137,21 @@ const en: MainStrings = {
     help: 'Help',
     releases: 'Releases page',
     about: 'About'
+  },
+  macMenu: {
+    about: 'About PDFwright',
+    settings: 'Settings…',
+    services: 'Services',
+    hide: 'Hide PDFwright',
+    hideOthers: 'Hide Others',
+    showAll: 'Show All',
+    quit: 'Quit PDFwright',
+    cut: 'Cut',
+    paste: 'Paste',
+    window: 'Window',
+    minimize: 'Minimize',
+    zoom: 'Zoom',
+    front: 'Bring All to Front'
   },
   dialogs: {
     openPdf: 'Open PDF',
