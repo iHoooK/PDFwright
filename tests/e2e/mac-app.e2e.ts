@@ -69,7 +69,7 @@ async function screenShot(name: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 800))
   await new Promise<void>((resolve) => {
     // Без разрешения на запись экрана снимок не выйдет — это не ошибка теста.
-    execFile('screencapture', ['-x', join(dir, `${name}.png`)], () => {
+    execFile('screencapture', ['-x', join(dir, `${name}.png`)], { timeout: 15_000 }, () => {
       resolve()
     })
   })
@@ -113,14 +113,13 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
       .toBe(false)
     await expect.poll(() => cssOf(page, 'header', 'padding-left')).toBe('84px')
 
-    // Тёмная тема.
-    await page.getByRole('button', { name: 'Переключить тему' }).click()
-    if ((await page.evaluate(() => document.documentElement.dataset.theme)) !== 'dark') {
+    // Тёмная тема: кнопка переключает светлую и тёмную, настройка применяется не сразу.
+    const theme = (): Promise<string | undefined> =>
+      page.evaluate(() => document.documentElement.dataset.theme)
+    if ((await theme()) !== 'dark') {
       await page.getByRole('button', { name: 'Переключить тему' }).click()
     }
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
-      .toBe('dark')
+    await expect.poll(theme).toBe('dark')
     await shot(page, 'mac-dark')
     await screenShot('mac-screen-dark')
   })
