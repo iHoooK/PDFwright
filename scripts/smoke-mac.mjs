@@ -6,6 +6,7 @@
 //
 // Запуск: node scripts/smoke-mac.mjs <PDFwright.app> <файл.pdf> <arm64|x64> [папка для снимков]
 import { execFileSync } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -21,13 +22,44 @@ if (!appArg || !pdfArg || !['arm64', 'x64'].includes(arch)) {
   process.exit(2)
 }
 
+// Если программа долго не отвечает: снимок экрана (системное окно или диалог видны
+// на нём), процессы PDFwright и системный журнал за последние минуты — в вывод и в снимки.
+function diagnose(stage) {
+  const run = (command, args) => {
+    try {
+      return execFileSync(command, args, { encoding: 'utf8', timeout: 60_000, maxBuffer: 64 << 20 })
+    } catch (error) {
+      return `${command}: ${error.message}`
+    }
+  }
+  console.error(`smoke-mac: программа не ответила (${stage}), сведения для разбора:`)
+  if (shotsArg) {
+    mkdirSync(resolve(shotsArg), { recursive: true })
+    console.error(run('screencapture', ['-x', join(resolve(shotsArg), `failure-${arch}.png`)]))
+  }
+  const processes = run('ps', ['-axo', 'pid,stat,etime,command'])
+  console.error(
+    processes
+      .split('\n')
+      .filter((line) => line.includes('PDFwright'))
+      .join('\n')
+  )
+  const predicate =
+    'process BEGINSWITH "PDFwright" OR process == "SecurityAgent" OR process == "UserNotificationCenter"'
+  const log = run('log', ['show', '--last', '3m', '--style', 'compact', '--predicate', predicate])
+  console.error(log.split('\n').slice(-120).join('\n'))
+}
+
 const { version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const userData = await mkdtemp(join(tmpdir(), 'pdfwright-smoke-'))
+// Playwright при тайм-ауте закрывает программу, поэтому сведения собираются раньше.
+const watchdog = setTimeout(() => diagnose('запуск'), 45_000)
 const app = await electron.launch({
   executablePath: join(resolve(appArg), 'Contents', 'MacOS', 'PDFwright'),
   args: [`--user-data-dir=${userData}`, resolve(pdfArg)],
-  timeout: 120_000
+  timeout: 90_000
 })
+clearTimeout(watchdog)
 try {
   const page = await app.firstWindow({ timeout: 120_000 })
   await page.waitForSelector('[data-page="1"] canvas', { timeout: 120_000 })
@@ -59,6 +91,9 @@ try {
     }
   }
   console.log(`smoke-mac: OK — PDFwright ${info.version} (${info.arch}) открыл ${pdfArg}`)
+} catch (error) {
+  diagnose('окно и первая страница')
+  throw error
 } finally {
   const child = app.process()
   const exited = new Promise((done) => child.once('exit', done))
