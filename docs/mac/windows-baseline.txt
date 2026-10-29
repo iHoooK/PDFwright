@@ -1,0 +1,30 @@
+# Эталон Windows-сборки для фазы M0.2 (docs/MACOS_PLAN.md).
+# Состав build/win-unpacked после `npm run package` (electron-builder 26.18.0, Electron 45.0.0),
+# собрано 2026-10-29 из коммита 661c7ee (код программы как в 8646634). Размер в байтах, путь от
+# build/win-unpacked. Всего 22 файла, 351 170 617 байт.
+#
+# Как сверять (M2.2, M3.3): список файлов должен совпасть один в один. Размеры совпадают у файлов
+# Electron; меняться могут только app.asar (код программы), PRIVACY.md (строка про папку данных
+# Mac, разрешено правилом 1) и THIRD_PARTY_NOTICES.md (если изменился состав компонентов).
+    568418  chrome_100_percent.pak
+    927757  chrome_200_percent.pak
+   4753864  d3dcompiler_47.dll
+  25779712  dxcompiler.dll
+    425472  electron_wer.dll
+   3097600  ffmpeg.dll
+  10824432  icudtl.dat
+      1096  LICENSE.electron.txt
+     34523  LICENSE.txt
+   5705935  LICENSES.chromium.html
+    592299  locales/en-US.pak
+   1212098  locales/ru.pak
+ 249797632  PDFwright.exe
+      3997  PRIVACY.md
+  13371538  resources.pak
+  26525094  resources/app.asar
+    374096  snapshot_blob.bin
+     11084  THIRD_PARTY_NOTICES.md
+    753112  v8_context_snapshot.bin
+       106  vk_swiftshader_icd.json
+   5453312  vk_swiftshader.dll
+    957440  vulkan-1.dll
