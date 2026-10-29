@@ -11,6 +11,8 @@ name: Release PDFwright for Mac
 on:
   push:
     tags: ['mac-v*']
+    # ВРЕМЕННО для проверки M2 без загрузки; убрать перед слиянием.
+    branches: ['mac/build']
   workflow_dispatch:
 
 permissions:
