@@ -88,13 +88,19 @@ const fake = vi.hoisted(() => {
       return null
     }
   }
-  return { FakeWindow, all }
+  /** Тексты подтверждений закрытия; ответ — «Закрыть без сохранения». */
+  const dialogs: string[] = []
+  const showMessageBoxSync = (_window: unknown, options: { detail: string }): number => {
+    dialogs.push(options.detail)
+    return 0
+  }
+  return { FakeWindow, all, dialogs, showMessageBoxSync }
 })
 
 vi.mock('electron', () => ({
   app: { isPackaged: true, getLocale: () => 'ru', getAppPath: () => '.' },
   BrowserWindow: fake.FakeWindow,
-  dialog: { showMessageBoxSync: () => 0 },
+  dialog: { showMessageBoxSync: fake.showMessageBoxSync },
   screen: { getAllDisplays: () => [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }] },
   shell: { openExternal: () => Promise.resolve() },
   net: {},
@@ -135,6 +141,7 @@ describe('сеанс окон', () => {
   })
   afterEach(async () => {
     setPlatform(realPlatform)
+    await settings.flush()
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -173,6 +180,23 @@ describe('сеанс окон', () => {
     manager.beginQuit()
     b.close()
     expect(await sessionTabs()).toEqual([['/b.pdf']])
+  })
+
+  it('несохранённое в последнем окне: в Windows закрывается программа, на Mac — окно', async () => {
+    const closeDirty = async (platform: NodeJS.Platform): Promise<string | undefined> => {
+      fake.dialogs.length = 0
+      const { manager, open } = await windowManager(platform, settings)
+      const window = open('/a.pdf')
+      manager.setDirty(window.webContents as never, 1)
+      window.close()
+      return fake.dialogs[0]
+    }
+    expect(await closeDirty('win32')).toBe(
+      'Закрыть программу без сохранения? Изменения будут потеряны.'
+    )
+    expect(await closeDirty('darwin')).toBe(
+      'Закрыть окно без сохранения? Изменения будут потеряны.'
+    )
   })
 
   it('Mac: выход без окон оставляет в сеансе окно, закрытое последним', async () => {

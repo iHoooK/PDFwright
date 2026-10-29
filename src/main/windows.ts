@@ -335,11 +335,13 @@ export class WindowManager {
 
   private confirmClose(entry: WindowEntry): boolean {
     const s = mainStrings(interfaceLanguage(this.settings)).close
+    // На Mac и последнее окно закрывается одно: программа остаётся в Dock.
+    const windowOnly = (this.entries.size > 1 || mac) && !this.quitting
     const choice = dialog.showMessageBoxSync(entry.window, {
       type: 'warning',
       title: 'PDFwright',
       message: entry.dirty === 1 ? s.oneDirty : s.manyDirty(entry.dirty),
-      detail: this.entries.size > 1 && !this.quitting ? s.closeWindow : s.quitApp,
+      detail: windowOnly ? s.closeWindow : s.quitApp,
       buttons: [s.discard, s.cancel],
       defaultId: 1,
       cancelId: 1,
