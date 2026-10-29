@@ -242,6 +242,8 @@ describe('изображения в PDF', () => {
     expect(naturalSizePt(readImageInfo(withJpegDpi(jpg, 300)))).toEqual({ width: 72, height: 144 })
   })
 
+  // Скорость проверяет порог для imagesToPdf, а общий лимит теста шире 5 с по умолчанию:
+  // подготовка десяти JPEG на медленной Intel-машине CI (macos-15-intel) идёт дольше.
   it('десять фотографий складываются в документ быстро и в заданном порядке', async () => {
     const photos = Array.from({ length: 10 }, (_, i) => {
       const pixmap = photo(i % 2 === 0 ? 1600 : 1200, i % 2 === 0 ? 1200 : 1600, i + 1)
@@ -260,7 +262,7 @@ describe('изображения в PDF', () => {
     const total = photos.reduce((sum, p) => sum + p.bytes.length, 0)
     expect(bytes.length).toBeLessThan(total + 20_000)
     expect(doc.getProducer()).toBe('PDFwright')
-  })
+  }, 30_000)
 
   it('поворачивает JPEG по EXIF и встраивает PNG', async () => {
     // Хранится: слева красное, справа синее. Ориентация 6 — повернуть на 90° по часовой:
