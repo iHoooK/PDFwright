@@ -19,8 +19,12 @@ jobs:
         include:
           - arch: arm64
             runner: macos-latest
+            options: ''
+          # Линтер, типы и unit-тесты — тот же JS-код, их проверяет задание arm64.
+          # На медленной Intel-машине — сборка, подпись, проверки файлов и запуск.
           - arch: x64
             runner: macos-15-intel
+            options: --skip-checks
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
@@ -42,7 +46,7 @@ jobs:
         run: |
           log="$RUNNER_TEMP/build-release-mac.log"
           set +e
-          bash scripts/build-release-mac.sh --arch ${{ matrix.arch }} 2>&1 | tee "$log"
+          bash scripts/build-release-mac.sh --arch ${{ matrix.arch }} ${{ matrix.options }} 2>&1 | tee "$log"
           status=${PIPESTATUS[0]}
           set -e
           if [[ "$status" != 0 ]]; then
