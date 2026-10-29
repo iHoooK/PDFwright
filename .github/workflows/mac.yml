@@ -1,0 +1,92 @@
+name: Mac check
+
+# Проверка на Mac-машинах GitHub (план docs/MACOS_PLAN.md, M0.3): lint, typecheck,
+# unit, сборка, e2e со снимками экрана и упаковка .app. Шаги проверок не обрывают
+# прогон: итог каждого пишет scripts/ci-results.mjs, а последний шаг кладёт сводку,
+# логи и снимки в служебную ветку ci/mac-results, папка <ветка>/<процессор>/.
+# Windows-сборка — в build.yml и release.yml.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['mac/**']
+
+# Запись в ветку ci/mac-results.
+permissions:
+  contents: write
+
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mac:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: node scripts/ci-results.mjs run install npm ci
+
+      - name: Lint
+        continue-on-error: true
+        run: node scripts/ci-results.mjs run lint npm run lint
+
+      - name: Typecheck
+        continue-on-error: true
+        run: node scripts/ci-results.mjs run typecheck npm run typecheck
+
+      - name: Unit tests
+        continue-on-error: true
+        run: node scripts/ci-results.mjs run unit npm test
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: node scripts/ci-results.mjs run build npm run build
+
+      - name: E2E tests
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 60
+        env:
+          PDFWRIGHT_SHOTS: ${{ runner.temp }}/ci-results/shots
+        run: node scripts/ci-results.mjs run e2e npm run test:e2e
+
+      - name: Package app
+        id: package
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 20
+        run: >-
+          node scripts/ci-results.mjs run package
+          npx electron-builder --mac --dir --${{ matrix.arch }} --publish never
+
+      # Размер, Info.plist, подпись и состав PDFwright.app — для сравнения со сборкой M2.
+      - name: App bundle info
+        if: steps.package.outcome == 'success'
+        continue-on-error: true
+        run: |
+          app=$(ls -d build/mac*/PDFwright.app)
+          node scripts/ci-results.mjs run app-info sh -c \
+            'du -sh "$0"; plutil -p "$0/Contents/Info.plist"; codesign -dv "$0" 2>&1 || true' "$app"
+          (cd "$app/.." && find PDFwright.app -type f -exec stat -f '%z %N' {} + | sort -k 2) \
+            > "$RUNNER_TEMP/ci-results/app-files.txt"
+
+      - name: Publish results to ci/mac-results
+        if: always()
+        run: node scripts/ci-results.mjs publish "$GITHUB_REF_NAME/${{ matrix.arch }}"
