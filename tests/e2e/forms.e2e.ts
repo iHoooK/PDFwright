@@ -2,6 +2,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PDFDict, PDFDocument, PDFName, PDFStream, StandardFonts } from 'pdf-lib'
+import type { Page } from 'playwright'
 import { describe, expect, it } from 'vitest'
 import { readFormFields, readMetadata } from '../../src/shared/pdf-ops'
 import { ctx, launch, shot, statusText, tool, useElectronApp } from './helpers'
@@ -42,6 +43,36 @@ async function formFile(name: string): Promise<string> {
   return target
 }
 
+/**
+ * Ждёт, пока поля первой страницы отрисованы в окончательном масштабе. launch()
+ * открывает панель свойств, колонка документа сужается, и страница вместе с полями
+ * перерисовывается в новом масштабе: поле, в котором стоит фокус, заменяется новым,
+ * и введённый текст пропадает. На медленном раннере CI это совпадало с первым вводом.
+ * Слой готов, когда построен для текущей ширины страницы (A4 — 595 пт) и она
+ * полсекунды не меняется.
+ */
+async function fieldsReady(page: Page): Promise<void> {
+  const width = (): Promise<number | null> =>
+    page.evaluate(() => {
+      const view = document.querySelector<HTMLElement>('[data-page="1"]')
+      const layer = view?.querySelector<HTMLElement>('[data-forms-layer]')
+      const scale = Number(layer?.style.getPropertyValue('--scale-factor'))
+      const cssWidth = parseFloat(view?.style.width ?? '')
+      if (!layer?.querySelector('input') || !scale || !cssWidth) return null
+      return Math.abs(cssWidth - 595 * scale) < 0.5 ? cssWidth : null
+    })
+  await expect
+    .poll(
+      async () => {
+        const first = await width()
+        await page.waitForTimeout(500)
+        return first !== null && first === (await width())
+      },
+      { timeout: 20_000 }
+    )
+    .toBe(true)
+}
+
 /** Шрифт внешнего вида поля: без встроенного шрифта кириллица не видна в других программах. */
 async function appearanceFont(bytes: Uint8Array, name: string): Promise<string> {
   const doc = await PDFDocument.load(bytes)
@@ -60,7 +91,7 @@ describe('Формы и метаданные (собранное приложе�
     const page = await launch(target)
     const layer = page.locator('[data-page="1"] [data-forms-layer]')
     const nameInput = layer.locator('input[name="name"]')
-    await nameInput.waitFor({ timeout: 20_000 })
+    await fieldsReady(page)
     await expect.poll(() => page.locator('[data-forms-panel]').textContent()).toContain('6')
 
     await nameInput.click()
@@ -122,7 +153,7 @@ describe('Формы и метаданные (собранное приложе�
     const nameInput = layer.locator('input[name="name"]')
     const city = layer.locator('select[name="city"]')
     const agree = layer.locator('input[name="agree"]')
-    await nameInput.waitFor({ timeout: 20_000 })
+    await fieldsReady(page)
     const errors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text())
@@ -155,8 +186,10 @@ describe('Формы и метаданные (собранное приложе�
     const target = await formFile('flatten.pdf')
     const page = await launch(target)
     const layer = page.locator('[data-page="1"] [data-forms-layer]')
-    await layer.locator('input[name="name"]').waitFor({ timeout: 20_000 })
+    await fieldsReady(page)
     await layer.locator('input[name="name"]').fill('Мария')
+    // Значение дошло до документа: иначе «Вплавить поля» запишет пустое поле.
+    await expect.poll(() => statusText(page)).toContain('Не сохранено')
 
     await tool(page, 'Перо').click()
     await expect.poll(() => layer.getAttribute('class')).toMatch(/disabled/)
