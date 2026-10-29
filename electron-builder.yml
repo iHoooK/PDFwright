@@ -109,6 +109,10 @@ mac:
 dmg:
   artifactName: ${productName}-Mac-${arch}.${ext}
   title: ${productName}
+  # Без окна лицензии при открытии .dmg (на Mac так не принято). Иначе dmg-builder
+  # сам берёт installer/license_*.txt установщика NSIS, а их BOM и кириллицу
+  # dmgbuild не кодирует.
+  license: null
   window:
     width: 540
     height: 380
