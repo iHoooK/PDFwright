@@ -2,24 +2,18 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { shiftInside, unionRects, viewDeltaToPage, type Point } from '@shared/markup/geometry'
 import { isMovable, moveObject, visualBounds } from '@shared/markup/model'
 import { t } from '@renderer/i18n'
+import { isMac, isPageDeleteKey } from './platform'
 import { activeDoc, TOOL_KEYS, TOOLS, useStore, type State, type Tool } from './store'
+import { isTypingTarget } from './typing'
 
 /**
  * Горячие клавиши интерфейса (docs/DESIGN.md, план 1.4). Сочетания с Ctrl
- * дублируют меню приложения (там они работают и при скрытой строке меню),
- * одиночные буквы переключают инструмент, как в графических редакторах.
+ * (на Mac — с ⌘) дублируют меню приложения (там они работают и при скрытой
+ * строке меню), одиночные буквы переключают инструмент, как в графических
+ * редакторах. Renderer получает клавишу раньше меню: сочетание, для которого
+ * вызван preventDefault, меню уже не выполняет.
  */
 export const HOTKEYS: readonly { keys: string; action: string }[] = t.shortcuts
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target.isContentEditable
-  )
-}
 
 /** Стрелки двигают выбранный объект на экране: шаг 1 пт, с Shift — 10 пт. */
 const ARROWS: Readonly<Record<string, readonly [number, number] | undefined>> = {
@@ -107,6 +101,10 @@ export function useHotkeys(): void {
         } else if (lower === 'y' && inViewer && !isTypingTarget(event.target)) {
           event.preventDefault()
           actions.redo()
+        } else if (isMac && lower === 'z' && !isTypingTarget(event.target)) {
+          // Вне документа ⌘Z ничего не делает, как Ctrl+Z в Windows: иначе его
+          // выполнил бы пункт «Отменить» меню Mac и отменил операцию незаметно.
+          event.preventDefault()
         } else if (lower === 'g' && inViewer) {
           event.preventDefault()
           actions.togglePagesMode()
@@ -129,7 +127,7 @@ export function useHotkeys(): void {
         return
       }
       if (isTypingTarget(event.target) || !inViewer || event.altKey) return
-      if (pagesMode && key === 'Delete') {
+      if (pagesMode && isPageDeleteKey(key)) {
         event.preventDefault()
         actions.deleteSelected()
         return

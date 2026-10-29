@@ -110,6 +110,7 @@ import {
 import { getApi } from './api'
 import { matchesSaved, type SavedState } from './saved-state'
 import { applyTheme, resolvedTheme } from './theme'
+import { editFocusedField } from './typing'
 
 export type Screen = 'start' | 'viewer' | 'settings' | 'kit' | 'compare'
 export type Tool =
@@ -2778,10 +2779,10 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
           break
         }
         case 'edit.undo':
-          actions.undo()
+          if (!editFocusedField('undo')) actions.undo()
           break
         case 'edit.redo':
-          actions.redo()
+          if (!editFocusedField('redo')) actions.redo()
           break
         case 'edit.find':
           actions.focusSearch()

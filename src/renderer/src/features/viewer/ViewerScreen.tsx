@@ -26,6 +26,7 @@ import {
   IconUndo
 } from '@renderer/icons'
 import { t } from '@renderer/i18n'
+import { forPlatform } from '@renderer/app/platform'
 import { cx } from '@renderer/components/cx'
 import { Button, Command, IconButton, Tabs } from '@renderer/components/controls'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
@@ -92,28 +93,28 @@ export function ViewerScreen(): React.JSX.Element {
         <Command
           icon={<IconSave />}
           label={t.cmd.save}
-          hotkey="Ctrl+S"
+          hotkey={forPlatform('Ctrl+S', '⌘S')}
           onClick={() => void actions.save()}
           disabled={!canEdit || !dirty}
         />
         <Command
           icon={<IconPrint />}
           label={t.cmd.print}
-          hotkey="Ctrl+P"
+          hotkey={forPlatform('Ctrl+P', '⌘P')}
           onClick={actions.print}
           disabled={!ready}
         />
         <Command
           icon={<IconUndo />}
           label={t.cmd.undo}
-          hotkey="Ctrl+Z"
+          hotkey={forPlatform('Ctrl+Z', '⌘Z')}
           onClick={actions.undo}
           disabled={!canEdit || !canUndo}
         />
         <Command
           icon={<IconRedo />}
           label={t.cmd.redo}
-          hotkey="Ctrl+Y"
+          hotkey={forPlatform('Ctrl+Y', '⇧⌘Z')}
           onClick={actions.redo}
           disabled={!canEdit || !canRedo}
         />
@@ -136,7 +137,7 @@ export function ViewerScreen(): React.JSX.Element {
         <Command
           icon={<IconPages />}
           label={t.cmd.pages}
-          hotkey="Ctrl+G"
+          hotkey={forPlatform('Ctrl+G', '⌘G')}
           pressed={state.pagesMode}
           disabled={!ready}
           onClick={() => {
@@ -146,7 +147,7 @@ export function ViewerScreen(): React.JSX.Element {
         <Command
           icon={<IconRotate />}
           label={t.cmd.rotate}
-          hotkey="Ctrl+R"
+          hotkey={forPlatform('Ctrl+R', '⌘R')}
           onClick={actions.rotate}
           disabled={!ready || state.pagesMode}
         />
@@ -243,7 +244,7 @@ export function ViewerScreen(): React.JSX.Element {
             <Command
               icon={<IconDelete />}
               label={t.pages.remove}
-              hotkey="Delete"
+              hotkey={forPlatform('Delete', 'delete')}
               {...(allSelected ? { title: t.pages.removeAllHint } : {})}
               onClick={actions.deleteSelected}
               disabled={!canEdit || selectedCount === 0 || allSelected}
