@@ -93,6 +93,9 @@ mac:
   identity: '-'
   hardenedRuntime: false
   gatekeeperAssess: false
+  # Перед подписью переносит общие extraFiles из Contents в Contents/Resources:
+  # файлы в корне Contents codesign принимает за неподписанный код.
+  sign: ./scripts/mac-sign.mjs
   # Только здесь, не на верхнем уровне: там он изменил бы установщик Windows.
   # Viewer и Alternate: PDFwright появляется в «Открыть в программе», а программой
   # по умолчанию для PDF остаётся «Просмотр», пока пользователь не выберет сам.

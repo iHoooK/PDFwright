@@ -34,8 +34,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # При ошибке хвост вывода попадает в аннотацию: она видна на странице прогона
+      # и через публичный API, даже когда полный лог без входа в GitHub не открыть.
       - name: Release build
-        run: bash scripts/build-release-mac.sh --arch ${{ matrix.arch }}
+        env:
+          FORCE_COLOR: '0'
+        run: |
+          log="$RUNNER_TEMP/build-release-mac.log"
+          set +e
+          bash scripts/build-release-mac.sh --arch ${{ matrix.arch }} 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" != 0 ]]; then
+            echo "::error title=build-release-mac.sh (${{ matrix.arch }})::$(tail -n 60 "$log" | awk '{ gsub(/%/, "%25"); gsub(/\r/, ""); printf "%s%%0A", $0 }')"
+            exit "$status"
+          fi
 
       - name: Upload build
         uses: actions/upload-artifact@v7

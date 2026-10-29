@@ -127,6 +127,9 @@ $signature"
   for expected in '"pdf"' '"Viewer"' '"Alternate"'; do
     grep -q "$expected" <<<"$document_types" || fail "$app: в CFBundleDocumentTypes нет $expected: $document_types"
   done
+  for document in LICENSE.txt PRIVACY.md THIRD_PARTY_NOTICES.md; do
+    [[ -f "$app/Contents/Resources/$document" ]] || fail "$app: нет Contents/Resources/$document (scripts/mac-sign.mjs)"
+  done
   local binary_arches
   binary_arches="$(lipo -archs "$app/Contents/MacOS/PDFwright")"
   [[ "$binary_arches" == "$(lipo_arch "$arch")" ]] || fail "$app: процессоры $binary_arches, ожидался $(lipo_arch "$arch")"
