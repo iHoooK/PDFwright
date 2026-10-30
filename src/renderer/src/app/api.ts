@@ -83,6 +83,8 @@ function createBrowserMock(): PdfwrightApi {
     })
 
   return {
+    // В браузере интерфейс — как в Windows.
+    platform: 'win32',
     getAppInfo: () => Promise.resolve(info),
     getSettings: () => Promise.resolve(settings),
     applyLanguage: () => {
@@ -260,6 +262,7 @@ function createBrowserMock(): PdfwrightApi {
       return path
     },
     onCommand: () => () => undefined,
-    onOpenFile: () => () => undefined
+    onOpenFile: () => () => undefined,
+    onFullScreen: () => () => undefined
   }
 }

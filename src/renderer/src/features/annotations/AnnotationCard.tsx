@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PageAnnotation } from '@shared/pdf-content/annotations'
 import { IconDelete } from '@renderer/icons'
 import { t } from '@renderer/i18n'
+import { isDoneKey } from '@renderer/app/platform'
 import { Button, Range, Swatches } from '@renderer/components/controls'
 import { activeDoc, INK_COLORS, MARKER_COLORS, useStore } from '@renderer/app/store'
 import v from '@renderer/features/viewer/viewer.module.css'
@@ -72,7 +73,7 @@ function AnnotationFields({
             }}
             onBlur={commitText}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && event.ctrlKey) {
+              if (isDoneKey(event)) {
                 event.preventDefault()
                 commitText()
               }

@@ -21,6 +21,10 @@
 .dialog::backdrop {
   background: rgba(0, 0, 0, 0.35);
 }
+/* Mac: высокий диалог заходит на шапку, а она перетаскивает окно и забирала бы щелчки. */
+:global(:root[data-platform='darwin']) .dialog {
+  -webkit-app-region: no-drag;
+}
 .head {
   flex: none;
   display: flex;

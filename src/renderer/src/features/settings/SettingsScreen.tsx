@@ -23,6 +23,7 @@ import { Button, SelectField, SettingCard, Toggle } from '@renderer/components/c
 import { cx } from '@renderer/components/cx'
 import { useStore, type SettingsSection } from '@renderer/app/store'
 import { HOTKEYS } from '@renderer/app/hotkeys'
+import { isMac, macChip } from '@renderer/app/platform'
 import { LicensesDialog } from './LicensesDialog'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { formatBytes } from '@shared/update-messages'
@@ -94,6 +95,7 @@ export function SettingsScreen(): React.JSX.Element {
         : t.settings.kindInstalled
       : t.settings.kindDev
     : ''
+  const system = isMac ? `macOS · ${info ? macChip(info.arch) : '…'}` : 'Windows x64'
 
   const copyDiagnostics = (): void => {
     const lines = [
@@ -337,7 +339,7 @@ export function SettingsScreen(): React.JSX.Element {
         {section === 'about' && (
           <section className={s.section}>
             <h1>{t.settings.about}</h1>
-            <p className={s.lead}>{t.settings.aboutLead(version, kind)}</p>
+            <p className={s.lead}>{t.settings.aboutLead(version, kind, system)}</p>
             <SettingCard icon={<IconDocument />} title={t.app.name} column>
               <p className={s.text}>{t.settings.aboutText}</p>
               <div className={s.row}>

@@ -11,6 +11,7 @@ import type {
 import { displayFontName, fontFamily } from '@shared/pdf-content/to-unicode'
 import { IconDelete, IconImage } from '@renderer/icons'
 import { t } from '@renderer/i18n'
+import { isDoneKey } from '@renderer/app/platform'
 import { Button, RadioGroup, SelectField, Swatches } from '@renderer/components/controls'
 import {
   activeDoc,
@@ -234,7 +235,7 @@ function BlockCard({
             setText(event.target.value)
           }}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' && event.ctrlKey) {
+            if (isDoneKey(event)) {
               event.preventDefault()
               apply()
             }

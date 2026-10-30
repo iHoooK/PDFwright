@@ -1,3 +1,4 @@
+import type { Overrides } from './overrides'
 import { colorName, type Strings } from './ru'
 
 /** "1 page", "2 pages". */
@@ -663,7 +664,7 @@ export const en: Strings = {
     releaseNotes: "What's new",
     releases: 'Releases page',
     about: 'About',
-    aboutLead: (v: string, kind: string) => `PDFwright ${v} · Windows x64 · ${kind}`,
+    aboutLead: (v: string, kind: string, system: string) => `PDFwright ${v} · ${system} · ${kind}`,
     kindInstalled: 'installed version',
     kindPortable: 'portable version',
     kindDev: 'development build',
@@ -684,7 +685,7 @@ export const en: Strings = {
     author: 'About the developer',
     authorLead: 'The author and the Promptix channels.',
     authorText:
-      'My name is Andrey, and I am the author of Promptix. In this project I build websites, games and free apps for Windows. Each app solves a clear task of its own, works without accounts or ads, and does not send your data anywhere. PDFwright is one of them: viewing and editing PDFs right on your computer.',
+      'My name is Andrey, and I am the author of Promptix. In this project I build websites, games and apps. Each app solves a clear task of its own, works without accounts or ads, and does not send your data anywhere. PDFwright is one of them: viewing and editing PDFs right on your computer.',
     authorText2:
       'On YouTube I stream live as I build games, websites and apps, sometimes together with viewers. Questions and suggestions go to Telegram. If PDFwright has been useful to you, you can support its development through DonationAlerts or Boosty.',
     on: 'On',
@@ -783,6 +784,88 @@ export const en: Strings = {
     { keys: 'Ctrl + Shift + B', action: 'Properties pane' },
     { keys: 'Ctrl + ,', action: 'Settings' },
     { keys: 'PageUp / PageDown', action: 'Previous / next page' },
+    {
+      keys: 'V, E, H, M, P, U, T, N, S',
+      action: 'Tools: select, edit, hand, highlighter, pen, shapes, text, note, signature'
+    }
+  ]
+}
+
+/** Strings that differ on a Mac (see ruMac): ⌘ shortcuts, the delete key, Finder, manual updates. */
+export const enMac: Overrides<Strings> = {
+  start: {
+    openHint:
+      'Choose a file or drag it into the window. In Finder, use Open With to open a document here.'
+  },
+  pages: {
+    hint: 'Click to select, ⌘ to add, Shift for a range, drag to reorder, delete to remove.'
+  },
+  tools: {
+    showInFolder: 'Show in Finder'
+  },
+  markup: {
+    hint: {
+      select:
+        'Click an added object to select it. Drag its frame, corners and sides; delete removes it.',
+      edit: 'Click a paragraph, image or shape in the document. Double-click a paragraph to edit its text; handles change width and height; delete removes it.'
+    }
+  },
+  annotations: {
+    selectHint:
+      'Click a markup object or a document annotation. ⌘-click adds to the selection; Shift-drag over an empty area selects with a box. Drag by the frame or nudge with the arrow keys (Shift for bigger steps), delete removes.',
+    fromDocument:
+      'This annotation is already in the file: changes are written to the document at once, ⌘Z undoes them.',
+    groupHint:
+      'Drag any selected object to move them all. The delete key removes everything selected.'
+  },
+  content: {
+    groupHint:
+      '⌘-click adds or removes an object, Shift+drag selects everything inside the frame. Drag any selected object to move them all.',
+    blockHint:
+      'Double-click to edit text in place, ⌘↩ to finish. The left and right handles change the width: the text rewraps, while the font and size stay the same. Drag the paragraph to move it. Click the paragraph again to select a line.',
+    textHint:
+      'Click the page and type: the text uses the font and size from the fields below. ⌘↩ or a click outside finishes, Esc cancels.',
+    warning:
+      "Editing changes the document itself: anything you delete is removed from the file. Until you save, ⌘Z undoes everything; after saving, it can't be restored."
+  },
+  convert: {
+    showInFolder: 'Show in Finder',
+    imagesEmpty: 'Add images with the button above or drag them here from Finder.',
+    compressWarning:
+      "Lossy compression: the original images can't be recovered from the result. Until the document is saved, ⌘Z undoes the change."
+  },
+  settings: {
+    noticeTextPortable: (v: string) =>
+      `Version ${v} is out. We recommend updating: download the .dmg file from the release page and drag PDFwright to Applications, replacing the old version.`,
+    updatesAvailablePortable: (v: string) =>
+      `Version ${v} is available. Download the .dmg file for your Mac from the release page, quit the app and drag PDFwright to Applications, replacing the old version. Your settings and recent files will be kept.`
+  },
+  shortcuts: [
+    { keys: '⌘N', action: 'New window' },
+    { keys: '⌘O', action: 'Open file' },
+    { keys: '⌘S', action: 'Save' },
+    { keys: '⇧⌘S', action: 'Save as' },
+    { keys: '⌘P', action: 'Print' },
+    { keys: '⌘W', action: 'Close document' },
+    { keys: '⌘Z / ⇧⌘Z', action: 'Undo / redo an operation or a markup change' },
+    {
+      keys: 'delete, Esc',
+      action: 'Delete the selected markup or document object, clear the selection'
+    },
+    { keys: '⌘G', action: 'Pages mode' },
+    {
+      keys: 'delete, ⌘A, Esc',
+      action: 'In Pages mode: delete, select all, clear the selection'
+    },
+    { keys: '⌘F', action: 'Find in document' },
+    { keys: '⌘+ / ⌘− / ⌘0', action: 'Zoom in / out / 100%' },
+    { keys: '⌘1 / ⌘2', action: 'Fit width / fit page' },
+    { keys: '⌘R', action: 'Rotate view' },
+    { keys: 'Trackpad pinch, ⌃ + wheel', action: 'Zoom' },
+    { keys: '⌘B', action: 'Sidebar' },
+    { keys: '⇧⌘B', action: 'Properties pane' },
+    { keys: '⌘,', action: 'Settings' },
+    { keys: 'fn + ↑ / fn + ↓', action: 'Previous / next page' },
     {
       keys: 'V, E, H, M, P, U, T, N, S',
       action: 'Tools: select, edit, hand, highlighter, pen, shapes, text, note, signature'

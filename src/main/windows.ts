@@ -4,6 +4,7 @@ import {
   APP_OPEN_FILE_CHANNEL,
   UPDATE_AVAILABLE_CHANNEL,
   UPDATE_PROGRESS_CHANNEL,
+  WINDOW_FULLSCREEN_CHANNEL,
   type LanguageApplyResult,
   type StartupFiles,
   type UpdateAvailable,
@@ -41,6 +42,18 @@ export interface WindowOptions {
   open?: Partial<StartupFiles>
 }
 
+const mac = process.platform === 'darwin'
+
+/**
+ * Mac: кнопки окна («светофор») — в нашей шапке слева, по её центру (шапка
+ * 46 px, кнопки около 14 px). Отступ под них и области перетаскивания задаёт
+ * CSS под [data-platform='darwin'].
+ */
+const MAC_TITLE_BAR = {
+  titleBarStyle: 'hiddenInset',
+  trafficLightPosition: { x: 16, y: 16 }
+} as const
+
 /**
  * Окна программы. У каждого окна свой renderer со своими вкладками; main
  * знает про окно его вкладки, число несохранённых документов и время
@@ -71,6 +84,10 @@ export class WindowManager {
       frame,
       screen.getAllDisplays().map((display) => display.workArea)
     )
+    // Mac: программа жила в Dock без окон. Окно, закрытое последним, уже записано
+    // в сеанс; новое окно начинает сеанс заново, иначе при выходе прежнее окно
+    // попало бы в сеанс ещё раз и открылось бы «призраком» при следующем запуске.
+    if (mac && this.entries.size === 0) this.retained = []
 
     const window = new BrowserWindow({
       ...bounds,
@@ -80,6 +97,7 @@ export class WindowManager {
       autoHideMenuBar: true,
       backgroundColor: '#f3f3f3',
       title: 'PDFwright',
+      ...(mac ? MAC_TITLE_BAR : {}),
       ...(app.isPackaged ? {} : { icon: join(app.getAppPath(), 'resources', 'icon-256.png') }),
       webPreferences: {
         preload: join(import.meta.dirname, '../preload/index.cjs'),
@@ -110,6 +128,18 @@ export class WindowManager {
       const entry = this.entries.get(id)
       if (entry) entry.lastActive = ++this.activation
     })
+    if (mac) {
+      // В полноэкранном режиме кнопок окна нет — шапке не нужен отступ под них.
+      const sendFullScreen = (fullScreen: boolean) => (): void => {
+        window.webContents.send(WINDOW_FULLSCREEN_CHANNEL, fullScreen)
+      }
+      window.on('enter-full-screen', sendFullScreen(true))
+      window.on('leave-full-screen', sendFullScreen(false))
+      // Перезагрузка при смене языка: новая страница тоже должна знать про полный экран.
+      window.webContents.on('did-finish-load', () => {
+        if (window.isFullScreen()) sendFullScreen(true)()
+      })
+    }
 
     // Предупреждения и ошибки renderer дублируются в stderr main-процесса:
     // так их видно в логах CI и при запуске из консоли без DevTools.
@@ -199,7 +229,7 @@ export class WindowManager {
     this.createNear(BrowserWindow.fromWebContents(sender), { files: [path], active: path })
   }
 
-  /** Файл из Проводника или второго экземпляра программы. */
+  /** Файл из Проводника, Finder или второго экземпляра программы. */
   openFile(path: string): void {
     const target = pickWindowForFile(
       [...this.entries].map(([id, entry]) => ({
@@ -305,11 +335,13 @@ export class WindowManager {
 
   private confirmClose(entry: WindowEntry): boolean {
     const s = mainStrings(interfaceLanguage(this.settings)).close
+    // На Mac и последнее окно закрывается одно: программа остаётся в Dock.
+    const windowOnly = (this.entries.size > 1 || mac) && !this.quitting
     const choice = dialog.showMessageBoxSync(entry.window, {
       type: 'warning',
       title: 'PDFwright',
       message: entry.dirty === 1 ? s.oneDirty : s.manyDirty(entry.dirty),
-      detail: this.entries.size > 1 && !this.quitting ? s.closeWindow : s.quitApp,
+      detail: windowOnly ? s.closeWindow : s.quitApp,
       buttons: [s.discard, s.cancel],
       defaultId: 1,
       cancelId: 1,

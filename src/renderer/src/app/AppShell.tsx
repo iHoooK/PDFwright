@@ -24,6 +24,7 @@ import logo from '../assets/logo.svg'
 import { activeDoc, useStore, type DocTab } from './store'
 import { useHotkeys } from './hotkeys'
 import { ContextMenu } from './ContextMenu'
+import { isMac } from './platform'
 import { resolvedTheme } from './theme'
 import { windowTitle } from './window-title'
 import s from './app.module.css'
@@ -168,7 +169,14 @@ export function AppShell(): React.JSX.Element {
         <span className={s.grow} />
         {shown?.status === 'ready' && state.screen === 'viewer' && (
           <span>
-            <kbd>Ctrl</kbd> + <kbd>F</kbd> {t.viewer.searchHint}
+            {isMac ? (
+              <kbd>⌘F</kbd>
+            ) : (
+              <>
+                <kbd>Ctrl</kbd> + <kbd>F</kbd>
+              </>
+            )}{' '}
+            {t.viewer.searchHint}
           </span>
         )}
         {shown?.status === 'ready' &&

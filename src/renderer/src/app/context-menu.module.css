@@ -13,6 +13,10 @@
   border-radius: var(--r);
   box-shadow: var(--shadow);
 }
+/* Mac: меню вкладки ложится на шапку, а она перетаскивает окно и забирала бы щелчки. */
+:global(:root[data-platform='darwin']) .menu {
+  -webkit-app-region: no-drag;
+}
 
 .item {
   display: flex;

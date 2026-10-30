@@ -25,6 +25,7 @@ import type {
 import type { Actions, ContentMode } from '@renderer/app/store'
 import type { Rotation } from '@renderer/pdf-engine/engine'
 import { t } from '@renderer/i18n'
+import { isDoneKey, shortcutKey } from '@renderer/app/platform'
 import { cx } from '@renderer/components/cx'
 import {
   contentId,
@@ -201,7 +202,7 @@ function TextEditor({
         event.preventDefault()
         event.stopPropagation()
         finish(null)
-      } else if (event.key === 'Enter' && (!multiline || event.ctrlKey)) {
+      } else if (event.key === 'Enter' && (!multiline || isDoneKey(event))) {
         event.preventDefault()
         finish(value)
       }
@@ -551,12 +552,12 @@ export const ContentLayer = memo(function ContentLayer({
     ) {
       return
     }
-    const hit = objectAt(start, !event.ctrlKey)
+    const hit = objectAt(start, !shortcutKey(event))
     if (!hit && event.shiftKey) {
       startBand(start)
       return
     }
-    // Ctrl+щелчок добавляет объект к группе или убирает из неё.
+    // Ctrl+щелчок (на Mac — ⌘-щелчок) добавляет объект к группе или убирает из неё.
     if (hit && (event.ctrlKey || event.metaKey)) {
       const picked = target(hit)
       const current: ContentTarget[] =

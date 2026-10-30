@@ -1,6 +1,8 @@
 import { messageLanguage } from '@shared/messages'
-import { en } from './en'
-import { ru, type Strings } from './ru'
+import { isMac } from '@renderer/app/platform'
+import { en, enMac } from './en'
+import { applyOverrides } from './overrides'
+import { ru, ruMac, type Strings } from './ru'
 
 /**
  * Язык интерфейса окна. main задаёт его параметром `?lang=` адреса страницы
@@ -10,8 +12,10 @@ import { ru, type Strings } from './ru'
  */
 export const language = messageLanguage()
 
-/** Активный набор строк. */
-export const t: Strings = language === 'en' ? en : ru
+const base: Strings = language === 'en' ? en : ru
+
+/** Активный набор строк; на Mac — с заменами для Mac (⌘, Finder). */
+export const t: Strings = isMac ? applyOverrides(base, language === 'en' ? enMac : ruMac) : base
 
 /** Локаль для Intl: даты, числа, размеры. */
 export const locale = language === 'en' ? 'en-US' : 'ru-RU'

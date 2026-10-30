@@ -50,6 +50,7 @@ import type { PageAnnotation } from '@shared/pdf-content/annotations'
 import type { Actions, Tool, ToolStyle } from '@renderer/app/store'
 import type { PdfDocument, Rotation } from '@renderer/pdf-engine/engine'
 import { t } from '@renderer/i18n'
+import { isDoneKey } from '@renderer/app/platform'
 import { cx } from '@renderer/components/cx'
 import {
   annotationId,
@@ -199,7 +200,7 @@ function TextEditor({
           }}
           onBlur={onDone}
           onKeyDown={(event) => {
-            if (event.key === 'Escape' || (event.key === 'Enter' && event.ctrlKey)) {
+            if (event.key === 'Escape' || isDoneKey(event)) {
               event.preventDefault()
               event.stopPropagation()
               onDone()
@@ -248,7 +249,7 @@ function NoteEditor({
         }}
         onBlur={onDone}
         onKeyDown={(event) => {
-          if (event.key === 'Escape' || (event.key === 'Enter' && event.ctrlKey)) {
+          if (event.key === 'Escape' || isDoneKey(event)) {
             event.preventDefault()
             event.stopPropagation()
             onDone()

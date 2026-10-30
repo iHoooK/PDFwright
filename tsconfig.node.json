@@ -15,6 +15,8 @@
     "src/shared/**/*.ts",
     "src/renderer/src/i18n/ru.ts",
     "src/renderer/src/i18n/en.ts",
+    "src/renderer/src/i18n/overrides.ts",
+    "src/renderer/src/app/platform.ts",
     "src/renderer/src/app/saved-state.ts",
     "src/renderer/src/features/forms/form-values.ts",
     "src/renderer/src/features/protect/protect-form.ts",

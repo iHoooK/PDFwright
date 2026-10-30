@@ -100,6 +100,25 @@
   flex: none;
 }
 
+/*
+ * Mac: кнопки окна («светофор») стоят в шапке слева (titleBarStyle hiddenInset,
+ * windows.ts), пустое место шапки перетаскивает окно, двойной щелчок по нему
+ * разворачивает окно, как заголовок. Вкладки и кнопки остаются кнопками.
+ * В полноэкранном режиме кнопок окна нет, и отступ под них не нужен.
+ */
+:global(:root[data-platform='darwin']) .titlebar {
+  padding-left: 84px;
+  -webkit-app-region: drag;
+}
+:global(:root[data-platform='darwin'][data-fullscreen]) .titlebar {
+  padding-left: 12px;
+}
+:global(:root[data-platform='darwin']) .tab,
+:global(:root[data-platform='darwin']) .tabAdd,
+:global(:root[data-platform='darwin']) .actions {
+  -webkit-app-region: no-drag;
+}
+
 .screen {
   min-height: 0;
   background: var(--layer-solid);
