@@ -38,14 +38,24 @@ function diagnose(stage) {
     console.error(run('screencapture', ['-x', join(resolve(shotsArg), `failure-${arch}.png`)]))
   }
   const processes = run('ps', ['-axo', 'pid,stat,etime,command'])
-  console.error(
-    processes
-      .split('\n')
-      .filter((line) => line.includes('PDFwright'))
-      .join('\n')
-  )
+    .split('\n')
+    .filter((line) => line.includes('PDFwright'))
+  console.error(processes.join('\n'))
+  // Где стоит главный процесс программы: стек за 2 секунды.
+  const main = processes.find((line) => line.includes('Contents/MacOS/PDFwright '))
+  if (main) {
+    const sample = run('sample', [main.trim().split(/\s+/)[0], '2', '-mayDie'])
+    const graph = sample.indexOf('Call graph:')
+    console.error(
+      sample
+        .slice(graph === -1 ? 0 : graph)
+        .split('\n')
+        .slice(0, 80)
+        .join('\n')
+    )
+  }
   const predicate =
-    'process BEGINSWITH "PDFwright" OR process == "SecurityAgent" OR process == "UserNotificationCenter"'
+    'process BEGINSWITH "PDFwright" OR process == "SecurityAgent" OR process == "UserNotificationCenter" OR process == "syspolicyd" OR process BEGINSWITH "XProtect"'
   const log = run('log', ['show', '--last', '3m', '--style', 'compact', '--predicate', predicate])
   console.error(log.split('\n').slice(-120).join('\n'))
 }

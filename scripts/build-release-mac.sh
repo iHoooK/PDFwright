@@ -183,7 +183,7 @@ echo "5/6 latest-mac.yml и SHA256SUMS-Mac.txt"
 node scripts/mac-release-files.mjs build $build_dirs
 (cd build && shasum -a 256 -c SHA256SUMS-Mac.txt)
 
-echo "6/6 Готовые файлы: .zip, .dmg и дымовой запуск из .dmg"
+echo "6/6 Готовые файлы: .zip, установка из .dmg и дымовой запуск"
 for arch in $arches; do
   name="$(arch_name "$arch")"
   zip_file="build/PDFwright-Portable-Mac-$name.zip"
@@ -200,16 +200,21 @@ for arch in $arches; do
   [[ -L "$mount_point/Applications" && "$(readlink "$mount_point/Applications")" == "/Applications" ]] ||
     fail "$dmg_file: нет ссылки на «Программы»"
   verify_app "$mount_point/PDFwright.app" "$arch"
+  # Установка, как перетаскиванием в «Программы»: копия во временную папку, образ отключается.
+  # Запуск прямо из сжатого образа на macOS 26 (Apple Silicon) зависал при первой загрузке.
+  installed="$work_dir/Applications-$arch/PDFwright.app"
+  ditto "$mount_point/PDFwright.app" "$installed"
+  hdiutil detach "$mount_point" -quiet
+  mounted="${mounted% "$mount_point"}"
+  verify_app "$installed" "$arch"
 
   if [[ "$run_smoke" == 1 ]]; then
     if can_run "$arch"; then
-      node scripts/smoke-mac.mjs "$mount_point/PDFwright.app" tests/fixtures/simple.pdf "$arch" ${shots_dir:+"$shots_dir"}
+      node scripts/smoke-mac.mjs "$installed" tests/fixtures/simple.pdf "$arch" ${shots_dir:+"$shots_dir"}
     else
       echo "  Дымовой запуск $name пропущен: этот Mac не запускает программы для $(lipo_arch "$arch")."
     fi
   fi
-  hdiutil detach "$mount_point" -quiet
-  mounted="${mounted% "$mount_point"}"
 done
 
 echo
