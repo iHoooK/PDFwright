@@ -10,18 +10,24 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const svgPath = join(root, 'resources', 'icon.svg')
 const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 const PNG_SIZES = [512, 256, 32]
+// Значок macOS по сетке Apple: холст 1024 px, тело 824 px по центру, поля прозрачные.
+// Без полей значок в Dock крупнее соседних, а macOS 26 кладёт его в серую подложку.
+const MAC_SIZE = 1024
+const MAC_BODY = 824
 
 // Рисуем SVG на canvas внутри страницы и забираем PNG как data URL:
 // это не зависит от видимости окна и композитора, в отличие от capturePage.
-async function renderPng(window, svg, size) {
+// body — сторона рисунка на холсте size×size (по умолчанию во весь холст).
+async function renderPng(window, svg, size, body = size) {
   const src = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')
+  const offset = (size - body) / 2
   const dataUrl = await window.webContents.executeJavaScript(`
     new Promise((resolve, reject) => {
       const img = new Image()
       img.onload = () => {
         const c = document.createElement('canvas')
         c.width = ${size}; c.height = ${size}
-        c.getContext('2d').drawImage(img, 0, 0, ${size}, ${size})
+        c.getContext('2d').drawImage(img, ${offset}, ${offset}, ${body}, ${body})
         resolve(c.toDataURL('image/png'))
       }
       img.onerror = () => reject(new Error('svg load failed'))
@@ -68,9 +74,22 @@ app.whenReady().then(async () => {
     await writeFile(join(root, 'installer', 'icon.ico'), buildIco(frames))
     for (const size of PNG_SIZES) {
       const png = await renderPng(window, svg, size)
-      await writeFile(join(root, size === 512 ? 'installer' : 'resources', size === 512 ? 'icon.png' : `icon-${size}.png`), png)
+      await writeFile(
+        join(
+          root,
+          size === 512 ? 'installer' : 'resources',
+          size === 512 ? 'icon.png' : `icon-${size}.png`
+        ),
+        png
+      )
     }
-    console.log(`icons: installer/icon.ico (${ICO_SIZES.join(',')}), installer/icon.png 512, resources/icon-256.png, resources/icon-32.png`)
+    await writeFile(
+      join(root, 'installer', 'icon-mac.png'),
+      await renderPng(window, svg, MAC_SIZE, MAC_BODY)
+    )
+    console.log(
+      `icons: installer/icon.ico (${ICO_SIZES.join(',')}), installer/icon.png 512, resources/icon-256.png, resources/icon-32.png, installer/icon-mac.png ${MAC_SIZE} (${MAC_BODY})`
+    )
   } finally {
     window.destroy()
     app.quit()

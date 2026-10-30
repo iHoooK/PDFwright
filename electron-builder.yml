@@ -72,6 +72,58 @@ nsis:
   # Имя для «Установленных приложений» и пути обновления (фаза 8).
   guid: 6D5C0B6E-3B2A-4F3E-9C1E-5A4B7C8D9E01
 
+# macOS 13+: .dmg и переносной .zip отдельно для Apple Silicon и Intel, без подписи Apple
+# (docs/MACOS_PLAN.md, фаза M2). Выпускные имена с AppleSilicon/Intel подставляет
+# scripts/build-release-mac.sh: в шаблоне имени процессор есть только как arm64/x64,
+# поэтому каждый процессор собирается отдельным запуском, а latest-mac.yml сливается.
+mac:
+  icon: installer/icon-mac.png
+  category: public.app-category.productivity
+  minimumSystemVersion: '13.0'
+  darkModeSupport: true
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  artifactName: ${productName}-Portable-Mac-${arch}.${ext}
+  # Ad-hoc подпись обязательна: без неё Apple Silicon пишет «Программа повреждена».
+  # Hardened Runtime нужен только для нотаризации, а с ad-hoc подписью мешает
+  # загрузке библиотек Electron.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  # Перед подписью переносит общие extraFiles из Contents в Contents/Resources:
+  # файлы в корне Contents codesign принимает за неподписанный код.
+  sign: ./scripts/mac-sign.mjs
+  # Только здесь, не на верхнем уровне: там он изменил бы установщик Windows.
+  # Viewer и Alternate: PDFwright появляется в «Открыть в программе», а программой
+  # по умолчанию для PDF остаётся «Просмотр», пока пользователь не выберет сам.
+  fileAssociations:
+    - ext: pdf
+      name: PDF
+      role: Viewer
+      rank: Alternate
+
+# Окно .dmg: программа слева, ссылка на «Программы» справа — перетащить одно на другое.
+dmg:
+  artifactName: ${productName}-Mac-${arch}.${ext}
+  title: ${productName}
+  # Без окна лицензии при открытии .dmg (на Mac так не принято). Иначе dmg-builder
+  # сам берёт installer/license_*.txt установщика NSIS, а их BOM и кириллицу
+  # dmgbuild не кодирует.
+  license: null
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 140
+      y: 180
+    - x: 400
+      y: 180
+      type: link
+      path: /Applications
+
 # Для latest.yml и app-update.yml; загрузку в релиз делает workflow, не electron-builder.
 publish:
   provider: github

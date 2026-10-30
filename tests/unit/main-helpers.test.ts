@@ -6,18 +6,28 @@ import { extractPdfPaths } from '../../src/main/open-args'
 import { resolveWithinDir } from '../../src/main/services/fs-utils'
 import { normalizeRecent, RecentFilesStore } from '../../src/main/services/recent-files'
 
+// node:path разбирает пути по правилам системы, на которой идут тесты: на Windows
+// примеры с диском C: (atRoot('docs', 'a.pdf') — C:\docs\a.pdf), на macOS — /docs/a.pdf.
+const onWindows = process.platform === 'win32'
+const atRoot = (...parts: string[]): string =>
+  onWindows ? `C:\\${parts.join('\\')}` : `/${parts.join('/')}`
+
 describe('extractPdfPaths', () => {
-  const cwd = resolve('D:\\work')
+  const cwd = resolve(onWindows ? 'D:\\work' : '/work')
 
   it('берёт .pdf-аргумент и разрешает относительный путь', () => {
-    expect(extractPdfPaths(['app.exe', 'C:\\docs\\a.pdf'], cwd)).toEqual(['C:\\docs\\a.pdf'])
+    expect(extractPdfPaths(['app.exe', atRoot('docs', 'a.pdf')], cwd)).toEqual([
+      atRoot('docs', 'a.pdf')
+    ])
     expect(extractPdfPaths(['app.exe', 'b.PDF'], cwd)).toEqual([resolve(cwd, 'b.PDF')])
   })
 
   it('отдаёт все PDF по порядку без повторов: несколько файлов, брошенных на ярлык', () => {
-    expect(
-      extractPdfPaths(['app.exe', 'C:\\a.pdf', '--flag', 'notes.txt', 'b.pdf', 'C:\\a.pdf'], cwd)
-    ).toEqual(['C:\\a.pdf', resolve(cwd, 'b.pdf')])
+    const a = atRoot('a.pdf')
+    expect(extractPdfPaths(['app.exe', a, '--flag', 'notes.txt', 'b.pdf', a], cwd)).toEqual([
+      a,
+      resolve(cwd, 'b.pdf')
+    ])
   })
 
   it('игнорирует флаги, точку и не-PDF аргументы', () => {
@@ -48,16 +58,18 @@ describe('resolveWithinDir', () => {
 
 describe('normalizeRecent', () => {
   it('отбрасывает мусор и дубликаты', () => {
+    const a = atRoot('a.pdf')
+    const b = atRoot('b.pdf')
     const result = normalizeRecent([
-      { path: 'C:\\a.pdf', lastOpenedMs: 5 },
-      { path: 'C:\\a.pdf', lastOpenedMs: 6 },
+      { path: a, lastOpenedMs: 5 },
+      { path: a, lastOpenedMs: 6 },
       { path: '', lastOpenedMs: 1 },
       'nope',
-      { path: 'C:\\b.pdf', lastOpenedMs: 'x' }
+      { path: b, lastOpenedMs: 'x' }
     ])
     expect(result).toEqual([
-      { path: 'C:\\a.pdf', name: 'a.pdf', lastOpenedMs: 5 },
-      { path: 'C:\\b.pdf', name: 'b.pdf', lastOpenedMs: 0 }
+      { path: a, name: 'a.pdf', lastOpenedMs: 5 },
+      { path: b, name: 'b.pdf', lastOpenedMs: 0 }
     ])
   })
 })
@@ -73,9 +85,9 @@ describe('RecentFilesStore', () => {
 
   it('добавляет в начало, обрезает по лимиту и сохраняет на диск', async () => {
     const store = RecentFilesStore.forUserData(dir, () => 2)
-    await store.touch('C:\\one.pdf')
-    await store.touch('C:\\two.pdf')
-    await store.touch('C:\\three.pdf')
+    await store.touch(atRoot('one.pdf'))
+    await store.touch(atRoot('two.pdf'))
+    await store.touch(atRoot('three.pdf'))
     const list = await store.list()
     expect(list.map((i) => i.name)).toEqual(['three.pdf', 'two.pdf'])
 
@@ -86,18 +98,19 @@ describe('RecentFilesStore', () => {
 
   it('помнит число страниц: новое значение заменяет старое, без значения оно остаётся', async () => {
     const store = RecentFilesStore.forUserData(dir, () => 10)
-    await store.touch('C:\\one.pdf', 3)
-    await store.touch('C:\\one.pdf')
+    const one = atRoot('one.pdf')
+    await store.touch(one, 3)
+    await store.touch(one)
     expect((await store.list())[0]?.pages).toBe(3)
-    await store.touch('C:\\one.pdf', 5)
+    await store.touch(one, 5)
     const reloaded = await RecentFilesStore.forUserData(dir, () => 10).load()
     expect(reloaded[0]?.pages).toBe(5)
-    expect(normalizeRecent([{ path: 'C:\\x.pdf', pages: -1 }])[0]).not.toHaveProperty('pages')
+    expect(normalizeRecent([{ path: atRoot('x.pdf'), pages: -1 }])[0]).not.toHaveProperty('pages')
   })
 
   it('удаляет запись и переживает повреждённый файл', async () => {
     const store = RecentFilesStore.forUserData(dir, () => 10)
-    await store.touch('C:\\one.pdf')
-    expect(await store.remove('C:\\one.pdf')).toEqual([])
+    await store.touch(atRoot('one.pdf'))
+    expect(await store.remove(atRoot('one.pdf'))).toEqual([])
   })
 })

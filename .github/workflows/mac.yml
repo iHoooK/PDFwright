@@ -87,6 +87,29 @@ jobs:
           (cd "$app/.." && find PDFwright.app -type f -exec stat -f '%z %N' {} + | sort -k 2) \
             > "$RUNNER_TEMP/ci-results/app-files.txt"
 
+      # Выпускная сборка (M2.3): .dmg и .zip с ad-hoc подписью, проверки подписи,
+      # Info.plist, .zip и .dmg, запуск установленной из .dmg программы с PDF. Проверки кода уже
+      # прошли выше. Снимки окна и экрана (значок в Dock) — в shots/.
+      - name: Release build
+        id: release
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 30
+        run: >-
+          node scripts/ci-results.mjs run release
+          bash scripts/build-release-mac.sh --arch ${{ matrix.arch }} --skip-checks
+          --shots "$RUNNER_TEMP/ci-results/shots"
+
+      # Размеры файлов, latest-mac.yml и суммы — в итоги (release/).
+      - name: Release files
+        if: steps.release.outcome == 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci-results/release"
+          cp build/latest-mac.yml build/SHA256SUMS-Mac.txt "$RUNNER_TEMP/ci-results/release/"
+          node scripts/ci-results.mjs run release-files sh -c \
+            'ls -l build/PDFwright-*.dmg build/PDFwright-*.zip && cat build/latest-mac.yml build/SHA256SUMS-Mac.txt'
+
       - name: Publish results to ci/mac-results
         if: always()
         run: node scripts/ci-results.mjs publish "$GITHUB_REF_NAME/${{ matrix.arch }}"
