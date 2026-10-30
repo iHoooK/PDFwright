@@ -46,15 +46,15 @@ PDFwright работает на macOS 13 Ventura и новее. Это та же
 
 Откройте меню Apple → **Об этом Mac**. Если в строке «Чип» написано Apple M1, M2 или новее — у вас Apple Silicon. Если есть строка «Процессор» с названием Intel — Intel.
 
-| Файл                                      | Назначение                                                                    |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| `PDFwright-Mac-AppleSilicon.dmg`          | Установка на Mac с Apple Silicon                                              |
-| `PDFwright-Mac-Intel.dmg`                 | Установка на Mac с Intel                                                      |
-| `PDFwright-Portable-Mac-AppleSilicon.zip` | Переносная версия для Apple Silicon                                           |
-| `PDFwright-Portable-Mac-Intel.zip`        | Переносная версия для Intel                                                   |
-| `SHA256SUMS-Mac.txt`                      | Контрольные суммы: `shasum -a 256 -c SHA256SUMS-Mac.txt` в папке со скачанным |
+| Файл                                      | Назначение                                       |
+| ----------------------------------------- | ------------------------------------------------ |
+| `PDFwright-Mac-AppleSilicon.dmg`          | Установка на Mac с Apple Silicon                 |
+| `PDFwright-Mac-Intel.dmg`                 | Установка на Mac с Intel                         |
+| `PDFwright-Portable-Mac-AppleSilicon.zip` | Переносная версия для Apple Silicon              |
+| `PDFwright-Portable-Mac-Intel.zip`        | Переносная версия для Intel                      |
+| `SHA256SUMS-Mac.txt`                      | Контрольные суммы Mac-файлов для ручной проверки |
 
-Версия для Intel запускается и на Apple Silicon (через Rosetta), но медленнее: берите файл для своего процессора.
+Версия для Intel запускается и на Apple Silicon (через Rosetta), но медленнее: берите файл для своего процессора. Проверить скачанный файл можно командой в Терминале, например `shasum -a 256 ~/Downloads/PDFwright-Mac-AppleSilicon.dmg`: сумма должна совпасть со строкой этого файла в `SHA256SUMS-Mac.txt`.
 
 ### Установка из .dmg
 
@@ -122,7 +122,7 @@ bash scripts/build-release.sh
 bash scripts/build-release-mac.sh
 ```
 
-Запускает те же проверки, собирает программу для Apple Silicon и Intel и создаёт в `build/` четыре файла из раздела [Для Mac](#для-mac), `latest-mac.yml` (метаданные обновлятора) и `SHA256SUMS-Mac.txt`. Затем проверяет подпись (ad-hoc, без сертификата Apple) и `Info.plist`, распаковывает `.zip`, монтирует `.dmg` и запускает из него программу с тестовым PDF. `--arch arm64` или `--arch x64` собирает один процессор, `--help` перечисляет остальные параметры. Ту же команду для выпуска выполняют Mac-машины GitHub Actions.
+Запускает те же проверки, собирает программу для Apple Silicon и Intel и создаёт в `build/` четыре файла из раздела [Для Mac](#для-mac), `latest-mac.yml` (метаданные обновлятора) и `SHA256SUMS-Mac.txt`. Затем проверяет подпись (ad-hoc, без сертификата Apple) и `Info.plist`, распаковывает `.zip`, монтирует `.dmg`, копирует из него программу, как при перетаскивании в «Программы», и запускает её с тестовым PDF. `--arch arm64` или `--arch x64` собирает один процессор, `--help` перечисляет остальные параметры. Ту же команду для выпуска выполняют Mac-машины GitHub Actions.
 
 ### Локальный запуск для проверки кода
 
