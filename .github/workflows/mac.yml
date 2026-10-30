@@ -88,7 +88,7 @@ jobs:
             > "$RUNNER_TEMP/ci-results/app-files.txt"
 
       # Выпускная сборка (M2.3): .dmg и .zip с ad-hoc подписью, проверки подписи,
-      # Info.plist, .zip и .dmg, запуск программы из .dmg с PDF. Проверки кода уже
+      # Info.plist, .zip и .dmg, запуск установленной из .dmg программы с PDF. Проверки кода уже
       # прошли выше. Снимки окна и экрана (значок в Dock) — в shots/.
       - name: Release build
         id: release

@@ -3,7 +3,7 @@ name: Build PDFwright for Mac
 # Общая Mac-сборка выпуска для release.yml (тег v*) и release-mac.yml (тег mac-v*),
 # docs/MACOS_PLAN.md, фаза M2. Каждый процессор собирается на своей Mac-машине той же
 # командой, что и на Mac автора: проверки, сборка, ad-hoc подпись, Info.plist, .zip, .dmg
-# и запуск программы из .dmg. Затем общий latest-mac.yml (оба .zip и оба .dmg) и
+# и запуск программы, установленной из .dmg. Затем общий latest-mac.yml (оба .zip и оба .dmg) и
 # SHA256SUMS-Mac.txt. Результат — артефакт PDFwright-mac с шестью файлами релиза.
 on:
   workflow_call:
