@@ -11,6 +11,8 @@ name: Release PDFwright for Mac
 on:
   push:
     tags: ['mac-v*']
+    # TEMPORARY dry run on mac/build, removed before merge.
+    branches: ['mac/build']
   workflow_dispatch:
 
 permissions:
