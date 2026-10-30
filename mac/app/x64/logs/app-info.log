@@ -1,0 +1,62 @@
+291M	build/mac/PDFwright.app
+{
+  "CFBundleDisplayName" => "PDFwright"
+  "CFBundleExecutable" => "PDFwright"
+  "CFBundleIconFile" => "icon.icns"
+  "CFBundleIdentifier" => "ru.promptix.pdfwright"
+  "CFBundleInfoDictionaryVersion" => "6.0"
+  "CFBundleName" => "PDFwright"
+  "CFBundlePackageType" => "APPL"
+  "CFBundleShortVersionString" => "1.0.0"
+  "CFBundleVersion" => "1.0.0"
+  "DTCompiler" => "com.apple.compilers.llvm.clang.1_0"
+  "DTSDKBuild" => "24F74"
+  "DTSDKName" => "macosx15.5"
+  "DTXcode" => "1640"
+  "DTXcodeBuild" => "16F6"
+  "ElectronAsarIntegrity" => {
+    "Resources/app.asar" => {
+      "algorithm" => "SHA256"
+      "hash" => "20f4f257550ca3178f7a286b858e9d20421add8022fecc6db7765de1f17f1e91"
+    }
+  }
+  "LSApplicationCategoryType" => "public.app-category.developer-tools"
+  "LSEnvironment" => {
+    "MallocNanoZone" => "0"
+  }
+  "LSMinimumSystemVersion" => "13.0"
+  "NSAppTransportSecurity" => {
+    "NSAllowsArbitraryLoads" => 1
+    "NSAllowsLocalNetworking" => 1
+    "NSExceptionDomains" => {
+      "127.0.0.1" => {
+        "NSIncludesSubdomains" => 0
+        "NSTemporaryExceptionAllowsInsecureHTTPLoads" => 1
+        "NSTemporaryExceptionAllowsInsecureHTTPSLoads" => 0
+        "NSTemporaryExceptionMinimumTLSVersion" => "1.0"
+        "NSTemporaryExceptionRequiresForwardSecrecy" => 0
+      }
+      "localhost" => {
+        "NSIncludesSubdomains" => 0
+        "NSTemporaryExceptionAllowsInsecureHTTPLoads" => 1
+        "NSTemporaryExceptionAllowsInsecureHTTPSLoads" => 0
+        "NSTemporaryExceptionMinimumTLSVersion" => "1.0"
+        "NSTemporaryExceptionRequiresForwardSecrecy" => 0
+      }
+    }
+  }
+  "NSAudioCaptureUsageDescription" => "This app needs access to audio capture"
+  "NSBluetoothAlwaysUsageDescription" => "This app needs access to Bluetooth"
+  "NSBluetoothPeripheralUsageDescription" => "This app needs access to Bluetooth"
+  "NSCameraUsageDescription" => "This app needs access to the camera"
+  "NSHighResolutionCapable" => 1
+  "NSHumanReadableCopyright" => "Copyright © 2026 Promptix"
+  "NSMainNibFile" => "MainMenu"
+  "NSMicrophoneUsageDescription" => "This app needs access to the microphone"
+  "NSPrefersDisplaySafeAreaCompatibilityMode" => 0
+  "NSPrincipalClass" => "AtomApplication"
+  "NSQuitAlwaysKeepsWindows" => 0
+  "NSRequiresAquaSystemAppearance" => 0
+  "NSSupportsAutomaticGraphicsSwitching" => 1
+}
+build/mac/PDFwright.app: code object is not signed at all

@@ -1,0 +1,56 @@
+5772 PDFwright.app/Contents/_CodeSignature/CodeResources
+6632 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/_CodeSignature/CodeResources
+224955248 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework
+37360 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/app_shim_loader
+1288256 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler
+2573856 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libffmpeg.dylib
+4534896 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib
+110 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/vk_swiftshader_icd.json
+511283 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/chrome_100_percent.pak
+995634 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/chrome_200_percent.pak
+99082 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en.lproj/locale.pak
+10824432 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/icudtl.dat
+920 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/Info.plist
+2005 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/MainMenu.nib
+13335933 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/resources.pak
+18 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_FEMININE.lproj/locale.pak
+18 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_MASCULINE.lproj/locale.pak
+18 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_NEUTER.lproj/locale.pak
+188909 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru.lproj/locale.pak
+753112 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/v8_context_snapshot.x86_64.bin
+2442 PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/A/_CodeSignature/CodeResources
+128192 PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/A/Mantle
+1020 PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/A/Resources/Info.plist
+2200 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/_CodeSignature/CodeResources
+1133 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/Info.plist
+214384 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/MacOS/PDFwright Helper (GPU)
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/PkgInfo
+2200 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/_CodeSignature/CodeResources
+1145 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/Info.plist
+214384 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/MacOS/PDFwright Helper (Plugin)
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/PkgInfo
+2200 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/_CodeSignature/CodeResources
+1153 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/Info.plist
+214384 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer)
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/PkgInfo
+2200 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/_CodeSignature/CodeResources
+1111 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/Info.plist
+214384 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/PkgInfo
+2442 PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/_CodeSignature/CodeResources
+375152 PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/ReactiveObjC
+1138 PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/Resources/Info.plist
+2660 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/_CodeSignature/CodeResources
+1175 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/Info.plist
+120048 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt
+251440 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/Squirrel
+4303 PDFwright.app/Contents/Info.plist
+32368 PDFwright.app/Contents/MacOS/PDFwright
+8 PDFwright.app/Contents/PkgInfo
+26525551 PDFwright.app/Contents/Resources/app.asar
+133101 PDFwright.app/Contents/Resources/icon.icns
+1096 PDFwright.app/Contents/Resources/LICENSE.electron.txt
+34523 PDFwright.app/Contents/Resources/LICENSE.txt
+5598206 PDFwright.app/Contents/Resources/LICENSES.chromium.html
+4258 PDFwright.app/Contents/Resources/PRIVACY.md
+11084 PDFwright.app/Contents/Resources/THIRD_PARTY_NOTICES.md

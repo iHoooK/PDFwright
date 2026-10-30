@@ -1,0 +1,47 @@
+223193264 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework
+18016 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/app_shim_loader
+1259192 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler
+2535744 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libffmpeg.dylib
+4481584 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/libvk_swiftshader.dylib
+110 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Libraries/vk_swiftshader_icd.json
+511283 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/chrome_100_percent.pak
+995634 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/chrome_200_percent.pak
+99082 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/en.lproj/locale.pak
+10824432 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/icudtl.dat
+920 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/Info.plist
+2005 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/MainMenu.nib
+13335933 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/resources.pak
+18 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_FEMININE.lproj/locale.pak
+18 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_MASCULINE.lproj/locale.pak
+18 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru_NEUTER.lproj/locale.pak
+188909 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/ru.lproj/locale.pak
+753112 PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/v8_context_snapshot.x86_64.bin
+109056 PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/A/Mantle
+1020 PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/A/Resources/Info.plist
+1133 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/Info.plist
+193680 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/MacOS/PDFwright Helper (GPU)
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app/Contents/PkgInfo
+1145 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/Info.plist
+193680 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/MacOS/PDFwright Helper (Plugin)
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app/Contents/PkgInfo
+1153 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/Info.plist
+193680 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer)
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/PkgInfo
+1111 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/Info.plist
+193680 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper
+8 PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/PkgInfo
+354088 PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/ReactiveObjC
+1138 PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/A/Resources/Info.plist
+1175 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/Info.plist
+100056 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt
+231344 PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/A/Squirrel
+3835 PDFwright.app/Contents/Info.plist
+34523 PDFwright.app/Contents/LICENSE.txt
+13080 PDFwright.app/Contents/MacOS/PDFwright
+8 PDFwright.app/Contents/PkgInfo
+3997 PDFwright.app/Contents/PRIVACY.md
+26543506 PDFwright.app/Contents/Resources/app.asar
+78682 PDFwright.app/Contents/Resources/icon.icns
+1096 PDFwright.app/Contents/Resources/LICENSE.electron.txt
+5598206 PDFwright.app/Contents/Resources/LICENSES.chromium.html
+11084 PDFwright.app/Contents/THIRD_PARTY_NOTICES.md

@@ -1,0 +1,17 @@
+  • electron-builder  version=26.18.0 os=24.6.0
+  • loaded configuration  file=/Users/runner/work/PDFwright/PDFwright/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=45.0.0 arch=x64 buildFromSource=false workspaceRoot=/Users/runner/work/PDFwright/PDFwright projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=x64 electron=45.0.0 appOutDir=build/mac
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/runner/work/PDFwright/PDFwright/build/mac
+  • searching for node modules  pm=npm searchDir=/Users/runner/work/PDFwright/PDFwright
+  • no node modules found in collection, trying next search directory  pm=npm searchDir=/Users/runner/work/PDFwright/PDFwright
+  • searching for node modules  pm=traversal searchDir=/Users/runner/work/PDFwright/PDFwright
+  • using manual traversal of node_modules to build dependency tree
+  • no node modules found in collection, trying next search directory  pm=traversal searchDir=/Users/runner/work/PDFwright/PDFwright
+  • no node modules returned while searching directories  searchDirectories=[""]
+  • downloaded      label=icons-bundle.tar.gz progress=100%
+  • executing custom sign  file=build/mac/PDFwright.app platform=darwin type=distribution identityName=- identityHash=none provisioningProfile=none
+  • skipped macOS notarization  reason=`notarize` options were unable to be generated

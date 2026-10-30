@@ -1,0 +1,81 @@
+281M	build/mac/PDFwright.app
+{
+  "CFBundleDisplayName" => "PDFwright"
+  "CFBundleDocumentTypes" => [
+    0 => {
+      "CFBundleTypeExtensions" => [
+        0 => "pdf"
+      ]
+      "CFBundleTypeIconFile" => "icon.icns"
+      "CFBundleTypeName" => "PDF"
+      "CFBundleTypeRole" => "Viewer"
+      "LSHandlerRank" => "Alternate"
+    }
+  ]
+  "CFBundleExecutable" => "PDFwright"
+  "CFBundleIconFile" => "icon.icns"
+  "CFBundleIdentifier" => "ru.promptix.pdfwright"
+  "CFBundleInfoDictionaryVersion" => "6.0"
+  "CFBundleName" => "PDFwright"
+  "CFBundlePackageType" => "APPL"
+  "CFBundleShortVersionString" => "1.0.0"
+  "CFBundleVersion" => "1.0.0"
+  "DTCompiler" => "com.apple.compilers.llvm.clang.1_0"
+  "DTSDKBuild" => "24F74"
+  "DTSDKName" => "macosx15.5"
+  "DTXcode" => "1640"
+  "DTXcodeBuild" => "16F6"
+  "ElectronAsarIntegrity" => {
+    "Resources/app.asar" => {
+      "algorithm" => "SHA256"
+      "hash" => "59bc740a3b24e2c68f44df14b129995c557bea8febb22f52eb058154475fdd4a"
+    }
+  }
+  "LSApplicationCategoryType" => "public.app-category.productivity"
+  "LSEnvironment" => {
+    "MallocNanoZone" => "0"
+  }
+  "LSMinimumSystemVersion" => "13.0"
+  "NSAppTransportSecurity" => {
+    "NSAllowsArbitraryLoads" => 1
+    "NSAllowsLocalNetworking" => 1
+    "NSExceptionDomains" => {
+      "127.0.0.1" => {
+        "NSIncludesSubdomains" => 0
+        "NSTemporaryExceptionAllowsInsecureHTTPLoads" => 1
+        "NSTemporaryExceptionAllowsInsecureHTTPSLoads" => 0
+        "NSTemporaryExceptionMinimumTLSVersion" => "1.0"
+        "NSTemporaryExceptionRequiresForwardSecrecy" => 0
+      }
+      "localhost" => {
+        "NSIncludesSubdomains" => 0
+        "NSTemporaryExceptionAllowsInsecureHTTPLoads" => 1
+        "NSTemporaryExceptionAllowsInsecureHTTPSLoads" => 0
+        "NSTemporaryExceptionMinimumTLSVersion" => "1.0"
+        "NSTemporaryExceptionRequiresForwardSecrecy" => 0
+      }
+    }
+  }
+  "NSAudioCaptureUsageDescription" => "This app needs access to audio capture"
+  "NSBluetoothAlwaysUsageDescription" => "This app needs access to Bluetooth"
+  "NSBluetoothPeripheralUsageDescription" => "This app needs access to Bluetooth"
+  "NSCameraUsageDescription" => "This app needs access to the camera"
+  "NSHighResolutionCapable" => 1
+  "NSHumanReadableCopyright" => "Copyright © 2026 Promptix"
+  "NSMainNibFile" => "MainMenu"
+  "NSMicrophoneUsageDescription" => "This app needs access to the microphone"
+  "NSPrefersDisplaySafeAreaCompatibilityMode" => 0
+  "NSPrincipalClass" => "AtomApplication"
+  "NSQuitAlwaysKeepsWindows" => 0
+  "NSRequiresAquaSystemAppearance" => 0
+  "NSSupportsAutomaticGraphicsSwitching" => 1
+}
+Executable=/Users/runner/work/PDFwright/PDFwright/build/mac/PDFwright.app/Contents/MacOS/PDFwright
+Identifier=ru.promptix.pdfwright
+Format=app bundle with Mach-O thin (x86_64)
+CodeDirectory v=20400 size=462 flags=0x2(adhoc) hashes=4+7 location=embedded
+Signature=adhoc
+Info.plist entries=33
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=15
+Internal requirements count=0 size=12

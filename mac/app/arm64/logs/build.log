@@ -1,0 +1,51 @@
+
+> pdfwright@1.0.0 prebuild
+> node scripts/copy-pdfjs-assets.mjs && node scripts/copy-ocr-assets.mjs
+
+pdf.js assets copied to /Users/runner/work/PDFwright/PDFwright/src/renderer/public/pdfjs
+OCR assets copied to /Users/runner/work/PDFwright/PDFwright/src/renderer/public/ocr
+
+> pdfwright@1.0.0 build
+> electron-vite build
+
+[36mvite v8.3.5 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+✓ 184 modules transformed.
+rendering chunks...
+out/main/index.js  597.40 kB
+
+[32m✓ built in 279ms[39m
+[36mvite v8.3.5 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+out/preload/index.cjs  7.52 kB
+
+[32m✓ built in 22ms[39m
+[36mvite v8.3.5 [32mbuilding client environment for production...[36m[39m
+transforming...
+[33m[plugin rolldown:vite-resolve] Module "node:fs" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "node:fs" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "module" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf-wasm.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "module" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf-wasm.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+✓ 544 modules transformed.
+rendering chunks...
+out/renderer/assets/__vite-browser-external-UfK9GVxM.js           0.11 kB
+out/renderer/index.html                                           0.47 kB
+out/renderer/assets/rolldown-runtime-WkwZ5CU-.js                  0.59 kB
+out/renderer/assets/cursor-editorTextHighlight-kG3uUOwL.svg       5.40 kB
+out/renderer/assets/content.worker-DfjWwkY3.js                   58.00 kB
+out/renderer/assets/mupdf-CB9qeQWw.js                            90.66 kB
+out/renderer/assets/pdf.worker.min-CjEcRF4W.mjs               1,264.34 kB
+out/renderer/assets/mupdf-wasm-Bvf0xebB.wasm                 10,409.82 kB
+out/renderer/assets/index-DcJTbX0f.css                          212.09 kB
+out/renderer/assets/pdf-ops-ME7q32NH.js                           0.05 kB
+out/renderer/assets/index-CLfvnaGR.js                         1,066.14 kB
+out/renderer/assets/pdf-ops-6qOsnMDb.js                       1,159.65 kB
+
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 1.29s[39m

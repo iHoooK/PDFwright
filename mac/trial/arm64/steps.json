@@ -1,0 +1,62 @@
+[
+  {
+    "name": "install",
+    "command": "npm ci",
+    "code": 0,
+    "seconds": 17
+  },
+  {
+    "name": "lint",
+    "command": "npm run lint",
+    "code": 0,
+    "seconds": 18
+  },
+  {
+    "name": "typecheck",
+    "command": "npm run typecheck",
+    "code": 0,
+    "seconds": 5
+  },
+  {
+    "name": "unit",
+    "command": "npm test",
+    "code": 0,
+    "seconds": 7
+  },
+  {
+    "name": "build",
+    "command": "npm run build",
+    "code": 0,
+    "seconds": 1
+  },
+  {
+    "name": "e2e",
+    "command": "npm run test:e2e",
+    "code": 1,
+    "seconds": 269
+  },
+  {
+    "name": "package",
+    "command": "npx electron-builder --mac --dir --arm64 --publish never",
+    "code": 0,
+    "seconds": 8
+  },
+  {
+    "name": "app-info",
+    "command": "sh -c du -sh \"$0\"; plutil -p \"$0/Contents/Info.plist\"; codesign -dv \"$0\" 2>&1 || true build/mac-arm64/PDFwright.app",
+    "code": 0,
+    "seconds": 0
+  },
+  {
+    "name": "release",
+    "command": "bash scripts/build-release-mac.sh --arch arm64 --skip-checks --shots /Users/runner/work/_temp/ci-results/shots",
+    "code": 0,
+    "seconds": 374
+  },
+  {
+    "name": "release-files",
+    "command": "sh -c ls -l build/PDFwright-*.dmg build/PDFwright-*.zip && cat build/latest-mac.yml build/SHA256SUMS-Mac.txt",
+    "code": 0,
+    "seconds": 0
+  }
+]
