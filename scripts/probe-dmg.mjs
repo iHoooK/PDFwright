@@ -91,7 +91,7 @@ async function launch(label, appPath, how) {
       break
     }
     // Долгое молчание: состояние процессов, стеки и снимок экрана.
-    for (const mark of [30_000, 90_000, 180_000]) {
+    for (const mark of [] /* чистый замер, без диагностики */) {
       if (elapsed >= mark && !marks.has(mark)) {
         marks.add(mark)
         const pid = mainPid(appPath)
@@ -149,42 +149,29 @@ note(run('hdiutil', ['imageinfo', '-format', dmg]))
 note(run('sw_vers', []))
 note(run('sysctl', ['-n', 'machdep.cpu.brand_string', 'hw.ncpu', 'hw.memsize']))
 
-// Как собран в выпуске: первый запуск без кэша, повтор с кэшем, после проверки подписи и через open.
-{
-  const mount = attach(dmg, 'built')
-  const appPath = join(mount, 'PDFwright.app')
-  purge()
-  await launch('built-cold', appPath, 'exec')
-  await launch('built-warm', appPath, 'exec')
-  note(run('codesign', ['--verify', '--deep', '--strict', appPath], 300_000))
-  await launch('built-after-codesign', appPath, 'exec')
-  purge()
-  await launch('built-open-cold', appPath, 'open')
-  readSpeed('built', appPath)
-  // Опорная точка: та же программа, скопированная на диск.
-  const copy = join(work, 'copy', 'PDFwright.app')
-  note(run('ditto', [appPath, copy], 300_000))
-  detach(mount)
-  purge()
-  await launch('copy-cold', copy, 'exec')
-  await launch('copy-warm', copy, 'exec')
-}
-
-// Другие форматы образа: тот же том, другое сжатие.
-for (const format of ['UDZO', 'ULFO', 'UDRO']) {
+// Чистый замер: bzip2 против LZFSE, по два холодных запуска и через open; опора — копия на диск.
+for (const format of ['UDBZ', 'ULFO']) {
   const image = join(work, `${format}.dmg`)
-  const started = Date.now()
   note(run('hdiutil', ['convert', dmg, '-format', format, '-o', image], 900_000))
-  note(
-    `${format}: ${(statSync(image).size / 1048576).toFixed(1)} МБ, преобразование ${((Date.now() - started) / 1000).toFixed(0)} с`
-  )
+  note(`${format}: ${(statSync(image).size / 1048576).toFixed(1)} МБ`)
   const mount = attach(image, format)
   const appPath = join(mount, 'PDFwright.app')
   purge()
-  await launch(`${format}-cold`, appPath, 'exec')
-  await launch(`${format}-warm`, appPath, 'exec')
+  await launch(`${format}-cold-1`, appPath, 'exec')
+  purge()
+  await launch(`${format}-cold-2`, appPath, 'exec')
+  purge()
+  await launch(`${format}-open-cold`, appPath, 'open')
   readSpeed(format, appPath)
-  detach(mount)
+  if (format === 'ULFO') {
+    const copy = join(work, 'copy', 'PDFwright.app')
+    note(run('ditto', [appPath, copy], 300_000))
+    detach(mount)
+    purge()
+    await launch('copy-cold', copy, 'exec')
+  } else {
+    detach(mount)
+  }
 }
 
 const table = [
