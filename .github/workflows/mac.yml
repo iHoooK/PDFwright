@@ -59,6 +59,13 @@ jobs:
         continue-on-error: true
         run: node scripts/ci-results.mjs run build npm run build
 
+      # Без принтера macOS не показывает окно печати, а его проверяет e2e. Печать в никуда.
+      - name: Virtual printer
+        continue-on-error: true
+        run: >-
+          sudo lpadmin -p CI_Printer -E -v lpd://127.0.0.1/ci
+          -P /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/PrintCore.framework/Versions/A/Resources/Generic.ppd
+
       - name: E2E tests
         if: steps.build.outcome == 'success'
         continue-on-error: true

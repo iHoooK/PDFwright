@@ -1,14 +1,13 @@
 name: DMG launch probe (temporary)
 
 # ВРЕМЕННО (docs/MACOS_PLAN.md, M3.1): запуск программы прямо из смонтированного .dmg.
-# macOS 15 и 26 на Apple Silicon и Intel, итоги — в ci/mac-results, mac/dmg-probe-open/<машина>.
+# macOS 15 и 26 на Apple Silicon и Intel, итоги — в ci/mac-results, mac/dmg-probe-open2/<машина>.
 on:
   push:
     branches: ['mac/final']
     paths:
       - .github/workflows/mac-dmg-probe.yml
       - scripts/probe-dmg.mjs
-      - scripts/probe-print.mjs
 
 permissions:
   contents: write
@@ -40,13 +39,6 @@ jobs:
       - name: Build
         run: node scripts/ci-results.mjs run build npm run build
 
-      - name: Print probe
-        continue-on-error: true
-        timeout-minutes: 8
-        run: >-
-          node scripts/ci-results.mjs run print
-          node scripts/probe-print.mjs tests/fixtures/simple.pdf "$RUNNER_TEMP/ci-results"
-
       - name: DMG
         env:
           CSC_FOR_PULL_REQUEST: 'true'
@@ -65,4 +57,4 @@ jobs:
 
       - name: Publish results to ci/mac-results
         if: always()
-        run: node scripts/ci-results.mjs publish "mac/dmg-probe-open/${{ matrix.runner }}"
+        run: node scripts/ci-results.mjs publish "mac/dmg-probe-open2/${{ matrix.runner }}"

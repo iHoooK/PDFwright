@@ -83,6 +83,7 @@ async function launch(label, appPath, how) {
   let windowAt = null
   let readyAt = null
   const marks = new Set()
+  let diagJob = null
   while (Date.now() - started < LIMIT) {
     const elapsed = Date.now() - started
     if (processAt === null && mainPid(appPath)) processAt = elapsed
@@ -96,6 +97,24 @@ async function launch(label, appPath, how) {
     if (pages.some((target) => target.title.includes(basename(pdf)))) {
       readyAt = elapsed
       break
+    }
+    // Только в сценарии -diag: кто читает образ и где стоит главный поток; опрос не блокируется.
+    if (label.endsWith('-diag') && elapsed >= 20_000 && !diagJob) {
+      const pid = mainPid(appPath)
+      const io = join(work, `${label}-io.txt`)
+      const spin = join(work, `${label}-spin.txt`)
+      diagJob = { io, spin, done: false }
+      const job = diagJob
+      spawn(
+        'sh',
+        [
+          '-c',
+          `sudo fs_usage -w -f diskio -t 5 > "${io}" 2>&1; sudo spindump ${pid ?? 0} 3 10 -file "${spin}" >/dev/null 2>&1`
+        ],
+        { stdio: 'ignore' }
+      ).on('exit', () => {
+        job.done = true
+      })
     }
     // Лёгкий снимок без стеков: кто занят процессором, пока окна нет.
     for (const mark of [10_000, 20_000, 40_000, 80_000, 160_000]) {
@@ -115,6 +134,18 @@ async function launch(label, appPath, how) {
     `${label} (${how}): open ${seconds(openDone)}, процесс ${seconds(processAt)}, окно ${seconds(windowAt)}, документ ${seconds(readyAt)} с`
   )
   if (readyAt === null) detail(`${label}: процессы при тайм-ауте`, processes())
+  if (diagJob) {
+    for (let i = 0; i < 120 && !diagJob.done; i++) await sleep(500)
+    const lines = run('sudo', ['cat', diagJob.io]).split('\n')
+    const counts = new Map()
+    for (const line of lines) {
+      const name = line.trim().split(/\s+/).pop()
+      if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
+    }
+    const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 15)
+    detail(`${label}: кто читает диск (fs_usage 5 с)`, top.map(([n, c]) => `${c} ${n}`).join('\n'))
+    detail(`${label}: spindump`, run('sudo', ['head', '-n', '200', diagJob.spin]))
+  }
   await kill(appPath)
 }
 
@@ -163,6 +194,8 @@ note(run('sysctl', ['-n', 'machdep.cpu.brand_string', 'hw.ncpu', 'hw.memsize']))
   await launch('ULFO-open-1', appPath, 'open')
   purge()
   await launch('ULFO-open-2', appPath, 'open')
+  purge()
+  await launch('ULFO-open-diag', appPath, 'open')
   readSpeed('ULFO', appPath)
   const installed = '/Applications/PDFwright.app'
   note(run('ditto', [appPath, installed], 300_000))

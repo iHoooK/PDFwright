@@ -216,8 +216,9 @@ for arch in $arches; do
   [[ -L "$mount_point/Applications" && "$(readlink "$mount_point/Applications")" == "/Applications" ]] ||
     fail "$dmg_file: нет ссылки на «Программы»"
   verify_app "$mount_point/PDFwright.app" "$arch"
-  # Запуск прямо из окна .dmg, как делают многие: образ только для чтения, кэш диска сброшен,
-  # если есть право (на машинах CI есть). С образом bzip2 окна не было минутами (M3.1).
+  # Запуск прямо с образа: том только для чтения, кэш диска сброшен, если есть право (на машинах
+  # CI есть). С образом bzip2 окна не было минутами (M3.1). Двойной щелчок в окне .dmg идёт через
+  # LaunchServices и может быть дольше: такой запуск проверяется вручную (MANUAL_CHECK, 12.2).
   if [[ "$run_smoke" == 1 ]] && can_run "$arch"; then
     sudo -n purge 2>/dev/null || true
     node scripts/smoke-mac.mjs "$mount_point/PDFwright.app" tests/fixtures/simple.pdf "$arch"
