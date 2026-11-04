@@ -55,8 +55,26 @@ export const WINDOW_FULLSCREEN_CHANNEL = 'window:fullscreen'
 export const FILE_MISSING_ERROR = 'PDFWRIGHT_FILE_MISSING'
 
 export function isFileMissingError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error)
-  return message.includes(FILE_MISSING_ERROR)
+  return errorText(error).includes(FILE_MISSING_ERROR)
+}
+
+/**
+ * Сообщение ошибки печати в системе без единого принтера: renderer узнаёт её
+ * по этому маркеру и подсказывает, где добавить принтер.
+ */
+export const NO_PRINTERS_ERROR = 'PDFWRIGHT_NO_PRINTERS'
+
+export function isNoPrintersError(error: unknown): boolean {
+  return errorText(error).includes(NO_PRINTERS_ERROR)
+}
+
+/** Текст ошибки из main без технического префикса Electron. */
+export function invokeErrorText(error: unknown): string {
+  return errorText(error).replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '')
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 export const APP_COMMANDS = [

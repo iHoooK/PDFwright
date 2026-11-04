@@ -1,5 +1,9 @@
 import { BrowserWindow } from 'electron'
 import { pathToFileURL } from 'node:url'
+import { NO_PRINTERS_ERROR } from '@shared/ipc-contract'
+
+/** Причина, с которой Electron отказывает в печати, когда в системе нет принтеров. */
+const NO_PRINTERS_REASON = 'No printers available on the network'
 
 /**
  * Печать PDF через встроенный просмотрщик Chromium: файл открывается в
@@ -20,7 +24,7 @@ export async function printPdfFile(path: string, failed: string): Promise<void> 
     await new Promise<void>((resolve, reject) => {
       window.webContents.print({ silent: false, printBackground: true }, (success, reason) => {
         if (success || reason === 'cancelled' || reason === 'Print job canceled') resolve()
-        else reject(new Error(reason || failed))
+        else reject(new Error(reason === NO_PRINTERS_REASON ? NO_PRINTERS_ERROR : reason || failed))
       })
     })
   } finally {

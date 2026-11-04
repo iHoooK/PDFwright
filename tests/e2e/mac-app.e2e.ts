@@ -532,8 +532,11 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
       const failed = page.getByRole('status').filter({ hasText: 'Печать не выполнена' })
       await page.keyboard.press('Meta+p')
       if (printers === 0) {
-        // Без принтера macOS окно не показывает: остаётся сообщение программы (M3.1).
-        await failed.waitFor({ timeout: 30_000 })
+        // Без принтера macOS окно не показывает: остаётся подсказка программы (M3.1).
+        await page
+          .getByRole('status')
+          .filter({ hasText: 'Нет ни одного принтера' })
+          .waitFor({ timeout: 30_000 })
         return
       }
       await expect.poll(windowCount).toBe(2)

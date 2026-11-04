@@ -11,7 +11,9 @@ import {
   type ReactNode
 } from 'react'
 import {
+  invokeErrorText,
   isFileMissingError,
+  isNoPrintersError,
   type AppCommand,
   type AppInfo,
   type PdfwrightApi,
@@ -2342,7 +2344,9 @@ export function StoreProvider({ children }: { children: ReactNode }): React.JSX.
         }
         api.printFile(tab.path).catch((error: unknown) => {
           toast(
-            `${t.viewer.printFailed}: ${error instanceof Error ? error.message : String(error)}`
+            isNoPrintersError(error)
+              ? t.viewer.noPrinters
+              : `${t.viewer.printFailed}: ${invokeErrorText(error)}`
           )
         })
       },

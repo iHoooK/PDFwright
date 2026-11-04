@@ -96,6 +96,10 @@ mac:
   # Перед подписью переносит общие extraFiles из Contents в Contents/Resources:
   # файлы в корне Contents codesign принимает за неподписанный код.
   sign: ./scripts/mac-sign.mjs
+  # Текст системного запроса о локальной сети: на новых macOS его вызывает окно печати,
+  # когда ищет сетевые принтеры. Сама программа в локальную сеть не обращается.
+  extendInfo:
+    NSLocalNetworkUsageDescription: 'Окно печати ищет сетевые принтеры. The print dialog looks for network printers.'
   # Только здесь, не на верхнем уровне: там он изменил бы установщик Windows.
   # Viewer и Alternate: PDFwright появляется в «Открыть в программе», а программой
   # по умолчанию для PDF остаётся «Просмотр», пока пользователь не выберет сам.
@@ -117,6 +121,9 @@ dmg:
   # сам берёт installer/license_*.txt установщика NSIS, а их BOM и кириллицу
   # dmgbuild не кодирует.
   license: null
+  # Подсказка в окне: перетащить в «Программы» и запускать оттуда. Рядом лежит версия @2x,
+  # обе собирает scripts/build-icons.mjs.
+  background: installer/dmg-background.png
   window:
     width: 540
     height: 380

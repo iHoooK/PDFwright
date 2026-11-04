@@ -14,20 +14,24 @@ const PNG_SIZES = [512, 256, 32]
 // Без полей значок в Dock крупнее соседних, а macOS 26 кладёт его в серую подложку.
 const MAC_SIZE = 1024
 const MAC_BODY = 824
+// Фон окна .dmg (в точках, как dmg.window в electron-builder.yml) и версия для Retina.
+const DMG_WIDTH = 540
+const DMG_HEIGHT = 380
 
 // Рисуем SVG на canvas внутри страницы и забираем PNG как data URL:
 // это не зависит от видимости окна и композитора, в отличие от capturePage.
 // body — сторона рисунка на холсте size×size (по умолчанию во весь холст).
-async function renderPng(window, svg, size, body = size) {
+async function renderPng(window, svg, size, body = size, height = size) {
   const src = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')
   const offset = (size - body) / 2
+  const drawn = body === size ? height : body
   const dataUrl = await window.webContents.executeJavaScript(`
     new Promise((resolve, reject) => {
       const img = new Image()
       img.onload = () => {
         const c = document.createElement('canvas')
-        c.width = ${size}; c.height = ${size}
-        c.getContext('2d').drawImage(img, ${offset}, ${offset}, ${body}, ${body})
+        c.width = ${size}; c.height = ${height}
+        c.getContext('2d').drawImage(img, ${offset}, ${offset}, ${body}, ${drawn})
         resolve(c.toDataURL('image/png'))
       }
       img.onerror = () => reject(new Error('svg load failed'))
@@ -87,6 +91,22 @@ app.whenReady().then(async () => {
       join(root, 'installer', 'icon-mac.png'),
       await renderPng(window, svg, MAC_SIZE, MAC_BODY)
     )
+    const background = await readFile(join(root, 'resources', 'dmg-background.svg'), 'utf8')
+    for (const [scale, suffix] of [
+      [1, ''],
+      [2, '@2x']
+    ]) {
+      await writeFile(
+        join(root, 'installer', `dmg-background${suffix}.png`),
+        await renderPng(
+          window,
+          background,
+          DMG_WIDTH * scale,
+          DMG_WIDTH * scale,
+          DMG_HEIGHT * scale
+        )
+      )
+    }
     console.log(
       `icons: installer/icon.ico (${ICO_SIZES.join(',')}), installer/icon.png 512, resources/icon-256.png, resources/icon-32.png, installer/icon-mac.png ${MAC_SIZE} (${MAC_BODY})`
     )

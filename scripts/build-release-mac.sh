@@ -128,6 +128,8 @@ $signature"
   for expected in '"pdf"' '"Viewer"' '"Alternate"'; do
     grep -q "$expected" <<<"$document_types" || fail "$app: в CFBundleDocumentTypes нет $expected: $document_types"
   done
+  plutil -extract NSLocalNetworkUsageDescription raw -o - "$plist" >/dev/null ||
+    fail "$app: в Info.plist нет NSLocalNetworkUsageDescription"
   for document in LICENSE.txt PRIVACY.md THIRD_PARTY_NOTICES.md; do
     [[ -f "$app/Contents/Resources/$document" ]] || fail "$app: нет Contents/Resources/$document (scripts/mac-sign.mjs)"
   done

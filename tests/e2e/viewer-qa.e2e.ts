@@ -350,4 +350,30 @@ describe('Просмотр: исправления QA (собранное при
     expect(await licenses.locator('code').count()).toBeGreaterThan(0)
     await shot(page, 'qa-licenses')
   })
+
+  it('печать: без принтеров подсказка, другая ошибка без технического префикса', async () => {
+    const page = await launch(await makeDocument('печать.pdf'))
+    const failWith = (reason: string): Promise<void> =>
+      app().evaluate(({ BrowserWindow }, failure) => {
+        const proto = Object.getPrototypeOf(BrowserWindow.getAllWindows()[0]?.webContents) as {
+          print: (options: unknown, done: (success: boolean, reason: string) => void) => void
+        }
+        proto.print = (_options, done) => {
+          done(false, failure)
+        }
+      }, reason)
+    const toast = page.getByRole('status')
+
+    await failWith('No printers available on the network')
+    await tool(page, 'Печать').click()
+    await toast.filter({ hasText: 'Нет ни одного принтера' }).waitFor()
+    expect(await toast.allTextContents()).not.toContainEqual(expect.stringContaining('PDFWRIGHT'))
+
+    await failWith('Printer is offline')
+    await tool(page, 'Печать').click()
+    await toast.filter({ hasText: 'Печать не выполнена: Printer is offline' }).waitFor()
+    expect(await toast.allTextContents()).not.toContainEqual(
+      expect.stringContaining('Error invoking')
+    )
+  })
 })

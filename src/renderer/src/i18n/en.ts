@@ -181,6 +181,7 @@ export const en: Strings = {
     retry: 'Try again',
     closeTab: 'Close tab',
     printFailed: "Couldn't print",
+    noPrinters: 'No printers found. Add one in Windows Settings: Printers & scanners.',
     pageOf: (n: number, total: number) => `Page ${n} of ${total}`,
     saved: 'Saved',
     unsaved: 'Not saved',
@@ -796,6 +797,9 @@ export const enMac: Overrides<Strings> = {
   start: {
     openHint:
       'Choose a file or drag it into the window. In Finder, use Open With to open a document here.'
+  },
+  viewer: {
+    noPrinters: 'No printers found. Add one in System Settings: Printers & Scanners.'
   },
   pages: {
     hint: 'Click to select, ⌘ to add, Shift for a range, drag to reorder, delete to remove.'
