@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { execFile } from 'node:child_process'
 import { copyFile, readFile, writeFile } from 'node:fs/promises'
+import { release } from 'node:os'
 import { join } from 'node:path'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import type { Page } from 'playwright'
@@ -42,6 +43,8 @@ useElectronApp()
 
 const CHIP = process.arch === 'arm64' ? 'Apple Silicon' : 'Intel'
 const COPY_TEXT = 'Copy me on a Mac'
+/** Ядро Darwin 25 — macOS 26. */
+const MACOS_26 = Number(release().split('.')[0]) >= 25
 
 async function fixture(name: string): Promise<string> {
   const target = join(ctx.work, name)
@@ -515,31 +518,36 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
   })
 
   // Печать идёт из скрытого окна. На CI принтер виртуальный (шаг в mac.yml): до настоящей
-  // печати дело не доходит, проверяется системное окно и его отмена.
-  it('печать: ⌘P открывает системное окно, Esc закрывает его без ошибки', async () => {
-    const page = await launch(await fixture('печать.pdf'))
-    const printers = await app().evaluate(async ({ BrowserWindow }) => {
-      const window = BrowserWindow.getAllWindows()[0]
-      return window ? (await window.webContents.getPrintersAsync()).length : 0
-    })
-    const failed = page.getByRole('status').filter({ hasText: 'Печать не выполнена' })
-    await page.keyboard.press('Meta+p')
-    if (printers === 0) {
-      // Без принтера macOS окно не показывает: остаётся сообщение программы (M3.1).
-      await failed.waitFor({ timeout: 30_000 })
-      return
+  // печати дело не доходит, проверяется системное окно и его отмена. На macOS 26 окно печати
+  // вызывает системный запрос о поиске устройств в локальной сети: Esc его не закрывает, и он
+  // остаётся поверх всех следующих снимков экрана. Там проверка ручная (MANUAL_CHECK, 12.8).
+  it.skipIf(MACOS_26)(
+    'печать: ⌘P открывает системное окно, Esc закрывает его без ошибки',
+    async () => {
+      const page = await launch(await fixture('печать.pdf'))
+      const printers = await app().evaluate(async ({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows()[0]
+        return window ? (await window.webContents.getPrintersAsync()).length : 0
+      })
+      const failed = page.getByRole('status').filter({ hasText: 'Печать не выполнена' })
+      await page.keyboard.press('Meta+p')
+      if (printers === 0) {
+        // Без принтера macOS окно не показывает: остаётся сообщение программы (M3.1).
+        await failed.waitFor({ timeout: 30_000 })
+        return
+      }
+      await expect.poll(windowCount).toBe(2)
+      const names = (): Promise<string> =>
+        runScript(
+          'tell application "System Events" to get name of windows of (processes whose background only is false)'
+        )
+      await expect.poll(names, { timeout: 30_000 }).toMatch(/Print|Печать/)
+      await captureScreen('mac-screen-print')
+      await runScript('tell application "System Events" to key code 53')
+      await expect.poll(windowCount, { timeout: 20_000 }).toBe(1)
+      expect(await failed.count()).toBe(0)
     }
-    await expect.poll(windowCount).toBe(2)
-    const names = (): Promise<string> =>
-      runScript(
-        'tell application "System Events" to get name of windows of (processes whose background only is false)'
-      )
-    await expect.poll(names, { timeout: 30_000 }).toMatch(/Print|Печать/)
-    await captureScreen('mac-screen-print')
-    await runScript('tell application "System Events" to key code 53')
-    await expect.poll(windowCount, { timeout: 20_000 }).toBe(1)
-    expect(await failed.count()).toBe(0)
-  })
+  )
 
   // Снимки для автора (M3.2): весь экран, на демо-договоре, по одному на ключевой экран.
   it('ключевые экраны: начало, просмотр, правка, разметка, Параметры, тёмная тема, английский', async () => {
