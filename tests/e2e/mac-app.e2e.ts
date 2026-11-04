@@ -81,7 +81,7 @@ async function addVirtualPrinter(): Promise<void> {
       ['lpadmin', '-p', 'CI_Printer', '-E', '-v', 'lpd://127.0.0.1/ci', '-P', ppd],
       { timeout: 30_000 },
       (error) => {
-        if (error) reject(error)
+        if (error) reject(new Error(error.message))
         else resolve()
       }
     )
