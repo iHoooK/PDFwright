@@ -20,6 +20,13 @@ import {
 /** Исправления по отчёту QA просмотра: закладки, поиск, масштаб, окна, «Недавние», файлы. */
 useElectronApp()
 
+/** Подписи, которые на Mac другие (M1.7). */
+const MAC = process.platform === 'darwin'
+const SHOW_IN_FOLDER = MAC ? 'Показать в Finder' : 'Показать в папке'
+const SYSTEM = MAC
+  ? `macOS · ${process.arch === 'arm64' ? 'Apple Silicon' : 'Intel'}`
+  : 'Windows x64'
+
 function app(): NonNullable<typeof ctx.app> {
   if (!ctx.app) throw new Error('приложение не запущено')
   return ctx.app
@@ -269,7 +276,7 @@ describe('Просмотр: исправления QA (собранное при
       await expect.poll(() => dialog.isVisible()).toBe(true)
       await dialog.getByRole('radio', { name: 'Каждую страницу отдельно' }).click()
       await dialog.getByRole('button', { name: 'Разделить', exact: true }).click()
-      await expect.poll(() => dialog.textContent()).toContain('Показать в папке')
+      await expect.poll(() => dialog.textContent()).toContain(SHOW_IN_FOLDER)
       await dialog.getByRole('button', { name: 'Закрыть', exact: true }).last().click()
       await expect.poll(() => dialog.count()).toBe(0)
     }
@@ -325,7 +332,7 @@ describe('Просмотр: исправления QA (собранное при
     // V12, V11: «версия для разработки», подписи диагностики из словаря.
     await page.keyboard.press('Control+,')
     await page.getByRole('button', { name: 'О программе' }).click()
-    await page.getByText(/Windows x64 · версия для разработки/).waitFor()
+    await page.getByText(new RegExp(`${SYSTEM} · версия для разработки`)).waitFor()
     await page.getByRole('button', { name: 'Скопировать диагностику' }).click()
     await expect
       .poll(() => app().evaluate(({ clipboard }) => clipboard.readText()))

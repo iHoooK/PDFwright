@@ -299,10 +299,15 @@ describe('заметки и аннотации документа', () => {
     // Перетаскивание одного объекта двигает всю группу; Ctrl+Z возвращает всё разом.
     const rect = '[data-markup-selected="rect"]'
     const square = '[data-annotation-selected="Square"]'
-    const rectBefore = await boxOf(page, rect)
-    const squareBefore = await boxOf(page, square)
+    // Положение на странице, а не в окне: в низком окне (на Mac-машине CI 677 px) drag
+    // прокручивает документ к точкам переноса, а со страницей едут и координаты окна.
+    const onPage = async (selector: string): Promise<{ y: number }> => ({
+      y: (await boxOf(page, selector)).y - (await sizeOf(page, '[data-page="1"]')).y
+    })
+    const rectBefore = await onPage(rect)
+    const squareBefore = await onPage(square)
     const shift = async (selector: string, from: { y: number }): Promise<number> =>
-      (await boxOf(page, selector)).y - from.y
+      (await onPage(selector)).y - from.y
     await drag(page, 1, share(300, 280), share(300, 230))
     await expect.poll(() => shift(rect, rectBefore)).toBeGreaterThan(30)
     await expect.poll(() => shift(square, squareBefore)).toBeGreaterThan(30)

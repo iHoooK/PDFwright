@@ -12,6 +12,9 @@ import { ctx, launch, ROOT, shot, statusText, tool, useElectronApp } from './hel
 /** Фаза 6: PDF в картинки, картинки в PDF, извлечение текста, сжатие. */
 useElectronApp()
 
+/** Предупреждение при сжатии открытого документа: на Mac отмена подписана ⌘Z (M1.7). */
+const UNDO_WARNING = `изменение отменяет ${process.platform === 'darwin' ? '⌘Z' : 'Ctrl+Z'}`
+
 function app(): NonNullable<typeof ctx.app> {
   if (!ctx.app) throw new Error('приложение не запущено')
   return ctx.app
@@ -248,8 +251,8 @@ describe('Конвертация (собранное приложение)', () 
     await command('tools.compress')
     const dialog = page.getByRole('dialog', { name: 'Сжать PDF' })
     await expect.poll(() => dialog.isVisible()).toBe(true)
-    // Открытый документ: предупреждение про Ctrl+Z на месте.
-    await expect.poll(() => dialog.textContent()).toContain('изменение отменяет Ctrl+Z')
+    // Открытый документ: предупреждение про Ctrl+Z (на Mac — ⌘Z) на месте.
+    await expect.poll(() => dialog.textContent()).toContain(UNDO_WARNING)
 
     await stubOpenDialog([locked])
     await dialog.getByRole('button', { name: 'Выбрать файл…' }).click()
@@ -261,7 +264,7 @@ describe('Конвертация (собранное приложение)', () 
     expect(text).not.toContain('зашифрован')
     expect(text).not.toContain('следующих версиях')
     // Внешний файл не меняется на месте: Ctrl+Z здесь ни при чём.
-    expect(text).not.toContain('изменение отменяет Ctrl+Z')
+    expect(text).not.toContain(UNDO_WARNING)
     expect(text).not.toContain('−0 %')
 
     await stubOpenDialog([broken])

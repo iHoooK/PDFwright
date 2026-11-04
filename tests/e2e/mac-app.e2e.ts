@@ -1,16 +1,20 @@
 /// <reference lib="dom" />
 import { execFile } from 'node:child_process'
-import { copyFile, writeFile } from 'node:fs/promises'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import type { Page } from 'playwright'
 import { describe, expect, it } from 'vitest'
 import { UPDATE_AVAILABLE_CHANNEL, type UpdateAvailable } from '../../src/shared/ipc-contract'
+import { protectPdf } from '../../src/shared/pdf-content/protect'
+import { writeDemoDocuments } from '../tour/demo'
 import {
   clickMenuItem,
   clickPage,
   ctx,
+  drag,
   launch,
+  launchLocked,
   launchWithoutFile,
   pagePoint,
   quitApp,
@@ -30,11 +34,14 @@ import {
  *
  * Playwright на Mac передаёт ⌘V и ⌘Z в страницу вместе с командой редактора,
  * минуя строку меню. Поэтому путь «клавиша → меню» проверяется вызовом пункта
- * меню, а сами пункты — по меню, установленному в программе.
+ * меню, действием меню через первого ответчика окна и настоящими нажатиями
+ * через System Events (если система их разрешает), а сами пункты — по меню,
+ * установленному в программе.
  */
 useElectronApp()
 
 const CHIP = process.arch === 'arm64' ? 'Apple Silicon' : 'Intel'
+const COPY_TEXT = 'Copy me on a Mac'
 
 async function fixture(name: string): Promise<string> {
   const target = join(ctx.work, name)
@@ -58,19 +65,81 @@ async function windowCount(): Promise<number> {
   return app().evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
 }
 
-/** Снимок всего экрана: кнопки окна рисует macOS, в снимок страницы они не попадают. */
-async function screenShot(name: string): Promise<void> {
-  const dir = process.env.PDFWRIGHT_SHOTS
-  if (!dir) return
+/** Окно программы на переднем плане: туда идут настоящие нажатия и действия меню. */
+async function bringToFront(): Promise<void> {
   await app().evaluate(({ app: electronApp, BrowserWindow }) => {
     electronApp.focus({ steal: true })
     BrowserWindow.getAllWindows()[0]?.focus()
   })
   await new Promise((resolve) => setTimeout(resolve, 800))
+}
+
+/** Снимок всего экрана как есть: что поверх чего, видно на снимке. */
+async function captureScreen(name: string): Promise<void> {
+  const dir = process.env.PDFWRIGHT_SHOTS
+  if (!dir) return
   await new Promise<void>((resolve) => {
     // Без разрешения на запись экрана снимок не выйдет — это не ошибка теста.
     execFile('screencapture', ['-x', join(dir, `${name}.png`)], { timeout: 15_000 }, () => {
       resolve()
+    })
+  })
+}
+
+/** Снимок всего экрана: кнопки окна рисует macOS, в снимок страницы они не попадают. */
+async function screenShot(name: string): Promise<void> {
+  if (!process.env.PDFWRIGHT_SHOTS) return
+  await bringToFront()
+  await captureScreen(name)
+}
+
+/** Команда меню через канал main → renderer, как её шлёт пункт без id. */
+async function command(name: string): Promise<void> {
+  await app().evaluate(({ BrowserWindow }, cmd) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('app:command', cmd)
+  }, name)
+}
+
+/** Документ с текстом, который можно выделить и скопировать. */
+async function textFixture(name: string): Promise<string> {
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  doc.addPage([595, 842]).drawText(COPY_TEXT, { x: 72, y: 760, size: 20, font })
+  const target = join(ctx.work, name)
+  await writeFile(target, await doc.save())
+  return target
+}
+
+const readClipboard = (): Promise<string> => app().evaluate(({ clipboard }) => clipboard.readText())
+
+async function writeClipboard(text: string): Promise<void> {
+  await app().evaluate(({ clipboard }, value) => clipboard.writeText(value), text)
+}
+
+/**
+ * Действие пункта «Правка» тем же путём, что и пункт в строке меню: селектор
+ * уходит первому ответчику окна (ролевые пункты в Electron вызвать из JS нельзя).
+ */
+async function menuAction(selector: 'selectAll:' | 'copy:'): Promise<void> {
+  await bringToFront()
+  await app().evaluate(({ Menu }, action) => {
+    Menu.sendActionToFirstResponder(action)
+  }, selector)
+}
+
+/**
+ * Настоящее нажатие ⌘ + клавиша через System Events: оно идёт через систему и
+ * строку меню, как с клавиатуры. Нужно право «Универсальный доступ»; если система
+ * отказала, вернёт false, и сценарий остаётся только ручной проверке (пишется в лог).
+ */
+async function pressCommand(key: string): Promise<boolean> {
+  await bringToFront()
+  const script = `tell application "System Events" to keystroke "${key}" using command down`
+  return new Promise((resolve) => {
+    execFile('osascript', ['-e', script], { timeout: 30_000 }, (error) => {
+      if (error) console.log(`Настоящие нажатия недоступны (⌘${key}): ${error.message}`)
+      else console.log(`Настоящее нажатие ⌘${key} отправлено`)
+      resolve(!error)
     })
   })
 }
@@ -323,6 +392,177 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
     const restored = await launchWithoutFile()
     await expect.poll(() => tabNames(restored)).toEqual(['третий.pdf'])
     expect(await windowCount()).toBe(1)
+  })
+
+  it('⌘A, ⌘C, ⌘V и ⌘Z идут через строку меню: действия меню и настоящие нажатия', async () => {
+    const page = await launch(await textFixture('текст.pdf'))
+    const span = page.locator('[data-page="1"] .textLayer span').first()
+    await span.waitFor({ timeout: 20_000 })
+
+    // Действия меню: тот же получатель, что у пунктов «Выделить всё» и «Копировать».
+    await writeClipboard('прежнее')
+    await span.click()
+    await menuAction('selectAll:')
+    await menuAction('copy:')
+    await expect.poll(readClipboard).toContain(COPY_TEXT)
+
+    // Настоящие нажатия: ⌘A и ⌘C копируют текст страницы.
+    await writeClipboard('прежнее')
+    await span.click()
+    if (!(await pressCommand('a')) || !(await pressCommand('c'))) return
+    await expect.poll(readClipboard).toContain(COPY_TEXT)
+
+    // ⌘V вставляет в поле поиска, ⌘Z в поле отменяет вставку, а не операцию документа.
+    await writeClipboard('PDFwright')
+    await page.keyboard.press('Meta+f')
+    const search = page.getByRole('searchbox', { name: 'Поиск в документе' })
+    await expect.poll(() => search.evaluate((el) => el === document.activeElement)).toBe(true)
+    await pressCommand('v')
+    await expect.poll(() => search.inputValue()).toBe('PDFwright')
+    await pressCommand('z')
+    await expect.poll(() => search.inputValue()).toBe('')
+    await page.keyboard.press('Escape')
+
+    // ⌘Z в документе отменяет ровно одну операцию, а не две (renderer и меню).
+    await page.keyboard.press('Meta+g')
+    const pages = page.getByRole('toolbar', { name: 'Страницы' })
+    await page.locator('[draggable] button').nth(0).click()
+    await pages.getByRole('button', { name: 'Повернуть ↻' }).click()
+    await expect.poll(() => statusText(page)).toContain('Не сохранено')
+    await pages.getByRole('button', { name: 'Дублировать' }).click()
+    await expect.poll(() => page.locator('[draggable] button').count()).toBe(2)
+    await page.keyboard.press('Meta+g')
+    await page.locator('[data-page="1"] canvas').first().waitFor()
+    await expect.poll(() => statusText(page)).toContain('из 2')
+    await page.evaluate(() => {
+      ;(document.activeElement as HTMLElement | null)?.blur()
+    })
+    await pressCommand('z')
+    await expect.poll(() => statusText(page)).toContain('из 1')
+    await page.waitForTimeout(500)
+    expect(await statusText(page)).toContain('Не сохранено')
+  })
+
+  it('запрет копирования: ⌘C через меню и настоящим нажатием даёт подсказку, буфер прежний', async () => {
+    const plain = await textFixture('текст.pdf')
+    const target = join(ctx.work, 'запрет.pdf')
+    await writeFile(
+      target,
+      await protectPdf(new Uint8Array(await readFile(plain)), {
+        userPassword: 'открыть',
+        ownerPassword: 'владелец',
+        allowPrint: true,
+        allowCopy: false
+      })
+    )
+    const page = await launchLocked(target)
+    const ask = page.getByRole('dialog', { name: 'Документ защищён паролем' })
+    await ask.getByLabel('Документ защищён паролем').fill('открыть')
+    await page.keyboard.press('Enter')
+    await page.waitForSelector('[data-page="1"] canvas', { timeout: 60_000 })
+    const span = page.locator('[data-page="1"] .textLayer span').first()
+    await span.waitFor({ timeout: 20_000 })
+    const toast = page.getByRole('status').filter({ hasText: 'запретил копирование' })
+
+    await writeClipboard('прежнее')
+    await span.click()
+    await menuAction('selectAll:')
+    await menuAction('copy:')
+    await toast.waitFor()
+    await shot(page, 'mac-copy-blocked')
+    expect(await readClipboard()).toBe('прежнее')
+
+    await toast.waitFor({ state: 'hidden', timeout: 30_000 })
+    await span.click()
+    if (!(await pressCommand('a')) || !(await pressCommand('c'))) return
+    await toast.waitFor()
+    expect(await readClipboard()).toBe('прежнее')
+  })
+
+  it('«Показать в Finder»: кнопка открывает готовый файл в Finder', async () => {
+    const page = await launch(await fixture('док.pdf'))
+    await app().evaluate(({ shell }) => {
+      const original = shell.showItemInFolder.bind(shell)
+      shell.showItemInFolder = (path) => {
+        ;(globalThis as { shownInFinder?: string }).shownInFinder = path
+        original(path)
+      }
+    })
+    await command('tools.split')
+    const dialog = page.getByRole('dialog', { name: 'Разделить PDF' })
+    await expect.poll(() => dialog.isVisible()).toBe(true)
+    await dialog.getByRole('radio', { name: 'Каждую страницу отдельно' }).click()
+    await dialog.getByRole('button', { name: 'Разделить', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Показать в Finder' }).click()
+    await expect
+      .poll(() =>
+        app().evaluate(() => (globalThis as { shownInFinder?: string }).shownInFinder ?? '')
+      )
+      .toContain('док_стр1.pdf')
+    // Снимок: окно Finder с выделенным файлом; затем оно закрывается, чтобы не мешать другим снимкам.
+    await new Promise((resolve) => setTimeout(resolve, 2_000))
+    await captureScreen('mac-screen-finder')
+    await new Promise<void>((resolve) => {
+      execFile(
+        'osascript',
+        ['-e', 'tell application "Finder" to close every window'],
+        { timeout: 15_000 },
+        () => {
+          resolve()
+        }
+      )
+    })
+  })
+
+  // Снимки для автора (M3.2): весь экран, на демо-договоре, по одному на ключевой экран.
+  it('ключевые экраны: начало, просмотр, правка, разметка, Параметры, тёмная тема, английский', async () => {
+    const { first } = await writeDemoDocuments(ctx.work)
+    const page = await launch(first)
+    await page.waitForTimeout(500)
+    await screenShot('key-2-viewer')
+
+    await page.getByRole('tab', { name: 'Начало' }).click()
+    await page.getByRole('heading', { level: 1 }).first().waitFor()
+    await screenShot('key-1-start')
+    await page.getByRole('tab', { name: 'Договор.pdf' }).click()
+    await page.locator('[data-page="1"] canvas').first().waitFor()
+
+    await tool(page, 'Правка').click()
+    await page.locator('[data-content-layer="1"][data-content-ready]').first().waitFor()
+    await clickPage(page, 1, 0.3, 0.35)
+    await page.waitForTimeout(500)
+    await screenShot('key-3-edit')
+
+    await tool(page, 'Фигуры').click()
+    await drag(page, 1, [0.3, 0.45], [0.7, 0.55])
+    await tool(page, 'Маркер').click()
+    await page.waitForTimeout(500)
+    await screenShot('key-4-markup')
+    await tool(page, 'Выделение').click()
+
+    await page.keyboard.press('Meta+,')
+    await page.getByRole('heading', { name: 'Общие' }).waitFor()
+    await screenShot('key-5-settings')
+    await page.getByRole('button', { name: 'Назад к документу' }).click()
+    await page.locator('[data-page="1"] canvas').first().waitFor()
+
+    const theme = (): Promise<string | undefined> =>
+      page.evaluate(() => document.documentElement.dataset.theme)
+    if ((await theme()) !== 'dark') {
+      await page.getByRole('button', { name: 'Переключить тему' }).click()
+    }
+    await expect.poll(theme).toBe('dark')
+    await page.waitForTimeout(500)
+    await screenShot('key-6-dark')
+    await page.getByRole('button', { name: 'Переключить тему' }).click()
+    await expect.poll(theme).toBe('light')
+
+    await page.keyboard.press('Meta+,')
+    await page.getByLabel('Язык интерфейса').selectOption('en')
+    await page.waitForURL(/lang=en/, { timeout: 20_000 })
+    await page.waitForSelector('[data-page="1"] canvas', { timeout: 60_000 })
+    await page.waitForTimeout(500)
+    await screenShot('key-7-english')
   })
 
   it('обновление: карточка ведёт на страницу релиза и говорит про .dmg', async () => {

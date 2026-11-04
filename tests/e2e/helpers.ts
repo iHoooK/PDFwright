@@ -187,6 +187,12 @@ export async function launchWithoutFile(): Promise<Page> {
   return waitForShell(await ctx.app.firstWindow())
 }
 
+/** Запуск с зашифрованным файлом: сначала окно пароля, страница — после него. */
+export async function launchLocked(path: string): Promise<Page> {
+  ctx.app = await electron.launch({ cwd: ROOT, args: ['.', path], env: appEnv() })
+  return ctx.app.firstWindow()
+}
+
 /**
  * Повторный запуск программы с файлом, как двойной щелчок в Проводнике при
  * открытой программе: второй экземпляр передаёт файл первому и завершается.

@@ -3,10 +3,19 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import * as mupdf from 'mupdf'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { _electron as electron, type Page } from 'playwright'
+import type { Page } from 'playwright'
 import { describe, expect, it } from 'vitest'
 import { inspectProtection } from '../../src/shared/pdf-content/protect'
-import { clickMenuItem, ctx, launch, ROOT, shot, statusText, tool, useElectronApp } from './helpers'
+import {
+  clickMenuItem,
+  ctx,
+  launch,
+  launchLocked,
+  shot,
+  statusText,
+  tool,
+  useElectronApp
+} from './helpers'
 
 /** Фаза 16: пароль на документ — установка, правка защищённого файла, снятие. */
 useElectronApp()
@@ -79,20 +88,6 @@ async function stopApp(): Promise<void> {
   await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))])
   if (child.exitCode === null) child.kill()
   ctx.app = null
-}
-
-/** Запуск с зашифрованным файлом: сначала окно пароля, страница — после него. */
-async function launchLocked(path: string): Promise<Page> {
-  ctx.app = await electron.launch({
-    cwd: ROOT,
-    args: ['.', path],
-    env: {
-      ...process.env,
-      PDFWRIGHT_USER_DATA: join(ctx.work, 'userData'),
-      ELECTRON_RENDERER_URL: ''
-    }
-  })
-  return ctx.app.firstWindow()
 }
 
 async function save(page: Page): Promise<void> {
@@ -212,8 +207,8 @@ describe('Защита паролем (собранное приложение)'
     await toast.filter({ hasText: 'запретил печать' }).waitFor()
     await requireApp().evaluate(({ clipboard }) => clipboard.writeText('прежнее'))
     await page.locator('[data-page="1"] .textLayer span').first().click()
-    await page.keyboard.press('Control+a')
-    await page.keyboard.press('Control+c')
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.press('ControlOrMeta+c')
     await toast.filter({ hasText: 'запретил копирование' }).waitFor()
     expect(await requireApp().evaluate(({ clipboard }) => clipboard.readText())).toBe('прежнее')
 

@@ -146,6 +146,20 @@ can_run() {
   [[ "$1" == "x64" && "$host" == "arm64" ]] && arch -x86_64 /usr/bin/true >/dev/null 2>&1
 }
 
+# Снимок окна .dmg, каким его видит пользователь: том в /Volumes, окно Finder с настройками
+# из образа. Только с --shots; неудача снимка — не ошибка сборки.
+dmg_window_shot() {
+  local dmg="$1" arch="$2" volume
+  volume="$(hdiutil attach "$dmg" -readonly -noautoopen | awk -F'\t' '/\/Volumes\// { print $NF }')" || return 0
+  [[ -n "$volume" ]] || return 0
+  open "$volume" || true
+  sleep 5
+  mkdir -p "$shots_dir"
+  screencapture -x "$shots_dir/dmg-$arch.png" || echo "  Снимок окна .dmg не получился."
+  osascript -e 'tell application "Finder" to close every window' >/dev/null 2>&1 || true
+  hdiutil detach "$volume" -force -quiet || true
+}
+
 if [[ ! -d node_modules ]]; then
   echo "Устанавливаем зависимости…"
   npm ci
@@ -189,6 +203,7 @@ for arch in $arches; do
   name="$(arch_name "$arch")"
   zip_file="build/PDFwright-Portable-Mac-$name.zip"
   dmg_file="build/PDFwright-Mac-$name.dmg"
+  if [[ -n "$shots_dir" ]]; then dmg_window_shot "$dmg_file" "$arch"; fi
 
   # .zip распаковывается так же, как Finder: ditto сохраняет ссылки внутри фреймворков.
   ditto -x -k "$zip_file" "$work_dir/zip-$arch"
