@@ -109,6 +109,9 @@ mac:
 dmg:
   artifactName: ${productName}-Mac-${arch}.${ext}
   title: ${productName}
+  # LZFSE, а не bzip2, который даёт верхний compression: maximum. Файл на 7 % больше, зато
+  # первый запуск прямо из окна .dmg — секунды, а не минуты без окна (docs/MACOS_PLAN.md, M3.1).
+  format: ULFO
   # Без окна лицензии при открытии .dmg (на Mac так не принято). Иначе dmg-builder
   # сам берёт installer/license_*.txt установщика NSIS, а их BOM и кириллицу
   # dmgbuild не кодирует.

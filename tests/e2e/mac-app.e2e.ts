@@ -514,6 +514,17 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
     })
   })
 
+  // Печать идёт из скрытого окна; виден ли системный диалог на Mac — смотрим на снимке
+  // (принтера на машине CI нет, поэтому до самой печати дело не доходит).
+  it('печать: ⌘P не даёт ошибки, снимок показывает системное окно печати', async () => {
+    const page = await launch(await fixture('печать.pdf'))
+    await page.keyboard.press('Meta+p')
+    await new Promise((resolve) => setTimeout(resolve, 5_000))
+    await captureScreen('mac-screen-print')
+    const failed = page.getByRole('status').filter({ hasText: 'Печать не выполнена' })
+    expect(await failed.count()).toBe(0)
+  })
+
   // Снимки для автора (M3.2): весь экран, на демо-договоре, по одному на ключевой экран.
   it('ключевые экраны: начало, просмотр, правка, разметка, Параметры, тёмная тема, английский', async () => {
     const { first } = await writeDemoDocuments(ctx.work)
@@ -539,6 +550,9 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
     await page.waitForTimeout(500)
     await screenShot('key-4-markup')
     await tool(page, 'Выделение').click()
+    // Язык меняется перезагрузкой окна, а с несохранёнными правками она откладывается.
+    await page.keyboard.press('Meta+z')
+    await expect.poll(() => statusText(page)).toContain('Сохранено')
 
     await page.keyboard.press('Meta+,')
     await page.getByRole('heading', { name: 'Общие' }).waitFor()

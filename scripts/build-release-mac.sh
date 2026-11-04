@@ -11,7 +11,7 @@
 # build/mac-<arch>: в шаблоне имени процессор есть только как arm64/x64, а выпускные
 # имена — AppleSilicon/Intel. Общий latest-mac.yml и суммы пишет scripts/mac-release-files.mjs.
 # Подпись — ad-hoc (без Apple Developer ID); скрипт проверяет её и Info.plist в собранной
-# программе, в .zip и в .dmg, устанавливает программу из .dmg копированием (как
+# программе, в .zip и в .dmg, запускает программу прямо из .dmg, устанавливает её копированием (как
 # перетаскиванием в «Программы») и запускает её с тестовым PDF.
 set -euo pipefail
 
@@ -20,7 +20,7 @@ usage() {
 Запуск: bash scripts/build-release-mac.sh [параметры]
   --arch arm64|x64|all   процессоры (по умолчанию all — оба)
   --skip-checks          без линтера, типов и тестов (если их уже прогнали)
-  --no-smoke             без дымового запуска программы, установленной из .dmg
+  --no-smoke             без дымовых запусков программы из .dmg и установленной из него
   --shots <папка>        снимки окна и экрана при дымовом запуске
 USAGE
 }
@@ -216,11 +216,17 @@ for arch in $arches; do
   [[ -L "$mount_point/Applications" && "$(readlink "$mount_point/Applications")" == "/Applications" ]] ||
     fail "$dmg_file: нет ссылки на «Программы»"
   verify_app "$mount_point/PDFwright.app" "$arch"
+  # Запуск прямо из окна .dmg, как делают многие: образ только для чтения, кэш диска сброшен,
+  # если есть право (на машинах CI есть). С образом bzip2 окна не было минутами (M3.1).
+  if [[ "$run_smoke" == 1 ]] && can_run "$arch"; then
+    sudo -n purge 2>/dev/null || true
+    node scripts/smoke-mac.mjs "$mount_point/PDFwright.app" tests/fixtures/simple.pdf "$arch"
+  fi
   # Установка, как перетаскиванием в «Программы»: копия во временную папку, образ отключается.
-  # Запуск прямо из сжатого образа на macOS 26 (Apple Silicon) зависал при первой загрузке.
   installed="$work_dir/Applications-$arch/PDFwright.app"
   ditto "$mount_point/PDFwright.app" "$installed"
-  hdiutil detach "$mount_point" -quiet
+  # После запуска из образа его процессы могут держать том ещё пару секунд.
+  hdiutil detach "$mount_point" -quiet || { sleep 5; hdiutil detach "$mount_point" -force -quiet; }
   mounted="${mounted% "$mount_point"}"
   verify_app "$installed" "$arch"
 

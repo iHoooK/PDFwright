@@ -64,6 +64,8 @@ const { version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'
 const userData = await mkdtemp(join(tmpdir(), 'pdfwright-smoke-'))
 // Playwright при тайм-ауте закрывает программу, поэтому сведения собираются раньше.
 const watchdog = setTimeout(() => diagnose('запуск'), 45_000)
+const started = Date.now()
+const seconds = () => ((Date.now() - started) / 1000).toFixed(1)
 const app = await electron.launch({
   executablePath: join(resolve(appArg), 'Contents', 'MacOS', 'PDFwright'),
   args: [`--user-data-dir=${userData}`, resolve(pdfArg)],
@@ -72,7 +74,9 @@ const app = await electron.launch({
 clearTimeout(watchdog)
 try {
   const page = await app.firstWindow({ timeout: 120_000 })
+  const windowAt = seconds()
   await page.waitForSelector('[data-page="1"] canvas', { timeout: 120_000 })
+  console.log(`smoke-mac: ${appArg}: окно через ${windowAt} с, страница через ${seconds()} с`)
   const info = await app.evaluate(({ app: electronApp }) => ({
     version: electronApp.getVersion(),
     packaged: electronApp.isPackaged,
