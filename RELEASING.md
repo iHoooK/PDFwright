@@ -39,7 +39,7 @@ git push origin v1.0.0
 4. `.github/workflows/release-mac.yml` проверит, что тег совпадает с версией в `package.json`, соберёт файлы командой `bash scripts/build-release-mac.sh` на `macos-latest` (Apple Silicon) и `macos-15-intel` (Intel), загрузит шесть Mac-файлов в релиз v1.0.0 и добавит к его описанию раздел «Для Mac» из [installer/release-section-mac.md](installer/release-section-mac.md). Это займёт примерно 20–30 минут.
 5. Откройте релиз v1.0.0: прежние пять Windows-файлов на месте, добавлены шесть Mac-файлов, в описании есть раздел «Для Mac». Скачайте Mac-файлы и сверьте суммы: `shasum -a 256 -c SHA256SUMS-Mac.txt`.
 
-Если workflow упал после загрузки части файлов, запустите его заново (**Re-run all jobs**): Mac-файлы с теми же именами заменяются, Windows-файлы не трогаются. Дальше Mac-версия выходит только вместе с Windows-версией по общему тегу `v*`.
+Если workflow упал после загрузки части файлов, запустите его заново (**Re-run all jobs**): Mac-файлы с теми же именами заменяются, Windows-файлы не трогаются. Машин Apple Silicon на GitHub бывает мало: задание Mac arm64 может сняться с ошибкой «The job was not acquired by Runner». Загрузка идёт только после обеих сборок, поэтому релиз при этом не меняется, достаточно **Re-run failed jobs**. Дальше Mac-версия выходит только вместе с Windows-версией по общему тегу `v*`.
 
 ## Выпустить новую версию
 
