@@ -9,6 +9,8 @@ on:
   workflow_dispatch:
   push:
     branches: ['mac/**']
+    # TEMPORARY: no extra Mac machines during the release dry runs, removed before the final commit.
+    paths-ignore: ['.github/workflows/**']
 
 # Запись в ветку ci/mac-results.
 permissions:
