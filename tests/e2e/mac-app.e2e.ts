@@ -64,6 +64,30 @@ async function openFromFinder(path: string): Promise<void> {
   }, path)
 }
 
+async function printerCount(): Promise<number> {
+  return app().evaluate(async ({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    return window ? (await window.webContents.getPrintersAsync()).length : 0
+  })
+}
+
+/** Принтер в никуда для Mac-машины CI: окно печати без принтера macOS не показывает. */
+async function addVirtualPrinter(): Promise<void> {
+  const ppd =
+    '/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/PrintCore.framework/Versions/A/Resources/Generic.ppd'
+  await new Promise<void>((resolve, reject) => {
+    execFile(
+      'sudo',
+      ['lpadmin', '-p', 'CI_Printer', '-E', '-v', 'lpd://127.0.0.1/ci', '-P', ppd],
+      { timeout: 30_000 },
+      (error) => {
+        if (error) reject(error)
+        else resolve()
+      }
+    )
+  })
+}
+
 async function windowCount(): Promise<number> {
   return app().evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
 }
@@ -517,28 +541,32 @@ describe.runIf(process.platform === 'darwin')('Mac: поведение и инт
     await runScript('tell application "Finder" to close every window')
   })
 
-  // Печать идёт из скрытого окна. На CI принтер виртуальный (шаг в mac.yml): до настоящей
-  // печати дело не доходит, проверяется системное окно и его отмена. На macOS 26 окно печати
-  // вызывает системный запрос о поиске устройств в локальной сети: Esc его не закрывает, и он
-  // остаётся поверх всех следующих снимков экрана. Там проверка ручная (MANUAL_CHECK, 12.8).
+  // Печать идёт из скрытого окна. На Mac-машине CI принтера сначала нет: первый тест видит
+  // настоящий отказ macOS, второй ставит виртуальный принтер. До настоящей печати дело не
+  // доходит, проверяется системное окно и его отмена.
+  it('печать без принтера: окна нет, программа подсказывает, где его добавить', async () => {
+    const page = await launch(await fixture('печать.pdf'))
+    if ((await printerCount()) > 0) return
+    await page.keyboard.press('Meta+p')
+    const hint = page.getByRole('status').filter({ hasText: 'Нет ни одного принтера' })
+    await hint.waitFor({ timeout: 30_000 })
+    expect(await hint.textContent()).toContain('Системных настройках')
+    expect(await windowCount()).toBe(1)
+  })
+
+  // На macOS 26 окно печати вызывает системный запрос о поиске устройств в локальной сети:
+  // Esc его не закрывает, и он остаётся поверх всех следующих снимков экрана. Там проверка
+  // ручная (MANUAL_CHECK, 12.8).
   it.skipIf(MACOS_26)(
     'печать: ⌘P открывает системное окно, Esc закрывает его без ошибки',
     async () => {
       const page = await launch(await fixture('печать.pdf'))
-      const printers = await app().evaluate(async ({ BrowserWindow }) => {
-        const window = BrowserWindow.getAllWindows()[0]
-        return window ? (await window.webContents.getPrintersAsync()).length : 0
-      })
+      if ((await printerCount()) === 0) {
+        if (!process.env.CI) return
+        await addVirtualPrinter()
+      }
       const failed = page.getByRole('status').filter({ hasText: 'Печать не выполнена' })
       await page.keyboard.press('Meta+p')
-      if (printers === 0) {
-        // Без принтера macOS окно не показывает: остаётся подсказка программы (M3.1).
-        await page
-          .getByRole('status')
-          .filter({ hasText: 'Нет ни одного принтера' })
-          .waitFor({ timeout: 30_000 })
-        return
-      }
       await expect.poll(windowCount).toBe(2)
       const names = (): Promise<string> =>
         runScript(

@@ -18,7 +18,7 @@ Service data (settings, recent files) is stored in `%APPDATA%\PDFwright`, downlo
 %LocalAppData%\pdfwright-updater
 ```
 
-On a Mac, service data is stored in `~/Library/Application Support/PDFwright`; the update check requests `latest-mac.yml` there, and the app does not download installers.
+On a Mac, service data is stored in `~/Library/Application Support/PDFwright`; the update check requests `latest-mac.yml` there, and the app does not download installers. On recent macOS versions the print dialog may ask for permission to find devices on the local network: this is how the system looks for network printers. PDFwright itself does not access the local network.
 
 To remove it, close the app and delete these folders. The uninstaller does not touch user documents.
 
