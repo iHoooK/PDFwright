@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/mac-dmg-probe.yml
       - scripts/probe-dmg.mjs
+      - scripts/probe-print.mjs
 
 permissions:
   contents: write
@@ -23,10 +24,6 @@ jobs:
         include:
           - runner: macos-26
             arch: arm64
-          - runner: macos-15
-            arch: arm64
-          - runner: macos-26-intel
-            arch: x64
           - runner: macos-15-intel
             arch: x64
     steps:
@@ -42,6 +39,13 @@ jobs:
 
       - name: Build
         run: node scripts/ci-results.mjs run build npm run build
+
+      - name: Print probe
+        continue-on-error: true
+        timeout-minutes: 8
+        run: >-
+          node scripts/ci-results.mjs run print
+          node scripts/probe-print.mjs tests/fixtures/simple.pdf "$RUNNER_TEMP/ci-results"
 
       - name: DMG
         env:
