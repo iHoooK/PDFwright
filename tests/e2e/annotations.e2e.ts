@@ -271,6 +271,13 @@ describe('заметки и аннотации документа', () => {
     const target = join(ctx.work, 'группа.pdf')
     await annotatedFixture(target)
     const page = await launch(target)
+    // ВРЕМЕННО: воспроизведение низкого окна Mac-машины на других системах (M3.1).
+    if (process.env.PROBE_CONTENT_HEIGHT && ctx.app) {
+      await ctx.app.evaluate(({ BrowserWindow }, height) => {
+        BrowserWindow.getAllWindows()[0]?.setContentSize(1024, height)
+      }, Number(process.env.PROBE_CONTENT_HEIGHT))
+      await page.waitForTimeout(800)
+    }
     await waitAnnotations(page, 3)
 
     // Два прямоугольника разметки рядом с прямоугольником документа.
@@ -308,7 +315,30 @@ describe('заметки и аннотации документа', () => {
     const squareBefore = await onPage(square)
     const shift = async (selector: string, from: { y: number }): Promise<number> =>
       (await onPage(selector)).y - from.y
+    // ВРЕМЕННО: числа для разбора падения на Mac (M3.1).
+    const scroller = page.locator('[aria-label="Документ"]').first()
+    const scrollState = (): Promise<Record<string, number>> =>
+      scroller.evaluate((el) => ({
+        scrollTop: el.scrollTop,
+        clientHeight: el.clientHeight,
+        scrollHeight: el.scrollHeight,
+        innerHeight: window.innerHeight
+      }))
+    const windowBefore = (await boxOf(page, rect)).y
+    const scrollBefore = await scrollState()
+    const pageHeight = (await sizeOf(page, '[data-page="1"]')).height
     await drag(page, 1, share(300, 280), share(300, 230))
+    await page.waitForTimeout(500)
+    console.log(
+      'PROBE-307',
+      JSON.stringify({
+        pageHeight,
+        scrollBefore,
+        scrollAfter: await scrollState(),
+        windowShift: (await boxOf(page, rect)).y - windowBefore,
+        pageShift: await shift(rect, rectBefore)
+      })
+    )
     await expect.poll(() => shift(rect, rectBefore)).toBeGreaterThan(30)
     await expect.poll(() => shift(square, squareBefore)).toBeGreaterThan(30)
     expect(await page.locator('[data-selection-group="3"]').count()).toBe(1)
