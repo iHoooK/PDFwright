@@ -46,6 +46,12 @@ export interface FormLayerCallbacks {
   onRedo: () => void
 }
 
+/** Поле в фокусе и выделение в нём: смена масштаба пересоздаёт слой, а фокус должен остаться. */
+export interface FormFocus {
+  id: string
+  selection: { start: number; end: number } | null
+}
+
 interface Options extends FormLayerCallbacks {
   doc: PdfDocument
   page: PDFPageProxy
@@ -96,6 +102,13 @@ function storedMatches(storage: Storage, widget: Widget, value: FormValue): bool
   const expected = storageEntry(widget, value).value
   if (widget.kind === 'choice') return sameValue(toList(stored), expected as string[])
   return stored === expected
+}
+
+function hasCaret(element: Element | null): element is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
+    supportsSelection(element.tagName, element.type)
+  )
 }
 
 /**
@@ -196,6 +209,27 @@ export class FormLayerController {
     if (stale) void this.render(values)
   }
 
+  /** Какое поле этого слоя сейчас в фокусе; null — фокус не в слое. */
+  focusState(): FormFocus | null {
+    const active = document.activeElement
+    if (!(active instanceof HTMLElement) || !this.options.div.contains(active)) return null
+    const id = active.getAttribute('data-element-id')
+    if (id === null) return null
+    const selection = hasCaret(active)
+      ? { start: active.selectionStart ?? 0, end: active.selectionEnd ?? 0 }
+      : null
+    return { id, selection }
+  }
+
+  /** Возвращает фокус в поле, если за время перерисовки пользователь не ушёл в другой элемент. */
+  restoreFocus({ id, selection }: FormFocus): void {
+    const active = document.activeElement
+    if (active !== null && active !== document.body) return
+    const element = this.options.div.querySelector<HTMLElement>(`[data-element-id="${id}"]`)
+    element?.focus({ preventScroll: true })
+    if (selection && hasCaret(element)) element.setSelectionRange(selection.start, selection.end)
+  }
+
   destroy(): void {
     this.destroyed = true
     const { div } = this.options
@@ -257,10 +291,7 @@ export class FormLayerController {
       if (focusedId !== null && div.isConnected) {
         const element = div.querySelector<HTMLElement>(`[data-element-id="${focusedId}"]`)
         element?.focus()
-        if (
-          (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
-          supportsSelection(element.tagName, element.type)
-        ) {
+        if (hasCaret(element)) {
           const end = element.value.length
           element.setSelectionRange(end, end)
         }

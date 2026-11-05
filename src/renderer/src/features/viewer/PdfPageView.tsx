@@ -11,7 +11,11 @@ import {
 } from '@renderer/pdf-engine/engine'
 import { applyHighlights, type PageHighlight } from '@renderer/pdf-engine/highlight'
 import { cx } from '@renderer/components/cx'
-import { FormLayerController, type FormLayerCallbacks } from '@renderer/features/forms/form-layer'
+import {
+  FormLayerController,
+  type FormFocus,
+  type FormLayerCallbacks
+} from '@renderer/features/forms/form-layer'
 import s from './pdf-page.module.css'
 import { t } from '@renderer/i18n'
 
@@ -60,6 +64,12 @@ export const PdfPageView = memo(function PdfPageView({
   highlightsRef.current = highlights
   const formRef = useRef<HTMLDivElement | null>(null)
   const formLayerRef = useRef<FormLayerController | null>(null)
+  // Смена масштаба и поворота пересоздаёт слой полей: поле в фокусе остаётся в фокусе.
+  const keptFocusRef = useRef<{
+    doc: PdfDocument
+    pageNumber: number
+    focus: FormFocus
+  } | null>(null)
   const formsRef = useRef(forms)
   formsRef.current = forms
   const withForms = forms !== undefined
@@ -76,6 +86,7 @@ export const PdfPageView = memo(function PdfPageView({
     const formContainer = formRef.current
     if (!canvas || !textContainer) return
     if (!visible) {
+      keptFocusRef.current = null
       canvas.width = 0
       canvas.height = 0
       textContainer.replaceChildren()
@@ -145,13 +156,20 @@ export const PdfPageView = memo(function PdfPageView({
         formLayerRef.current = formLayer
         await formLayer.init(current.values)
         if (run.isCancelled()) return
+        // До sync: если значения успели поменяться, перерисовка слоя сохранит этот фокус сама.
+        const kept = keptFocusRef.current
+        if (kept?.doc === doc && kept.pageNumber === pageNumber) formLayer.restoreFocus(kept.focus)
         formLayer.sync(formsRef.current?.values ?? current.values)
       }
+      keptFocusRef.current = null
       onRendered?.(pageNumber)
     })().catch((error: unknown) => {
       if (!run.isCancelled()) console.error(`[viewer] страница ${pageNumber} не отрисована:`, error)
     })
     return () => {
+      // Если перерисовка ещё не вернула фокус, запомненное поле остаётся до следующей.
+      const focus = refs.formLayer?.focusState()
+      if (focus) keptFocusRef.current = { doc, pageNumber, focus }
       run.cancel()
       refs.cancelRender?.()
       refs.textLayer?.cancel()

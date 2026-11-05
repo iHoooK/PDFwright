@@ -182,6 +182,45 @@ describe('Формы и метаданные (собранное приложе�
     expect(errors.filter((e) => e.includes('[forms]'))).toEqual([])
   })
 
+  it('смена масштаба не забирает фокус из поля: набор идёт с того же места', async () => {
+    const page = await launch(await formFile('масштаб.pdf'))
+    const nameInput = page.locator('[data-page="1"] [data-forms-layer] input[name="name"]')
+    const focused = (): Promise<string | null | undefined> =>
+      page.evaluate(() => document.activeElement?.getAttribute('name'))
+    const width = (): Promise<string | undefined> =>
+      page.evaluate(() => document.querySelector<HTMLElement>('[data-page="1"]')?.style.width)
+    const zoomIn = async (): Promise<void> => {
+      const before = await width()
+      await page.keyboard.press('ControlOrMeta+=')
+      await expect.poll(width).not.toBe(before)
+    }
+    await fieldsReady(page)
+
+    await nameInput.click()
+    await page.keyboard.type('Мия')
+    await page.keyboard.press('ArrowLeft')
+    await page.keyboard.press('ArrowLeft')
+    await zoomIn()
+    await expect.poll(focused).toBe('name')
+    await page.keyboard.type('ар')
+    await expect.poll(() => nameInput.inputValue()).toBe('Мария')
+
+    // Два шага подряд, пока первая перерисовка не закончилась.
+    await page.keyboard.press('ControlOrMeta+=')
+    await zoomIn()
+    await expect.poll(focused).toBe('name')
+    await page.keyboard.type('!')
+    await expect.poll(() => nameInput.inputValue()).toBe('Мар!ия')
+
+    // Фокус вне поля: масштаб не возвращает его туда сам.
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    })
+    await zoomIn()
+    await fieldsReady(page)
+    expect(await focused()).toBeFalsy()
+  })
+
   it('поля не мешают другим инструментам и вплавляются в страницу', async () => {
     const target = await formFile('flatten.pdf')
     const page = await launch(target)
