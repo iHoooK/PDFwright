@@ -1,0 +1,11 @@
+version: 1.0.1
+files:
+  - url: PDFwright-Portable-Mac-AppleSilicon.zip
+    sha512: WMTzMGrtOsZjqvJIYMjrfZGQ+9CecX/+8C/Uz6nUId8uSpaZZ4bLaxRzn5YyjD0/hpBkGZBcMbiVMdOB9LbstQ==
+    size: 127379196
+  - url: PDFwright-Mac-AppleSilicon.dmg
+    sha512: yZcxiSho+7plRNYI2yeCdMQ1uI0DsoVgsp1LCddV6sPjEOtObTsg+7yAZgbp63bK7VcA0eroDk2SMXd+P6t1cg==
+    size: 129247996
+path: PDFwright-Portable-Mac-AppleSilicon.zip
+sha512: WMTzMGrtOsZjqvJIYMjrfZGQ+9CecX/+8C/Uz6nUId8uSpaZZ4bLaxRzn5YyjD0/hpBkGZBcMbiVMdOB9LbstQ==
+releaseDate: '2026-11-05T00:50:25.869Z'

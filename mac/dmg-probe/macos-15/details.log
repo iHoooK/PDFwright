@@ -1,0 +1,500 @@
+
+===== built-cold @30s: ps =====
+   97     1 Ss     03:53   0.0   9024 /usr/libexec/amfid
+  207     1 Ss     03:50   0.0  50752 /usr/libexec/syspolicyd
+  697     1 S      03:19   0.0    192 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+  703     1 Ss     03:17   0.0    192 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+ 4727     1 R<s    00:48  92.2  38656 /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper -uuid 6D4CFD4B-09B4-45CD-BB81-14CB99FE8005 -post-exec 5
+ 4918  4619 U<s    00:31   9.1 150672 /var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/MacOS/PDFwright --remote-debugging-port=9400 --user-data-dir=/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-82PYgg /Users/runner/work/PDFwright/PDFwright/tests/fixtures/simple.pdf
+ 5086     1 Ss     00:16   0.0   9408 /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XProtectUpdateService.xpc/Contents/MacOS/XProtectUpdateService
+ 5189  4918 S<     00:07   1.4  53344 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper --type=gpu-process --gpu-recent-crash-count=0 --user-data-dir=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-82PYgg --gpu-preferences=WAAAAAAAAAAgAQAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAADAAAAAEAAAAAAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --shared-files --field-trial-handle=1718379636,r,17091776254011373530,14083220410958577222,262144 --enable-features=PdfUseShowSaveFilePicker,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma,ThrottleResizeIpc --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,ScreenAIOCREnabled,SpareRendererForSitePerProcess,TimeoutHangingVideoCaptureStarts,TraceSiteInstanceGetProcessCreation --variations-seed-version --pseudonymization-salt-handle=1935764596,r,9684280679607978810,16589073627934259408,4 --trace-process-track-uuid=3190708988185955192 --seatbelt-client=30
+ 5192  4918 S<     00:07   0.1  37184 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=network --user-data-dir=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-82PYgg --standard-schemes=app --secure-schemes=app --fetch-schemes=app --streaming-schemes=app --code-cache-schemes=app --shared-files --field-trial-handle=1718379636,r,17091776254011373530,14083220410958577222,262144 --enable-features=PdfUseShowSaveFilePicker,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma,ThrottleResizeIpc --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,ScreenAIOCREnabled,SpareRendererForSitePerProcess,TimeoutHangingVideoCaptureStarts,TraceSiteInstanceGetProcessCreation --variations-seed-version --pseudonymization-salt-handle=1935764596,r,9684280679607978810,16589073627934259408,4 --trace-process-track-uuid=3190708989122997041 --seatbelt-client=36
+ 5319  4918 U<     00:03   0.1  34416 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer) --type=renderer --user-data-dir=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-82PYgg --standard-schemes=app --secure-schemes=app --fetch-schemes=app --streaming-schemes=app --code-cache-schemes=app --app-path=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Resources/app.asar --enable-sandbox --allow-file-access-from-files --remote-debugging-port=9400 --lang=en-US --num-raster-threads=1 --enable-zero-copy --enable-gpu-memory-buffer-compositor-resources --renderer-client-id=4 --launch-time-ticks=233801769 --shared-files --field-trial-handle=1718379636,r,17091776254011373530,14083220410958577222,262144 --enable-features=PdfUseShowSaveFilePicker,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma,ThrottleResizeIpc --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,ScreenAIOCREnabled,SpareRendererForSitePerProcess,TimeoutHangingVideoCaptureStarts,TraceSiteInstanceGetProcessCreation --variations-seed-version --pseudonymization-salt-handle=1935764596,r,9684280679607978810,16589073627934259408,4 --trace-process-track-uuid=3190708990060038890 --seatbelt-client=58
+
+===== built-cold @30s: iostat =====
+              disk0               disk3               disk5 
+    KB/t  tps  MB/s     KB/t  tps  MB/s     KB/t  tps  MB/s 
+   29.79 1424 41.44     3.73    0  0.00   233.30    3  0.69 
+   33.85  541 17.89     0.00    0  0.00   504.00   13  6.62 
+   37.37  681 24.86     0.00    0  0.00   371.08   26  9.34 
+
+
+===== built-cold @30s: spindump =====
+Sampling all processes for 3 seconds with 10 milliseconds of run time between samples
+Focusing on PDFwright [4918]
+Sampling completed, processing symbols...
+Spindump analysis written to file /var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/spin-built-cold-30000.txt
+
+
+===== built-cold @30s: spindump file =====
+Date/Time:        2026-11-04 14:24:42.022 +0000
+End time:         2026-11-04 14:24:45.126 +0000
+OS Version:       macOS 15.8.2 (Build 24H232)
+Architecture:     arm64e
+Report Version:   60
+
+Data Source:      Stackshots
+Shared Cache:     E130CBA3-99F2-36E1-98C3-DDC73414B433 slid base address 0x193964000, slide 0x13964000 (System Primary)
+Shared Cache:     079FF234-C3E0-3454-A987-3AB684F6743E slid base address 0x192ecc000, slide 0x12ecc000 (DriverKit)
+Shared Cache:     2EADFB87-308A-313C-9DBF-A7B8C8873E3E slid base address 0x7ff800f8c000, slide 0xf8c000 (Rosetta)
+
+Command:          PDFwright
+Path:             /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  44D2F45D-C3A1-5259-954B-339CF4A6AA4A
+Architecture:     arm64
+Parent:           node [4619]
+Responsible:      bash [943]
+PID:              4918
+Time Since Fork:  34s
+
+Duration:         3.10s
+Steps:            298 (10ms sampling interval)
+
+Hardware model:   VirtualMac2,1
+Active cpus:      3
+Memory size:      7 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 12.44% (583.23 MB / 4687.92 MB)
+
+Time Since Boot:  239s
+Time Awake Since Boot: 239s
+Time Since Wake:  n/a (machine hasn't slept)
+
+Total CPU Time:   7.511s
+Advisory levels:  Battery -> 3, User -> 2, ThermalPressure -> 0, Combined -> 2
+Free disk space:  42.19 GB/319.51 GB, low space threshold 3072 MB
+Vnodes Available: 80.52% (91581/113742)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+OS Cryptex File Extents: 1
+
+------------------------------------------------------------
+Heavy format: stacks are sorted by count
+Use -i and -timeline to re-report with chronological sorting
+------------------------------------------------------------
+
+
+
+Process:          PDFwright [4918]
+UUID:             4C4C4474-5555-3144-A1C3-E7F42163428D
+Path:             /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  44D2F45D-C3A1-5259-954B-339CF4A6AA4A
+Shared Cache:     E130CBA3-99F2-36E1-98C3-DDC73414B433 slid base address 0x193964000, slide 0x13964000 (System Primary)
+Architecture:     arm64
+Parent:           node [4619]
+Responsible:      bash [943]
+UID:              501
+Footprint:        49.46 MB
+Time Since Fork:  34s
+Num samples:      298 (1-298)
+CPU Time:         0.074s
+Num threads:      44
+Note:             4 idle work queue threads omitted
+
+  Thread 0x3780    DispatchQueue "com.apple.main-thread"(1)    Thread name "CrBrowserMain"    298 samples (1-298)    priority 20 (base 20)    cpu time 0.036s
+  298  start + 6076 (dyld + 27544) [0x193a36b98]
+    298  ElectronMain + 504 (Electron Framework + 29040716) [0x10efe604c]
+      298  uv_thread_setname + 7164 (Electron Framework + 31455552) [0x10f233940]
+        298  node::Environment::GetNow() + 70956 (Electron Framework + 28677356) [0x10ef8d4ec]
+          298  node::inspector::protocol::Target::Dispatcher::wire(crdtp::UberDispatcher*, node::inspector::protocol::Target::Backend*) + 1342688 (Electron Framework + 52866724) [0x11069eea4]
+            298  node::inspector::protocol::Target::Dispatcher::wire(crdtp::UberDispatcher*, node::inspector::protocol::Target::Backend*) + 1341064 (Electron Framework + 52865100) [0x11069e84c]
+              298  _v8_internal_Node_Print(void*) + 4799596 (Electron Framework + 78795152) [0x111f59190]
+                298  _v8_internal_Node_Print(void*) + 4815652 (Electron Framework + 78811208) [0x111f5d048]
+                  298  _v8_internal_Node_Print(void*) + 4809304 (Electron Framework + 78804860) [0x111f5b77c]
+                    298  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 66056 (Electron Framework + 20278672) [0x10e78ad90]
+                      298  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 67660 (Electron Framework + 20280276) [0x10e78b3d4]
+                        298  node::crypto::GetEphemeralKey(node::Environment*, ncrypto::SSLPointer const&) + 2580 (Electron Framework + 31998908) [0x10f2b83bc]
+                          298  ares_dns_rr_get_ttl + 3427624 (Electron Framework + 97497008) [0x11312efb0]
+                            298  -[NSApplication run] + 480 (AppKit + 187364) [0x197ddabe4]
+                              298  -[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:] + 688 (AppKit + 10327500) [0x1987865cc]
+                                298  _DPSNextEvent + 684 (AppKit + 240180) [0x197de7a34]
+                                  298  _BlockUntilNextEventMatchingListInModeWithFilter + 76 (HIToolbox + 2430084) [0x19fafd484]
+                                    298  ReceiveNextEventCommon + 676 (HIToolbox + 812264) [0x19f9724e8]
+                                      298  RunCurrentEventLoopInMode + 324 (HIToolbox + 799356) [0x19f96f27c]
+                                        297  CFRunLoopRunSpecific + 572 (CoreFoundation + 504680) [0x193ec1368]
+                                          294  __CFRunLoopRun + 1208 (CoreFoundation + 507560) [0x193ec1ea8]
+                                            294  __CFRunLoopServiceMachPort + 160 (CoreFoundation + 513420) [0x193ec358c]
+                                              294  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                                                294  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                                                  294  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                                                   *263  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+                                                   *31   ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0] (runnable)
+                                          1    __CFRunLoopRun + 1980 (CoreFoundation + 508332) [0x193ec21ac]
+                                            1    __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__ + 16 (CoreFoundation + 767152) [0x193f014b0]
+                                              1    _dispatch_main_queue_callback_4CF + 44 (libdispatch.dylib + 68844) [0x193c2ecec]
+                                                1    _dispatch_main_queue_drain + 180 (libdispatch.dylib + 69040) [0x193c2edb0]
+                                                  1    _dispatch_main_queue_drain.cold.5 + 592 (libdispatch.dylib + 232100) [0x193c56aa4]
+                                                    1    _dispatch_source_invoke + 844 (libdispatch.dylib + 99064) [0x193c362f8]
+                                                      1    _dispatch_source_latch_and_call + 396 (libdispatch.dylib + 103968) [0x193c37620]
+                                                        1    _dispatch_continuation_pop + 596 (libdispatch.dylib + 26080) [0x193c245e0]
+                                                          1    _dispatch_client_callout + 16 (libdispatch.dylib + 112732) [0x193c3985c]
+                                                            1    __alm_execute_when_main_queue_idle_with_condition_block_invoke + 640 (libapp_launch_measurement.dylib + 9056) [0x19d649360]
+                                                              1    _dispatch_mgr_queue_push + 88 (libdispatch.dylib + 63064) [0x193c2d658]
+                                                                1    _dispatch_event_loop_poke + 156 (libdispatch.dylib + 146956) [0x193c41e0c]
+                                                                  1    _dispatch_kq_drain + 260 (libdispatch.dylib + 148712) [0x193c424e8]
+                                                                    1    kevent_qos + 8 (libsystem_kernel.dylib + 10504) [0x193d97908]
+                                                                     *1    ??? (kernel.release.vmapple + 306340) [0xfffffe0007dcaca4] (runnable)
+                                          1    __CFRunLoopRun + 1848 (CoreFoundation + 508200) [0x193ec2128]
+                                            1    __CFRunLoopDoTimers + 332 (CoreFoundation + 613660) [0x193edbd1c]
+                                              1    __CFRunLoopDoTimer + 980 (CoreFoundation + 614880) [0x193edc1e0]
+                                                1    __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__ + 32 (CoreFoundation + 615712) [0x193edc520]
+                                                  1    v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 375500 (Electron Framework + 34477480) [0x10f5155a8]
+                                                    1    v8::internal::compiler::CompilationDependencies::DependOnStablePrototypeChain(v8::internal::compiler::MapRef, v8::internal::WhereToStart, v8::internal::compiler::OptionalRef<v8::internal::compiler::JSObjectRef>) + 9440 (Electron Framework + 2740472) [0x10d6d10f8]
+                                                      1    v8::FunctionTemplate::SetLength(int) + 140160 (Electron Framework + 25162336) [0x10ec33260]
+                                                        1    v8::Context::GetAlignedPointerFromEmbedderData(int, unsigned short) + 17640 (Electron Framework + 627192) [0x10d4cd1f8]
+                                                          1    v8::internal::compiler::CompilationDependencies::PrepareInstall() + 345360 (Electron Framework + 39315576) [0x10f9b2878]
+                                                            1    ares_dns_rr_get_ttl + 3377228 (Electron Framework + 97446612) [0x113122ad4]
+                                                              1    ares_dns_rr_get_ttl + 9531432 (Electron Framework + 103600816) [0x1137012b0]
+                                                                1    cppgc::internal::PersistentRegion::IsCreationThread() + 9128 (Electron Framework + 29435416) [0x10f046618]
+                                                                  1    cppgc::internal::PersistentRegion::IsCreationThread() + 9880 (Electron Framework + 29436168) [0x10f046908]
+                                                                    1    node::PerIsolatePlatformData::DeleteFromScheduledTasks(node::DelayedTask*) + 191208 (Electron Framework + 26993412) [0x10edf2304] (running)
+                                          1    __CFRunLoopRun + 1540 (CoreFoundation + 507892) [0x193ec1ff4]
+                                            1    _kernelrpc_mach_port_extract_member_trap + 8 (libsystem_kernel.dylib + 2848) [0x193d95b20] (running)
+                                        1    CFRunLoopRunSpecific + 648 (CoreFoundation + 504756) [0x193ec13b4]
+                                          1    __CFRunLoopDoObservers + 536 (CoreFoundation + 509584) [0x193ec2690]
+                                            1    CA::Transaction::flush_as_runloop_observer(bool) + 0 (QuartzCore + 1997160) [0x19d10e968] (running)
+
+  Thread 0x388e    298 samples (1-298)    priority 20-46 (base 20)    cpu time 0.018s
+  298  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    298  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      298  pread + 8 (libsystem_kernel.dylib + 9488) [0x193d97510]
+       *298  ??? (kernel.release.vmapple + 19728) [0xfffffe0007d84d10]
+         *298  ??? (kernel.release.vmapple + 1769872) [0xfffffe0007f30190]
+           *281  ??? (kernel.release.vmapple + 7295104) [0xfffffe0008475080]
+             *281  ??? (kernel.release.vmapple + 6201036) [0xfffffe0008369ecc]
+               *281  ??? (kernel.release.vmapple + 6199932) [0xfffffe0008369a7c]
+                 *281  ??? (kernel.release.vmapple + 2592604) [0xfffffe0007ff8f5c]
+                   *281  ??? (kernel.release.vmapple + 2593540) [0xfffffe0007ff9304]
+                     *148  hfs_vnop_read + 584 (HFS + 129744) [0xfffffe00092fd4a0]
+                       *148  cluster_read_ext + 384 (kernel.release.vmapple + 2318752) [0xfffffe0007fb61a0]
+                         *75   ??? (kernel.release.vmapple + 2320568) [0xfffffe0007fb68b8]
+                           *75   ??? (kernel.release.vmapple + 2315552) [0xfffffe0007fb5520]
+                             *75   ??? (kernel.release.vmapple + 1017728) [0xfffffe0007e78780]
+                               *75   lck_rw_sleep + 132 (kernel.release.vmapple + 472700) [0xfffffe0007df367c]
+                                 *75   ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                                   *75   ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+                         *72   ??? (kernel.release.vmapple + 2322752) [0xfffffe0007fb7140]
+                           *72   ??? (kernel.release.vmapple + 6051400) [0xfffffe0008345648]
+                             *72   lck_mtx_sleep + 232 (kernel.release.vmapple + 479512) [0xfffffe0007df5118]
+                               *72   ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                                 *72   ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+                         *1    ??? (kernel.release.vmapple + 2322872) [0xfffffe0007fb71b8]
+                           *1    cluster_copy_upl_data + 324 (kernel.release.vmapple + 2316004) [0xfffffe0007fb56e4]
+                             *1    ??? (kernel.release.vmapple + 6043000) [0xfffffe0008343578]
+                               *1    ??? (kernel.release.vmapple + 1764160) [0xfffffe0007f2eb40]
+                                 *1    copyout + 412 (kernel.release.vmapple + 1734396) [0xfffffe0007f276fc]
+                                   *1    copyout + 412 (kernel.release.vmapple + 1734396) [0xfffffe0007f276fc] (running)
+                     *133  hfs_vnop_read + 640 (HFS + 129800) [0xfffffe00092fd4d8]
+                       *133  throttle_lowpri_io + 900 (kernel.release.vmapple + 2729176) [0xfffffe000801a4d8]
+                         *133  ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                           *133  ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+           *17   ??? (kernel.release.vmapple + 7295176) [0xfffffe00084750c8]
+             *17   throttle_lowpri_io + 900 (kernel.release.vmapple + 2729176) [0xfffffe000801a4d8]
+               *17   ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                 *17   ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+
+  Thread 0x3906    Thread name "PerfettoTrace"    298 samples (1-298)    priority 20 (base 20)
+  298  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    298  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      298  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x10e6b1b10]
+        298  v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 373208 (Electron Framework + 34475188) [0x10f514cb4]
+          298  node::ConfigReader::GetNamespaceFlags() const + 37876 (Electron Framework + 30500404) [0x10f14a634]
+            298  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 66056 (Electron Framework + 20278672) [0x10e78ad90]
+              298  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 67660 (Electron Framework + 20280276) [0x10e78b3d4]
+                298  kevent64 + 8 (libsystem_kernel.dylib + 51548) [0x193da195c]
+                 *298  ??? (kernel.release.vmapple + 5784736) [0xfffffe00083044a0]
+
+  Thread 0x391a    Thread name "ThreadPoolServiceThread"    298 samples (1-298)    priority 20 (base 20)
+  298  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    298  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      298  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x10e6b1b10]
+        298  v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 373208 (Electron Framework + 34475188) [0x10f514cb4]
+          298  v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 364528 (Electron Framework + 34466508) [0x10f512acc]
+            298  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 66056 (Electron Framework + 20278672) [0x10e78ad90]
+              298  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 67660 (Electron Framework + 20280276) [0x10e78b3d4]
+                298  kevent64 + 8 (libsystem_kernel.dylib + 51548) [0x193da195c]
+                 *298  ??? (kernel.release.vmapple + 5784736) [0xfffffe00083044a0]
+
+  Thread 0x391b    Thread name "ThreadPoolForegroundWorker"    298 samples (1-298)    priority 20 (base 20)    cpu time 0.001s
+  298  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    298  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      298  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x10e6b1b10]
+        298  uv_idle_stop + 116352 (Electron Framework + 28082224) [0x10eefc030]
+          298  uv_idle_stop + 116576 (Electron Framework + 28082448) [0x10eefc110]
+            298  uv_idle_stop + 120492 (Electron Framework + 28086364) [0x10eefd05c]
+              298  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                298  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                  298  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                   *298  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+
+  Thread 0x391c    Thread name "ThreadPoolPresentationWorker"    298 samples (1-298)    priority 20 (base 20)
+  298  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    298  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      298  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x10e6b1b10]
+        298  uv_idle_stop + 116352 (Electron Framework + 28082224) [0x10eefc030]
+          298  uv_idle_stop + 116576 (Electron Framework + 28082448) [0x10eefc110]
+            298  uv_idle_stop + 120492 (Electron Framework + 28086364) [0x10eefd05c]
+              298  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                298  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                  298  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                   *298  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+
+
+===== built-open-cold @30s: ps =====
+   97     1 Ss     04:57   0.0   7392 /usr/libexec/amfid
+  207     1 Ss     04:54   0.0  47408 /usr/libexec/syspolicyd
+  697     1 S      04:23   0.0    224 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+  703     1 Ss     04:21   0.0    224 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+ 4727     1 R<s    01:52  80.4  38976 /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper -uuid 6D4CFD4B-09B4-45CD-BB81-14CB99FE8005 -post-exec 5
+ 5086     1 Ss     01:20   0.0   3424 /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XProtectUpdateService.xpc/Contents/MacOS/XProtectUpdateService
+ 6157     1 U      00:29   8.4 152832 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/MacOS/PDFwright --remote-debugging-port=9403 --user-data-dir=/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-ijFY0C /Users/runner/work/PDFwright/PDFwright/tests/fixtures/simple.pdf
+ 6471  6157 S      00:05   3.5  53008 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper --type=gpu-process --gpu-recent-crash-count=0 --user-data-dir=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-ijFY0C --gpu-preferences=WAAAAAAAAAAgAQAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAADAAAAAEAAAAAAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --shared-files --field-trial-handle=1718379636,r,3743316029939364388,15237274318454210148,262144 --enable-features=PdfUseShowSaveFilePicker,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma,ThrottleResizeIpc --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,ScreenAIOCREnabled,SpareRendererForSitePerProcess,TimeoutHangingVideoCaptureStarts,TraceSiteInstanceGetProcessCreation --variations-seed-version --pseudonymization-salt-handle=1935764596,r,14417890509015046903,8593370852043516783,4 --trace-process-track-uuid=3190708988185955192 --seatbelt-client=30
+ 6474  6157 S      00:04   0.4  37392 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=network --user-data-dir=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-ijFY0C --standard-schemes=app --secure-schemes=app --fetch-schemes=app --streaming-schemes=app --code-cache-schemes=app --shared-files --field-trial-handle=1718379636,r,3743316029939364388,15237274318454210148,262144 --enable-features=PdfUseShowSaveFilePicker,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma,ThrottleResizeIpc --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,ScreenAIOCREnabled,SpareRendererForSitePerProcess,TimeoutHangingVideoCaptureStarts,TraceSiteInstanceGetProcessCreation --variations-seed-version --pseudonymization-salt-handle=1935764596,r,14417890509015046903,8593370852043516783,4 --trace-process-track-uuid=3190708989122997041 --seatbelt-client=36
+ 6531  6157 S      00:02   0.4  31408 /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer) --type=renderer --user-data-dir=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/data-ijFY0C --standard-schemes=app --secure-schemes=app --fetch-schemes=app --streaming-schemes=app --code-cache-schemes=app --app-path=/private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/Resources/app.asar --enable-sandbox --allow-file-access-from-files --remote-debugging-port=9403 --lang=en-US --num-raster-threads=1 --enable-zero-copy --enable-gpu-memory-buffer-compositor-resources --renderer-client-id=4 --launch-time-ticks=298521874 --shared-files --field-trial-handle=1718379636,r,3743316029939364388,15237274318454210148,262144 --enable-features=PdfUseShowSaveFilePicker,ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma,ThrottleResizeIpc --disable-features=DropInputEventsWhilePaintHolding,LocalNetworkAccessChecks,ScreenAIOCREnabled,SpareRendererForSitePerProcess,TimeoutHangingVideoCaptureStarts,TraceSiteInstanceGetProcessCreation --variations-seed-version --pseudonymization-salt-handle=1935764596,r,14417890509015046903,8593370852043516783,4 --trace-process-track-uuid=3190708990060038890 --seatbelt-client=58
+
+===== built-open-cold @30s: iostat =====
+              disk0               disk3               disk5 
+    KB/t  tps  MB/s     KB/t  tps  MB/s     KB/t  tps  MB/s 
+   30.75 1285 38.58     3.73    0  0.00   219.25    7  1.49 
+   60.24  329 19.33     0.00    0  0.00   385.07   14  5.36 
+   61.33  758 45.40     0.00    0  0.00   342.74   18  5.94 
+
+
+===== built-open-cold @30s: spindump =====
+Sampling all processes for 3 seconds with 10 milliseconds of run time between samples
+Focusing on PDFwright [6157]
+Sampling completed, processing symbols...
+Spindump analysis written to file /var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/spin-built-open-cold-30000.txt
+
+
+===== built-open-cold @30s: spindump file =====
+Date/Time:        2026-11-04 14:25:48.203 +0000
+End time:         2026-11-04 14:25:51.295 +0000
+OS Version:       macOS 15.8.2 (Build 24H232)
+Architecture:     arm64e
+Report Version:   60
+
+Data Source:      Stackshots
+Shared Cache:     E130CBA3-99F2-36E1-98C3-DDC73414B433 slid base address 0x193964000, slide 0x13964000 (System Primary)
+Shared Cache:     079FF234-C3E0-3454-A987-3AB684F6743E slid base address 0x192ecc000, slide 0x12ecc000 (DriverKit)
+Shared Cache:     2EADFB87-308A-313C-9DBF-A7B8C8873E3E slid base address 0x7ff800f8c000, slide 0xf8c000 (Rosetta)
+
+Command:          PDFwright
+Path:             /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  44D2F45D-C3A1-5259-954B-339CF4A6AA4A
+Architecture:     arm64
+Parent:           launchd [1]
+PID:              6157
+Time Since Fork:  34s
+
+Duration:         3.09s
+Steps:            301 (10ms sampling interval)
+
+Hardware model:   VirtualMac2,1
+Active cpus:      3
+Memory size:      7 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 11.40% (534.39 MB / 4687.92 MB)
+
+Time Since Boot:  306s
+Time Awake Since Boot: 306s
+Time Since Wake:  n/a (machine hasn't slept)
+
+Total CPU Time:   7.396s
+Advisory levels:  Battery -> 3, User -> 2, ThermalPressure -> 0, Combined -> 2
+Free disk space:  42.03 GB/319.51 GB, low space threshold 3072 MB
+Vnodes Available: 79.91% (90886/113742)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+OS Cryptex File Extents: 1
+
+------------------------------------------------------------
+Heavy format: stacks are sorted by count
+Use -i and -timeline to re-report with chronological sorting
+------------------------------------------------------------
+
+
+
+Process:          PDFwright [6157]
+UUID:             4C4C4474-5555-3144-A1C3-E7F42163428D
+Path:             /private/var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/dmg-probe-mHBR4x/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  44D2F45D-C3A1-5259-954B-339CF4A6AA4A
+Shared Cache:     E130CBA3-99F2-36E1-98C3-DDC73414B433 slid base address 0x193964000, slide 0x13964000 (System Primary)
+Architecture:     arm64
+Parent:           launchd [1]
+UID:              501
+Footprint:        53.32 MB
+Pageins:          1 pages
+Time Since Fork:  34s
+Num samples:      301 (1-301)
+CPU Time:         0.032s
+Num threads:      44
+Note:             4 idle work queue threads omitted
+
+  Thread 0x4577    DispatchQueue "com.apple.main-thread"(1)    Thread name "CrBrowserMain"    301 samples (1-301)    priority 47 (base 47)    cpu time 0.005s
+  301  start + 6076 (dyld + 27544) [0x193a36b98]
+    301  ElectronMain + 504 (Electron Framework + 29040716) [0x11296a04c]
+      301  uv_thread_setname + 7164 (Electron Framework + 31455552) [0x112bb7940]
+        301  node::Environment::GetNow() + 70956 (Electron Framework + 28677356) [0x1129114ec]
+          301  node::inspector::protocol::Target::Dispatcher::wire(crdtp::UberDispatcher*, node::inspector::protocol::Target::Backend*) + 1342688 (Electron Framework + 52866724) [0x114022ea4]
+            301  node::inspector::protocol::Target::Dispatcher::wire(crdtp::UberDispatcher*, node::inspector::protocol::Target::Backend*) + 1341064 (Electron Framework + 52865100) [0x11402284c]
+              301  _v8_internal_Node_Print(void*) + 4799596 (Electron Framework + 78795152) [0x1158dd190]
+                301  _v8_internal_Node_Print(void*) + 4815652 (Electron Framework + 78811208) [0x1158e1048]
+                  301  _v8_internal_Node_Print(void*) + 4809304 (Electron Framework + 78804860) [0x1158df77c]
+                    301  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 66056 (Electron Framework + 20278672) [0x11210ed90]
+                      301  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 67660 (Electron Framework + 20280276) [0x11210f3d4]
+                        301  node::crypto::GetEphemeralKey(node::Environment*, ncrypto::SSLPointer const&) + 2580 (Electron Framework + 31998908) [0x112c3c3bc]
+                          301  ares_dns_rr_get_ttl + 3427624 (Electron Framework + 97497008) [0x116ab2fb0]
+                            301  -[NSApplication run] + 480 (AppKit + 187364) [0x197ddabe4]
+                              301  -[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:] + 688 (AppKit + 10327500) [0x1987865cc]
+                                301  _DPSNextEvent + 684 (AppKit + 240180) [0x197de7a34]
+                                  301  _BlockUntilNextEventMatchingListInModeWithFilter + 76 (HIToolbox + 2430084) [0x19fafd484]
+                                    301  ReceiveNextEventCommon + 676 (HIToolbox + 812264) [0x19f9724e8]
+                                      301  RunCurrentEventLoopInMode + 324 (HIToolbox + 799356) [0x19f96f27c]
+                                        301  CFRunLoopRunSpecific + 572 (CoreFoundation + 504680) [0x193ec1368]
+                                          301  __CFRunLoopRun + 1208 (CoreFoundation + 507560) [0x193ec1ea8]
+                                            301  __CFRunLoopServiceMachPort + 160 (CoreFoundation + 513420) [0x193ec358c]
+                                              301  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                                                301  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                                                  301  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                                                   *301  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+
+  Thread 0x46c8    301 samples (1-301)    priority 31-46 (base 31)    cpu time 0.022s
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  pread + 8 (libsystem_kernel.dylib + 9488) [0x193d97510]
+       *301  ??? (kernel.release.vmapple + 19728) [0xfffffe0007d84d10]
+         *301  ??? (kernel.release.vmapple + 1769872) [0xfffffe0007f30190]
+           *301  ??? (kernel.release.vmapple + 7295104) [0xfffffe0008475080]
+             *301  ??? (kernel.release.vmapple + 6201036) [0xfffffe0008369ecc]
+               *301  ??? (kernel.release.vmapple + 6199932) [0xfffffe0008369a7c]
+                 *301  ??? (kernel.release.vmapple + 2592604) [0xfffffe0007ff8f5c]
+                   *301  ??? (kernel.release.vmapple + 2593540) [0xfffffe0007ff9304]
+                     *234  hfs_vnop_read + 640 (HFS + 129800) [0xfffffe00092fd4d8]
+                       *234  throttle_lowpri_io + 900 (kernel.release.vmapple + 2729176) [0xfffffe000801a4d8]
+                         *234  ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                           *234  ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+                     *67   hfs_vnop_read + 584 (HFS + 129744) [0xfffffe00092fd4a0]
+                       *67   cluster_read_ext + 384 (kernel.release.vmapple + 2318752) [0xfffffe0007fb61a0]
+                         *38   ??? (kernel.release.vmapple + 2322752) [0xfffffe0007fb7140]
+                           *38   ??? (kernel.release.vmapple + 6051400) [0xfffffe0008345648]
+                             *38   lck_mtx_sleep + 232 (kernel.release.vmapple + 479512) [0xfffffe0007df5118]
+                               *38   ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                                 *38   ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+                         *29   ??? (kernel.release.vmapple + 2320568) [0xfffffe0007fb68b8]
+                           *29   ??? (kernel.release.vmapple + 2315552) [0xfffffe0007fb5520]
+                             *28   ??? (kernel.release.vmapple + 1017728) [0xfffffe0007e78780]
+                               *28   lck_rw_sleep + 132 (kernel.release.vmapple + 472700) [0xfffffe0007df367c]
+                                 *28   ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                                   *28   ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+                             *1    ??? (kernel.release.vmapple + 1018264) [0xfffffe0007e78998]
+                               *1    ??? (kernel.release.vmapple + 6043000) [0xfffffe0008343578]
+                                 *1    ??? (kernel.release.vmapple + 1764160) [0xfffffe0007f2eb40]
+                                   *1    copyout + 412 (kernel.release.vmapple + 1734396) [0xfffffe0007f276fc]
+                                     *1    copyout + 412 (kernel.release.vmapple + 1734396) [0xfffffe0007f276fc] (running)
+
+  Thread 0x472a    Thread name "PerfettoTrace"    301 samples (1-301)    priority 37 (base 37)
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x112035b10]
+        301  v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 373208 (Electron Framework + 34475188) [0x112e98cb4]
+          301  node::ConfigReader::GetNamespaceFlags() const + 37876 (Electron Framework + 30500404) [0x112ace634]
+            301  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 66056 (Electron Framework + 20278672) [0x11210ed90]
+              301  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 67660 (Electron Framework + 20280276) [0x11210f3d4]
+                301  kevent64 + 8 (libsystem_kernel.dylib + 51548) [0x193da195c]
+                 *301  ??? (kernel.release.vmapple + 5784736) [0xfffffe00083044a0]
+
+  Thread 0x4744    Thread name "ThreadPoolServiceThread"    301 samples (1-301)    priority 37 (base 37)
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x112035b10]
+        301  v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 373208 (Electron Framework + 34475188) [0x112e98cb4]
+          301  v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 364528 (Electron Framework + 34466508) [0x112e96acc]
+            301  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 66056 (Electron Framework + 20278672) [0x11210ed90]
+              301  v8::Isolate::InstallConditionalFeatures(v8::Local<v8::Context>) + 67660 (Electron Framework + 20280276) [0x11210f3d4]
+                301  kevent64 + 8 (libsystem_kernel.dylib + 51548) [0x193da195c]
+                 *301  ??? (kernel.release.vmapple + 5784736) [0xfffffe00083044a0]
+
+  Thread 0x474a    Thread name "ThreadPoolForegroundWorker"    301 samples (1-301)    priority 37 (base 37)    cpu time 0.002s
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x112035b10]
+        301  uv_idle_stop + 116352 (Electron Framework + 28082224) [0x112880030]
+          301  uv_idle_stop + 116576 (Electron Framework + 28082448) [0x112880110]
+            300  uv_idle_stop + 120492 (Electron Framework + 28086364) [0x11288105c]
+              300  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                300  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                  300  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                   *300  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+            1    uv_idle_stop + 121912 (Electron Framework + 28087784) [0x1128815e8]
+              1    v8::ValueSerializer::WriteRawBytes(void const*, unsigned long) + 60064 (Electron Framework + 4460364) [0x1111f8f4c]
+                1    v8::ValueSerializer::WriteRawBytes(void const*, unsigned long) + 59612 (Electron Framework + 4459912) [0x1111f8d88]
+                  1    ares_dns_rr_get_ttl + 3375220 (Electron Framework + 97444604) [0x116aa62fc]
+                    1    v8::internal::OptimizingCompileInputQueue::Enqueue(std::__Cr::unique_ptr<v8::internal::TurbofanCompilationJob, std::__Cr::default_delete<v8::internal::TurbofanCompilationJob>>&) + 17004 (Electron Framework + 10880104) [0x111818468]
+                      1    node::SnapshotData::FromEmbedderWrapper(node::EmbedderSnapshotData const*) + 12108 (Electron Framework + 31909948) [0x112c2683c]
+                        1    __fcntl + 8 (libsystem_kernel.dylib + 6020) [0x193d96784]
+                         *1    ??? (kernel.release.vmapple + 19728) [0xfffffe0007d84d10]
+                           *1    ??? (kernel.release.vmapple + 1769872) [0xfffffe0007f30190]
+                             *1    ??? (kernel.release.vmapple + 7295104) [0xfffffe0008475080]
+                               *1    ??? (kernel.release.vmapple + 5721336) [0xfffffe00082f4cf8]
+                                 *1    VNOP_IOCTL + 228 (kernel.release.vmapple + 2655372) [0xfffffe000800848c]
+                                   *1    handle_barrierfsync + 148 (apfs + 788896) [0xfffffe000a06ed70]
+                                     *1    tx_finish + 772 (apfs + 1534120) [0xfffffe000a124c78]
+                                       *1    tm_cv_wait + 68 (apfs + 1525592) [0xfffffe000a122b28]
+                                         *1    ??? (kernel.release.vmapple + 6051400) [0xfffffe0008345648]
+                                           *1    lck_mtx_sleep + 232 (kernel.release.vmapple + 479512) [0xfffffe0007df5118]
+                                             *1    ??? (kernel.release.vmapple + 560072) [0xfffffe0007e08bc8]
+                                               *1    ??? (kernel.release.vmapple + 565384) [0xfffffe0007e0a088]
+
+  Thread 0x474b    Thread name "ThreadPoolPresentationWorker"    301 samples (1-301)    priority 47 (base 47)
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x112035b10]
+        301  uv_idle_stop + 116352 (Electron Framework + 28082224) [0x112880030]
+          301  uv_idle_stop + 116576 (Electron Framework + 28082448) [0x112880110]
+            301  uv_idle_stop + 120492 (Electron Framework + 28086364) [0x11288105c]
+              301  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                301  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                  301  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                   *301  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+
+  Thread 0x474c    Thread name "ThreadPoolAudioWorker"    301 samples (1-301)    priority 47 (base 47)
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x112035b10]
+        301  uv_idle_stop + 116352 (Electron Framework + 28082224) [0x112880030]
+          301  uv_idle_stop + 116576 (Electron Framework + 28082448) [0x112880110]
+            301  uv_idle_stop + 120492 (Electron Framework + 28086364) [0x11288105c]
+              301  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                301  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+                  301  mach_msg2_trap + 8 (libsystem_kernel.dylib + 3124) [0x193d95c34]
+                   *301  ??? (kernel.release.vmapple + 205024) [0xfffffe0007db20e0]
+
+  Thread 0x474d    Thread name "ThreadPoolBackgroundWorker"    301 samples (1-301)    priority 4 (base 4)
+  301  thread_start + 8 (libsystem_pthread.dylib + 7040) [0x193dd2b80]
+    301  _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x193dd7bc8]
+      301  v8::ValueSerializer::ReleaseSharedImmutableBackingStores() + 162556 (Electron Framework + 19389200) [0x112035b10]
+        301  uv_idle_stop + 116408 (Electron Framework + 28082280) [0x112880068]
+          301  uv_idle_stop + 116744 (Electron Framework + 28082616) [0x1128801b8]
+            301  uv_idle_stop + 120492 (Electron Framework + 28086364) [0x11288105c]
+              301  mach_msg + 24 (libsystem_kernel.dylib + 4008) [0x193d95fa8]
+                301  mach_msg_overwrite + 484 (libsystem_kernel.dylib + 38756) [0x193d9e764]
+

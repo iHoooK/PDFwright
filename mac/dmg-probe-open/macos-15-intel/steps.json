@@ -1,0 +1,32 @@
+[
+  {
+    "name": "install",
+    "command": "npm ci",
+    "code": 0,
+    "seconds": 83
+  },
+  {
+    "name": "build",
+    "command": "npm run build",
+    "code": 0,
+    "seconds": 3
+  },
+  {
+    "name": "print",
+    "command": "node scripts/probe-print.mjs tests/fixtures/simple.pdf /Users/runner/work/_temp/ci-results",
+    "code": 0,
+    "seconds": 85
+  },
+  {
+    "name": "dmg",
+    "command": "npx electron-builder --mac dmg --x64 --publish never -c.directories.output=build/probe -c.dmg.artifactName=probe.dmg",
+    "code": 0,
+    "seconds": 66
+  },
+  {
+    "name": "probe",
+    "command": "node scripts/probe-dmg.mjs build/probe/probe.dmg tests/fixtures/simple.pdf /Users/runner/work/_temp/ci-results",
+    "code": 0,
+    "seconds": 507
+  }
+]

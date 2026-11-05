@@ -1,0 +1,217 @@
+
+> pdfwright@1.0.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m/Users/runner/work/PDFwright/PDFwright[39m
+
+[90mstderr[2m | tests/unit/pdf-content.test.ts[2m > [22m[2mlistPageObjects[2m > [22m[2mотклоняет несуществующую страницу и не-PDF
+[22m[39mformat error: cannot find version marker
+warning: trying to repair broken xref
+warning: repairing PDF document
+
+ [32m✓[39m tests/unit/pdf-content.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 363[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-annotations.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 626[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-content-typeset.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 515[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-protect.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 1317[2mms[22m[39m
+   [32m✓[39m relockPdf: правка расшифрованной копии с прежним шифрованием [2m(3)[22m
+     [33m[2m✓[22m[39m после правки MuPDF оба пароля и ограничения те же[33m 354[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-forms.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 433[2mms[22m[39m
+ [32m✓[39m tests/unit/menu.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-markup.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 461[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-content-text.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 291[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-resize.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/convert.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 9370[2mms[22m[39m
+   [32m✓[39m изображения в PDF [2m(6)[22m
+     [33m[2m✓[22m[39m десять фотографий складываются в документ быстро и в заданном порядке[33m 4150[2mms[22m[39m
+   [32m✓[39m сжатие [2m(2)[22m
+     [33m[2m✓[22m[39m уменьшает файл со сканом и не трогает текст[33m 4912[2mms[22m[39m
+ [32m✓[39m tests/unit/ocr.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1810[2mms[22m[39m
+   [32m✓[39m распознавание tesseract.js (17.1) [2m(2)[22m
+     [33m[2m✓[22m[39m находит русские и английские слова на картинке с известным текстом[33m 806[2mms[22m[39m
+   [32m✓[39m невидимый текстовый слой (17.2) [2m(6)[22m
+     [33m[2m✓[22m[39m после распознавания скана MuPDF находит слова, а растр страницы не меняется[33m 885[2mms[22m[39m
+ [32m✓[39m tests/unit/compare.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/settings-schema.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-geometry.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/window-session.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 120[2mms[22m[39m
+ [32m✓[39m tests/unit/mac-platform.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-ops.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-model.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/window-plan.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [31m❯[39m tests/unit/main-helpers.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 32[2mms[22m[39m
+   [31m❯[39m extractPdfPaths [2m(3)[22m
+[31m     [31m×[31m берёт .pdf-аргумент и разрешает относительный путь[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m отдаёт все PDF по порядку без повторов: несколько файлов, брошенных на ярлык[39m[32m 2[2mms[22m[39m
+     [32m✓[39m игнорирует флаги, точку и не-PDF аргументы[32m 1[2mms[22m[39m
+   [32m✓[39m resolveWithinDir [2m(2)[22m
+     [32m✓[39m разрешает обычные пути внутри каталога[32m 1[2mms[22m[39m
+     [32m✓[39m отвергает выход за пределы каталога[32m 1[2mms[22m[39m
+   [31m❯[39m normalizeRecent [2m(1)[22m
+[31m     [31m×[31m отбрасывает мусор и дубликаты[39m[32m 2[2mms[22m[39m
+   [31m❯[39m RecentFilesStore [2m(3)[22m
+[31m     [31m×[31m добавляет в начало, обрезает по лимиту и сохраняет на диск[39m[32m 8[2mms[22m[39m
+     [32m✓[39m помнит число страниц: новое значение заменяет старое, без значения оно остаётся[32m 4[2mms[22m[39m
+     [32m✓[39m удаляет запись и переживает повреждённый файл[32m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/markdown.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-qa.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/unit/saved-state.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/search.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/unit/update-service.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/update-schedule.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/unit/i18n.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/unit/viewer-helpers.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+[90mstderr[2m | tests/unit/settings-store.test.ts[2m > [22m[2mSettingsStore[2m > [22m[2mпереживает повреждённый JSON
+[22m[39m[settings] не удалось прочитать /var/folders/n6/hn37q6pj7sj_9dmqqc2113800000gn/T/pdfwright-settings-RNMt9b/settings.json, используются значения по умолчанию: SyntaxError: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+    at JSON.parse (<anonymous>)
+    at SettingsStore.load [90m(/Users/runner/work/PDFwright/PDFwright/[39msrc/main/services/settings-store.ts:35:46[90m)[39m
+    at [90m/Users/runner/work/PDFwright/PDFwright/[39mtests/unit/settings-store.test.ts:28:12
+    at async [90mfile:///Users/runner/work/PDFwright/PDFwright/[39mnode_modules/[4mvitest[24m/dist/chunks/run.BPv-BBRv.js:2801:20
+
+ [32m✓[39m tests/unit/settings-store.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/update-messages.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/paths.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/content-selection.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m tests/unit/external-links.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [31m❯[39m tests/unit/app-paths.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 6[2mms[22m[39m
+   [31m❯[39m isPortableBuild [2m(3)[22m
+     [32m✓[39m узнаёт portable по переменной окружения electron-builder[32m 1[2mms[22m[39m
+[31m     [31m×[31m узнаёт portable по файлу-маркеру рядом с exe[39m[32m 4[2mms[22m[39m
+     [32m✓[39m установленная версия — не portable[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-date.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/ipc-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/unit/app-paths.test.ts[2m > [22misPortableBuild[2m > [22mузнаёт portable по файлу-маркеру рядом с exe
+[31m[1mAssertionError[22m: expected 'PDFwright.portable' to be 'C:\Apps\PDFwright\PDFwright.portable' // Object.is equality[39m
+
+Expected: [32m"[7mC:\Apps\PDFwright\[27mPDFwright.portable"[39m
+Received: [31m"PDFwright.portable"[39m
+
+[36m [2m❯[22m tests/unit/app-paths.test.ts:[2m18:21[22m[39m
+    [90m 16|[39m     }
+    [90m 17|[39m     expect(isPortableBuild({}, exe, exists)).toBe(true)
+    [90m 18|[39m     expect(seen[0]).toBe(`C:\\Apps\\PDFwright\\${PORTABLE_MARKER}`)
+    [90m   |[39m                     [31m^[39m
+    [90m 19|[39m   })
+    [90m 20|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/unit/main-helpers.test.ts[2m > [22mextractPdfPaths[2m > [22mберёт .pdf-аргумент и разрешает относительный путь
+[31m[1mAssertionError[22m: expected [ Array(1) ] to deeply equal [ 'C:\docs\a.pdf' ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   "C:\\docs\\a.pdf",[39m
+[31m+   "/Users/runner/work/PDFwright/PDFwright/D:\\work/C:\\docs\\a.pdf",[39m
+[2m  ][22m
+
+[36m [2m❯[22m tests/unit/main-helpers.test.ts:[2m13:66[22m[39m
+    [90m 11|[39m
+    [90m 12|[39m   it('берёт .pdf-аргумент и разрешает относительный путь', () => {
+    [90m 13|[39m     expect(extractPdfPaths(['app.exe', 'C:\\docs\\a.pdf'], cwd)).toEqu…
+    [90m   |[39m                                                                  [31m^[39m
+    [90m 14|[39m     expect(extractPdfPaths(['app.exe', 'b.PDF'], cwd)).toEqual([resolv…
+    [90m 15|[39m   })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/unit/main-helpers.test.ts[2m > [22mextractPdfPaths[2m > [22mотдаёт все PDF по порядку без повторов: несколько файлов, брошенных на ярлык
+[31m[1mAssertionError[22m: expected [ …(2) ] to deeply equal [ 'C:\a.pdf', …(1) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   "C:\\a.pdf",[39m
+[31m+   "/Users/runner/work/PDFwright/PDFwright/D:\\work/C:\\a.pdf",[39m
+[2m    "/Users/runner/work/PDFwright/PDFwright/D:\\work/b.pdf",[22m
+[2m  ][22m
+
+[36m [2m❯[22m tests/unit/main-helpers.test.ts:[2m20:7[22m[39m
+    [90m 18|[39m     expect(
+    [90m 19|[39m       extractPdfPaths(['app.exe', 'C:\\a.pdf', '--flag', 'notes.txt', …
+    [90m 20|[39m     ).toEqual(['C:\\a.pdf', resolve(cwd, 'b.pdf')])
+    [90m   |[39m       [31m^[39m
+    [90m 21|[39m   })
+    [90m 22|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/unit/main-helpers.test.ts[2m > [22mnormalizeRecent[2m > [22mотбрасывает мусор и дубликаты
+[31m[1mAssertionError[22m: expected [ { path: 'C:\a.pdf', …(2) }, …(1) ] to deeply equal [ { path: 'C:\a.pdf', …(2) }, …(1) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[2m    {[22m
+[2m      "lastOpenedMs": 5,[22m
+[32m-     "name": "a.pdf",[39m
+[31m+     "name": "C:\\a.pdf",[39m
+[2m      "path": "C:\\a.pdf",[22m
+[2m    },[22m
+[2m    {[22m
+[2m      "lastOpenedMs": 0,[22m
+[32m-     "name": "b.pdf",[39m
+[31m+     "name": "C:\\b.pdf",[39m
+[2m      "path": "C:\\b.pdf",[22m
+[2m    },[22m
+[2m  ][22m
+
+[36m [2m❯[22m tests/unit/main-helpers.test.ts:[2m58:20[22m[39m
+    [90m 56|[39m       { path: 'C:\\b.pdf', lastOpenedMs: 'x' }
+    [90m 57|[39m     ])
+    [90m 58|[39m     expect(result).toEqual([
+    [90m   |[39m                    [31m^[39m
+    [90m 59|[39m       { path: 'C:\\a.pdf', name: 'a.pdf', lastOpenedMs: 5 },
+    [90m 60|[39m       { path: 'C:\\b.pdf', name: 'b.pdf', lastOpenedMs: 0 }
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/unit/main-helpers.test.ts[2m > [22mRecentFilesStore[2m > [22mдобавляет в начало, обрезает по лимиту и сохраняет на диск
+[31m[1mAssertionError[22m: expected [ 'C:\three.pdf', 'C:\two.pdf' ] to deeply equal [ 'three.pdf', 'two.pdf' ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   "three.pdf",[39m
+[32m-   "two.pdf",[39m
+[31m+   "C:\\three.pdf",[39m
+[31m+   "C:\\two.pdf",[39m
+[2m  ][22m
+
+[36m [2m❯[22m tests/unit/main-helpers.test.ts:[2m80:37[22m[39m
+    [90m 78|[39m     await store.touch('C:\\three.pdf')
+    [90m 79|[39m     const list = await store.list()
+    [90m 80|[39m     expect(list.map((i) => i.name)).toEqual(['three.pdf', 'two.pdf'])
+    [90m   |[39m                                     [31m^[39m
+    [90m 81|[39m
+    [90m 82|[39m     const reloaded = await RecentFilesStore.forUserData(dir, () => 2).…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m34 passed[39m[22m[90m (36)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m315 passed[39m[22m[90m (320)[39m
+[2m   Start at [22m 20:01:38
+[2m   Duration [22m 13.34s[2m (tests 74%, import 17%, transform 8%, worker 1%)[22m
+
+[2m    Isolate [22m [33m36 workers spawned[39m[2m · ~142ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~2.42s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+
+
+::error file=/Users/runner/work/PDFwright/PDFwright/tests/unit/app-paths.test.ts,title=tests/unit/app-paths.test.ts > isPortableBuild > узнаёт portable по файлу-маркеру рядом с exe,line=18,column=21::AssertionError: expected 'PDFwright.portable' to be 'C:\Apps\PDFwright\PDFwright.portable' // Object.is equality%0A%0AExpected: "C:\Apps\PDFwright\PDFwright.portable"%0AReceived: "PDFwright.portable"%0A%0A ❯ tests/unit/app-paths.test.ts:18:21%0A%0A
+
+::error file=/Users/runner/work/PDFwright/PDFwright/tests/unit/main-helpers.test.ts,title=tests/unit/main-helpers.test.ts > extractPdfPaths > берёт .pdf-аргумент и разрешает относительный путь,line=13,column=66::AssertionError: expected [ Array(1) ] to deeply equal [ 'C:\docs\a.pdf' ]%0A%0A- Expected%0A+ Received%0A%0A  [%0A-   "C:\\docs\\a.pdf",%0A+   "/Users/runner/work/PDFwright/PDFwright/D:\\work/C:\\docs\\a.pdf",%0A  ]%0A%0A ❯ tests/unit/main-helpers.test.ts:13:66%0A%0A
+
+::error file=/Users/runner/work/PDFwright/PDFwright/tests/unit/main-helpers.test.ts,title=tests/unit/main-helpers.test.ts > extractPdfPaths > отдаёт все PDF по порядку без повторов%3A несколько файлов%2C брошенных на ярлык,line=20,column=7::AssertionError: expected [ …(2) ] to deeply equal [ 'C:\a.pdf', …(1) ]%0A%0A- Expected%0A+ Received%0A%0A  [%0A-   "C:\\a.pdf",%0A+   "/Users/runner/work/PDFwright/PDFwright/D:\\work/C:\\a.pdf",%0A    "/Users/runner/work/PDFwright/PDFwright/D:\\work/b.pdf",%0A  ]%0A%0A ❯ tests/unit/main-helpers.test.ts:20:7%0A%0A
+
+::error file=/Users/runner/work/PDFwright/PDFwright/tests/unit/main-helpers.test.ts,title=tests/unit/main-helpers.test.ts > normalizeRecent > отбрасывает мусор и дубликаты,line=58,column=20::AssertionError: expected [ { path: 'C:\a.pdf', …(2) }, …(1) ] to deeply equal [ { path: 'C:\a.pdf', …(2) }, …(1) ]%0A%0A- Expected%0A+ Received%0A%0A  [%0A    {%0A      "lastOpenedMs": 5,%0A-     "name": "a.pdf",%0A+     "name": "C:\\a.pdf",%0A      "path": "C:\\a.pdf",%0A    },%0A    {%0A      "lastOpenedMs": 0,%0A-     "name": "b.pdf",%0A+     "name": "C:\\b.pdf",%0A      "path": "C:\\b.pdf",%0A    },%0A  ]%0A%0A ❯ tests/unit/main-helpers.test.ts:58:20%0A%0A
+
+::error file=/Users/runner/work/PDFwright/PDFwright/tests/unit/main-helpers.test.ts,title=tests/unit/main-helpers.test.ts > RecentFilesStore > добавляет в начало%2C обрезает по лимиту и сохраняет на диск,line=80,column=37::AssertionError: expected [ 'C:\three.pdf', 'C:\two.pdf' ] to deeply equal [ 'three.pdf', 'two.pdf' ]%0A%0A- Expected%0A+ Received%0A%0A  [%0A-   "three.pdf",%0A-   "two.pdf",%0A+   "C:\\three.pdf",%0A+   "C:\\two.pdf",%0A  ]%0A%0A ❯ tests/unit/main-helpers.test.ts:80:37%0A%0A

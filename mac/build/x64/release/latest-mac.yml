@@ -1,0 +1,11 @@
+version: 1.0.0
+files:
+  - url: PDFwright-Portable-Mac-Intel.zip
+    sha512: DC+ILleXPYAQfoL5xiB6dSttNDYj2qaAmXll2ncgmIooXNqHW9t+H4FCw9x3CK8MbLX+720akxNyk1aZaS6rNA==
+    size: 134700701
+  - url: PDFwright-Mac-Intel.dmg
+    sha512: 5P4jiiWYN6g2+kYmYiGT0unI7VDJlIoYTkvr0DBUGbOXKR+Rf4pmISou72XSkWxLpXePsmTh4MNDq+N9lT0X4g==
+    size: 127714260
+path: PDFwright-Portable-Mac-Intel.zip
+sha512: DC+ILleXPYAQfoL5xiB6dSttNDYj2qaAmXll2ncgmIooXNqHW9t+H4FCw9x3CK8MbLX+720akxNyk1aZaS6rNA==
+releaseDate: '2026-10-30T23:17:44.767Z'

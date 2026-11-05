@@ -1,0 +1,492 @@
+
+===== built-cold @30s: ps =====
+   99     1 Ss     08:18   0.0   2708 /usr/libexec/amfid
+  177     1 Ss     08:15   0.0  32252 /usr/libexec/syspolicyd
+  272     1 Ss     08:10   0.0   1872 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+  644     1 S      07:36   0.0   1832 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+ 7187     1 R<s    01:09  44.2  24616 /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper -uuid C33BADA3-76EB-4453-997B-F1CE5AC59C6A -post-exec 5
+ 7602  7116 U<s    00:31  81.5  56296 /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/mnt-built/PDFwright.app/Contents/MacOS/PDFwright --remote-debugging-port=9400 --user-data-dir=/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/data-ZzUlrG /Users/runner/work/PDFwright/PDFwright/tests/fixtures/simple.pdf
+
+===== built-cold @30s: iostat =====
+              disk0               disk2 
+    KB/t  tps  MB/s     KB/t  tps  MB/s 
+   42.76  534 22.31   158.47    1  0.21 
+   28.41  234  6.50   258.00    4  1.00 
+   28.40  467 12.94    46.00    2  0.09 
+
+
+===== built-cold @30s: spindump =====
+Sampling all processes for 3 seconds with 10 milliseconds of run time between samples
+Focusing on PDFwright [7602]
+Sampling completed, processing symbols...
+Spindump analysis written to file /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/spin-built-cold-30000.txt
+
+
+===== built-cold @30s: spindump file =====
+Date/Time:        2026-11-04 14:34:31.303 +0000
+End time:         2026-11-04 14:34:34.381 +0000
+OS Version:       macOS 15.7.9 (Build 24G830)
+Architecture:     x86_64h
+Report Version:   60
+
+Data Source:      Stackshots
+Shared Cache:     FDD97301-9818-3865-A1D2-FEC1D3914796 slid base address 0x7ff816c03000, slide 0x16c03000 (System Primary)
+Shared Cache:     6F268C81-E2E0-3212-8D39-F4819E1FD474 slid base address 0x7ff807e9a000, slide 0x7e9a000 (DriverKit)
+
+Command:          PDFwright
+Path:             /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  002049C5-C0A0-5261-BCA4-057E72521CA6
+Architecture:     x86_64
+Parent:           node [7116]
+Responsible:      bash [1015]
+PID:              7602
+Time Since Fork:  39s
+
+Duration:         3.08s
+Duration Sampled: 3.06s (event starts 0.02s before samples)
+Steps:            137 (10ms sampling interval)
+
+Hardware model:   Macmini6,2
+Active cpus:      4
+Memory size:      14 GB
+HW page size:     4096
+VM page size:     4096
+Shared cache residency: 8.55% (406.22 MB / 4749.17 MB)
+Boot args:        preempt=10
+
+Time Since Boot:  520s
+Time Awake Since Boot: 520s
+Time Since Wake:  n/a (machine hasn't slept)
+
+Fan speed:        0 rpm
+Total CPU Time:   11.576s
+Advisory levels:  Battery -> 3, User -> 2, ThermalPressure -> 0, Combined -> 2
+Free disk space:  105.98 GB/324.68 GB, low space threshold 3072 MB
+Vnodes Available: 85.57% (197155/230400, 149938 allocated)
+Models:           none
+
+Launchd throttled processes:
+  siriactionsd throttled after exit(): throttled samples 1-117, not throttled samples 118-123, throttled samples 124-137
+  thermald throttled after exit(): throttled samples 1-137
+  distnoted.xpc.agent throttled after exit(): throttled samples 1-22, throttled samples 23-137
+
+Preferred User Language: en
+OS Cryptex File Extents: 1
+
+------------------------------------------------------------
+Heavy format: stacks are sorted by count
+Use -i and -timeline to re-report with chronological sorting
+------------------------------------------------------------
+
+
+
+Process:          PDFwright [7602]
+UUID:             4C4C4476-5555-3144-A19B-304559937475
+Path:             /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  002049C5-C0A0-5261-BCA4-057E72521CA6
+Shared Cache:     FDD97301-9818-3865-A1D2-FEC1D3914796 slid base address 0x7ff816c03000, slide 0x16c03000 (System Primary)
+Architecture:     x86_64
+Parent:           node [7116]
+Responsible:      bash [1015]
+UID:              501
+Footprint:        25.38 MB
+Pageins:          104 pages
+Time Since Fork:  39s
+Num samples:      137 (1-137)
+CPU Time:         0.058s
+Num threads:      25
+Note:             3 idle work queue threads omitted
+
+  Thread 0x559e    DispatchQueue "com.apple.main-thread"(1)    Thread name "CrBrowserMain"    137 samples (1-137)    priority 20-46 (base 20)    cpu time 0.055s
+  137  start + 3056 (dyld + 25904) [0x7ff818731530]
+    137  ElectronMain + 543 (Electron Framework + 28868191) [0x11d1c4e5f]
+      137  uv_req_get_type + 16250 (Electron Framework + 30112106) [0x11d2f496a]
+        137  uv_os_environ + 11247 (Electron Framework + 29278143) [0x11d228fbf]
+          137  v8::CpuProfile::GetSamplesCount() const + 1303689 (Electron Framework + 59138777) [0x11eea32d9]
+            137  v8::CpuProfile::GetSamplesCount() const + 1301615 (Electron Framework + 59136703) [0x11eea2abf]
+              137  _v8_internal_Node_Print(void*) + 5200728 (Electron Framework + 90605496) [0x120ca57b8]
+                71   _v8_internal_Node_Print(void*) + 5219385 (Electron Framework + 90624153) [0x120caa099]
+                  71   _v8_internal_Node_Print(void*) + 5208598 (Electron Framework + 90613366) [0x120ca7676]
+                    71   _v8_internal_Node_Print(void*) + 10169585 (Electron Framework + 95574353) [0x121162951]
+                      71   _v8_internal_Node_Print(void*) + 5207029 (Electron Framework + 90611797) [0x120ca7055]
+                        30   node::PrincipalRealm::async_hooks_binding() const + 68663 (Electron Framework + 53060647) [0x11e8d7427]
+                          11   node::StreamResource::RemoveStreamListener(node::StreamListener*) + 26528 (Electron Framework + 29011728) [0x11d1e7f10]
+                            11   node::StreamResource::RemoveStreamListener(node::StreamListener*) + 28388 (Electron Framework + 29013588) [0x11d1e8654]
+                              11   v8::String::MakeExternal(v8::String::ExternalStringResource*) + 554 (Electron Framework + 2402394) [0x11b88785a]
+                                11   _platform_strlen + 18 (libsystem_platform.dylib + 3730) [0x7ff818b0ce92]
+                                 *11   ??? (kernel + 530591) [0xffffff800036989f]
+                                   *11   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                     *11   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                       *11   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                         *11   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                           *11   ??? (kernel + 1161488) [0xffffff8000403910]
+                                             *11   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                               *11   ??? (kernel + 2407735) [0xffffff8000533d37]
+                          10   node::StreamResource::RemoveStreamListener(node::StreamListener*) + 26573 (Electron Framework + 29011773) [0x11d1e7f3d]
+                            10   v8::Template::SetNativeDataProperty(v8::Local<v8::Name>, void (*)(v8::Local<v8::Name>, v8::PropertyCallbackInfo<v8::Value> const&), void (*)(v8::Local<v8::Name>, v8::Local<v8::Value>, v8::PropertyCallbackInfo<v8::Boolean> const&), v8::Local<v8::Value>, v8::PropertyAttribute, v8::SideEffectType, v8::SideEffectType) + 2031 (Electron Framework + 30629631) [0x11d372eff]
+                              10   v8::Template::SetNativeDataProperty(v8::Local<v8::Name>, void (*)(v8::Local<v8::Name>, v8::PropertyCallbackInfo<v8::Value> const&), void (*)(v8::Local<v8::Name>, v8::Local<v8::Value>, v8::PropertyCallbackInfo<v8::Boolean> const&), v8::Local<v8::Value>, v8::PropertyAttribute, v8::SideEffectType, v8::SideEffectType) + 3231 (Electron Framework + 30630831) [0x11d3733af]
+                                10   uv_fs_get_result + 135921 (Electron Framework + 27545185) [0x11d081e61]
+                                  10   v8::Object::GetPropertyNames(v8::Local<v8::Context>, v8::KeyCollectionMode, v8::PropertyFilter, v8::IndexFilter, v8::KeyConversionMode) + 60360 (Electron Framework + 25262456) [0x11ce54978]
+                                   *10   ??? (kernel + 530591) [0xffffff800036989f]
+                                     *10   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                       *10   ??? (kernel + 1679641) [0xffffff8000482119]
+                                         *10   ??? (kernel + 1695077) [0xffffff8000485d65]
+                                           *10   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                             *10   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                               *10   ??? (kernel + 1161488) [0xffffff8000403910]
+                                                 *10   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                   *10   ??? (kernel + 2407735) [0xffffff8000533d37]
+                          9    node::StreamResource::RemoveStreamListener(node::StreamListener*) + 26657 (Electron Framework + 29011857) [0x11d1e7f91]
+                            9    uv_fs_get_result + 134322 (Electron Framework + 27543586) [0x11d081822]
+                              9    uv_fs_get_result + 134835 (Electron Framework + 27544099) [0x11d081a23]
+                                9    uv_guess_handle + 1405 (Electron Framework + 30470013) [0x11d34bf7d]
+                                 *9    ??? (kernel + 530591) [0xffffff800036989f]
+                                   *9    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                     *9    ??? (kernel + 1679641) [0xffffff8000482119]
+                                       *9    ??? (kernel + 1695077) [0xffffff8000485d65]
+                                         *9    ??? (kernel + 1876116) [0xffffff80004b2094]
+                                           *9    ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                             *9    ??? (kernel + 1161488) [0xffffff8000403910]
+                                               *9    ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                 *9    ??? (kernel + 2407735) [0xffffff8000533d37]
+                        29   node::PrincipalRealm::async_hooks_binding() const + 68765 (Electron Framework + 53060749) [0x11e8d748d]
+                          28   node::JSONOutputStream::GetChunkSize() + 308502 (Electron Framework + 54132630) [0x11e9dcf96]
+                            25   node::PrincipalRealm::inspector_enable_network_tracking() const + 195440 (Electron Framework + 53703104) [0x11e9741c0]
+                              25   ares_llist_len + 659380 (Electron Framework + 111789284) [0x1220d94e4]
+                                25   ares_llist_len + 1702369 (Electron Framework + 112832273) [0x1221d7f11]
+                                  25   ares_llist_len + 1701203 (Electron Framework + 112831107) [0x1221d7a83]
+                                    19   v8::Private::New(v8::Isolate*, v8::Local<v8::String>) + 166791 (Electron Framework + 18506903) [0x11c7e3497]
+                                      19   v8::Array::New(v8::Local<v8::Context>, unsigned long, std::__Cr::function<v8::MaybeLocal<v8::Value> ()>) + 87860 (Electron Framework + 17787204) [0x11c733944]
+                                        13   v8::Isolate::RemoveNearHeapLimitCallback(unsigned long (*)(void*, unsigned long, unsigned long), unsigned long) + 154966 (Electron Framework + 14699782) [0x11c441d06]
+                                          13   v8::Value::IsObject() const + 173037 (Electron Framework + 22560269) [0x11cbc0e0d]
+                                            13   node::StreamBase::WriteBuffer(v8::FunctionCallbackInfo<v8::Value> const&) + 153272 (Electron Framework + 24774232) [0x11cddd658]
+                                             *13   ??? (kernel + 530591) [0xffffff800036989f]
+                                               *13   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                                 *13   ??? (kernel + 1679641) [0xffffff8000482119]
+                                                   *13   ??? (kernel + 1695077) [0xffffff8000485d65]
+                                                     *13   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                                       *13   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                                         *13   ??? (kernel + 1161488) [0xffffff8000403910]
+                                                           *13   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                             *13   ??? (kernel + 2407735) [0xffffff8000533d37]
+                                        6    v8::Isolate::RemoveNearHeapLimitCallback(unsigned long (*)(void*, unsigned long, unsigned long), unsigned long) + 155080 (Electron Framework + 14699896) [0x11c441d78]
+                                          6    v8::Isolate::RemoveNearHeapLimitCallback(unsigned long (*)(void*, unsigned long, unsigned long), unsigned long) + 154966 (Electron Framework + 14699782) [0x11c441d06]
+                                            6    v8::Value::IsObject() const + 173037 (Electron Framework + 22560269) [0x11cbc0e0d]
+                                              6    node::StreamBase::WriteBuffer(v8::FunctionCallbackInfo<v8::Value> const&) + 153272 (Electron Framework + 24774232) [0x11cddd658]
+                                               *6    ??? (kernel + 530591) [0xffffff800036989f]
+                                                 *6    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                                   *6    ??? (kernel + 1679641) [0xffffff8000482119]
+                                                     *6    ??? (kernel + 1695077) [0xffffff8000485d65]
+                                                       *6    ??? (kernel + 1876116) [0xffffff80004b2094]
+                                                         *6    ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                                           *6    ??? (kernel + 1161488) [0xffffff8000403910]
+                                                             *6    ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                               *6    ??? (kernel + 2407735) [0xffffff8000533d37]
+                                    6    v8::Private::New(v8::Isolate*, v8::Local<v8::String>) + 167740 (Electron Framework + 18507852) [0x11c7e384c]
+                                      6    v8::Isolate::RemoveNearHeapLimitCallback(unsigned long (*)(void*, unsigned long, unsigned long), unsigned long) + 154966 (Electron Framework + 14699782) [0x11c441d06]
+                                        6    v8::Value::IsObject() const + 173037 (Electron Framework + 22560269) [0x11cbc0e0d]
+                                          6    node::StreamBase::WriteBuffer(v8::FunctionCallbackInfo<v8::Value> const&) + 153272 (Electron Framework + 24774232) [0x11cddd658]
+                                           *6    ??? (kernel + 530591) [0xffffff800036989f]
+                                             *6    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                               *6    ??? (kernel + 1679641) [0xffffff8000482119]
+                                                 *6    ??? (kernel + 1695077) [0xffffff8000485d65]
+                                                   *6    ??? (kernel + 1876116) [0xffffff80004b2094]
+                                                     *6    ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                                       *6    ??? (kernel + 1161488) [0xffffff8000403910]
+                                                         *6    ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                           *6    ??? (kernel + 2407735) [0xffffff8000533d37]
+                            3    ares_llist_len + 659344 (Electron Framework + 111789248) [0x1220d94c0]
+                             *3    ??? (kernel + 530591) [0xffffff800036989f]
+                               *3    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                 *3    ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                   *3    ??? (kernel + 1876116) [0xffffff80004b2094]
+                                     *3    ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                       *3    ??? (kernel + 1161488) [0xffffff8000403910]
+                                         *3    ??? (kernel + 1169909) [0xffffff80004059f5]
+                                           *3    ??? (kernel + 2407735) [0xffffff8000533d37]
+                          1    node::JSONOutputStream::GetChunkSize() + 308644 (Electron Framework + 54132772) [0x11e9dd024]
+                            1    -[NSUserDefaults(NSUserDefaults) setObject:forKey:] + 73 (Foundation + 439840) [0x7ff819d14620]
+                              1    _CFPreferencesSetAppValueWithContainerAndConfiguration + 112 (CoreFoundation + 525085) [0x7ff818bc531d]
+                                1    -[_CFXPreferences setValue:forKey:appIdentifier:container:configurationURL:] + 94 (CoreFoundation + 525209) [0x7ff818bc5399]
+                                  1    -[_CFXPreferences withSearchListForIdentifier:container:cloudConfigurationURL:perform:] + 372 (CoreFoundation + 1713808) [0x7ff818ce7690]
+                                    1    __108-[_CFXPreferences(SearchListAdditions) withSearchListForIdentifier:container:cloudConfigurationURL:perform:]_block_invoke + 360 (CoreFoundation + 171940) [0x7ff818b6efa4]
+                                      1    __76-[_CFXPreferences setValue:forKey:appIdentifier:container:configurationURL:]_block_invoke + 49 (CoreFoundation + 525285) [0x7ff818bc53e5]
+                                        1    -[CFPrefsSource setValue:forKey:from:] + 72 (CoreFoundation + 525464) [0x7ff818bc5498]
+                                          1    -[CFPrefsSource setValues:forKeys:count:copyValues:removeValuesForKeys:count:from:] + 436 (CoreFoundation + 254598) [0x7ff818b83286]
+                                            1    -[CFPrefsSearchListSource alreadylocked_setPrecopiedValues:forKeys:count:from:] + 960 (CoreFoundation + 526451) [0x7ff818bc5873]
+                                              1    -[CFPrefsSource setValues:forKeys:count:copyValues:from:] + 35 (CoreFoundation + 254154) [0x7ff818b830ca]
+                                                1    -[CFPrefsSource setValues:forKeys:count:copyValues:removeValuesForKeys:count:from:] + 436 (CoreFoundation + 254598) [0x7ff818b83286]
+                                                  1    -[CFPrefsPlistSource alreadylocked_setPrecopiedValues:forKeys:count:from:] + 1286 (CoreFoundation + 528798) [0x7ff818bc619e]
+                                                    1    -[CFPrefsPlistSource sendMessageSettingValues:forKeys:count:] + 790 (CoreFoundation + 867404) [0x7ff818c18c4c]
+                                                      1    -[CFPrefsPlistSource sendFullyPreparedMessage:toConnection:settingValues:forKeys:count:retryCount:] + 348 (CoreFoundation + 868560) [0x7ff818c190d0]
+                                                        1    -[_CFXPreferences withConnectionForRole:andUserIdentifier:performBlock:] + 32 (CoreFoundation + 1986764) [0x7ff818d2a0cc]
+                                                          1    __99-[CFPrefsPlistSource sendFullyPreparedMessage:toConnection:settingValues:forKeys:count:retryCount:]_block_invoke + 50 (CoreFoundation + 868678) [0x7ff818c19146]
+                                                            1    xpc_connection_send_message_with_reply_sync + 255 (libxpc.dylib + 45020) [0x7ff8187d4fdc]
+                                                              1    dispatch_mach_send_with_result_and_wait_for_reply + 49 (libdispatch.dylib + 102705) [0x7ff818943131]
+                                                                1    _dispatch_mach_send_and_wait_for_reply + 313 (libdispatch.dylib + 101488) [0x7ff818942c70]
+                                                                  1    _dispatch_mach_send_msg + 324 (libdispatch.dylib + 100855) [0x7ff8189429f7]
+                                                                    1    _dispatch_mach_send_drain + 343 (libdispatch.dylib + 114062) [0x7ff818945d8e]
+                                                                      1    _dispatch_mach_msg_send + 1054 (libdispatch.dylib + 116191) [0x7ff8189465df]
+                                                                        1    mach_msg2_trap + 10 (libsystem_kernel.dylib + 2890) [0x7ff818a94b4a]
+                                                                         *1    ??? (kernel + 925872) [0xffffff80003ca0b0] (runnable)
+                        8    node::PrincipalRealm::async_hooks_binding() const + 68774 (Electron Framework + 53060758) [0x11e8d7496]
+                          8    cppgc::internal::NameTrait<node::contextify::ContextifyContext>::GetName(void const*, cppgc::internal::HeapObjectNameForUnnamedObject) + 950035 (Electron Framework + 52991203) [0x11e8c64e3]
+                            8    node::PrincipalRealm::async_hooks_binding() const + 342178 (Electron Framework + 53334162) [0x11e91a092]
+                              8    ares_llist_node_next + 51473024 (Electron Framework + 171420304) [0x1259b7a90]
+                               *8    ??? (kernel + 530591) [0xffffff800036989f]
+                                 *8    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                   *8    ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                     *8    ??? (kernel + 1876116) [0xffffff80004b2094]
+
+
+===== built-open-cold @30s: ps =====
+   99     1 Ss     09:50   0.0   1884 /usr/libexec/amfid
+  177     1 Ss     09:47   0.0  32276 /usr/libexec/syspolicyd
+  272     1 Ss     09:42   0.0   1872 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+  644     1 S      09:08   0.0   1832 /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+ 7187     1 U<s    02:41  26.1  24812 /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper -uuid C33BADA3-76EB-4453-997B-F1CE5AC59C6A -post-exec 5
+ 9311     1 U      00:29   0.0   6960 /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/mnt-built/PDFwright.app/Contents/MacOS/PDFwright --remote-debugging-port=9403 --user-data-dir=/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/data-i6KQ9V /Users/runner/work/PDFwright/PDFwright/tests/fixtures/simple.pdf
+
+===== built-open-cold @30s: iostat =====
+              disk0               disk2 
+    KB/t  tps  MB/s     KB/t  tps  MB/s 
+   42.65  492 20.49   162.94    3  0.55 
+   60.54   32  1.92   800.00    1  0.69 
+   42.07   28  1.16   132.00    2  0.25 
+
+
+===== built-open-cold @30s: spindump =====
+Sampling all processes for 3 seconds with 10 milliseconds of run time between samples
+Focusing on PDFwright [9311]
+Sampling completed, processing symbols...
+Spindump analysis written to file /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/spin-built-open-cold-30000.txt
+
+
+===== built-open-cold @30s: spindump file =====
+Date/Time:        2026-11-04 14:36:14.410 +0000
+End time:         2026-11-04 14:36:28.021 +0000
+OS Version:       macOS 15.7.9 (Build 24G830)
+Architecture:     x86_64h
+Report Version:   60
+
+Data Source:      Stackshots
+Shared Cache:     FDD97301-9818-3865-A1D2-FEC1D3914796 slid base address 0x7ff816c03000, slide 0x16c03000 (System Primary)
+Shared Cache:     6F268C81-E2E0-3212-8D39-F4819E1FD474 slid base address 0x7ff807e9a000, slide 0x7e9a000 (DriverKit)
+
+Command:          PDFwright
+Path:             /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  002049C5-C0A0-5261-BCA4-057E72521CA6
+Architecture:     x86_64
+Parent:           launchd [1]
+PID:              9311
+Time Since Fork:  60s
+
+Duration:         13.61s
+Duration Sampled: 2.46s (process was unresponsive for 11 seconds before sampling)
+Steps:            243 (10ms sampling interval)
+
+Hardware model:   Macmini6,2
+Active cpus:      4
+Memory size:      14 GB
+HW page size:     4096
+VM page size:     4096
+Shared cache residency: 8.02% (380.69 MB / 4749.17 MB)
+Boot args:        preempt=10
+
+Time Since Boot:  623s
+Time Awake Since Boot: 623s
+Time Since Wake:  n/a (machine hasn't slept)
+
+Fan speed:        0 rpm
+Total CPU Time:   3.337s
+Advisory levels:  Battery -> 3, User -> 2, ThermalPressure -> 0, Combined -> 2
+Free disk space:  105.91 GB/324.68 GB, low space threshold 3072 MB
+Vnodes Available: 84.71% (195172/230400, 150769 allocated)
+Models:           none
+
+Launchd throttled processes:
+  siriactionsd throttled after exit(): throttled samples 1-243
+  thermald throttled after exit(): throttled samples 1-243
+  distnoted.xpc.agent throttled after exit(): throttled samples 1-243
+
+Preferred User Language: en
+OS Cryptex File Extents: 1
+
+------------------------------------------------------------
+Heavy format: stacks are sorted by count
+Use -i and -timeline to re-report with chronological sorting
+------------------------------------------------------------
+
+
+
+Process:          PDFwright [9311]
+UUID:             4C4C4476-5555-3144-A19B-304559937475
+Path:             /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-OVPx5R/mnt-built/PDFwright.app/Contents/MacOS/PDFwright
+Identifier:       ru.promptix.pdfwright
+Version:          1.0.0 (1.0.0)
+Is First Party:   No
+Beta Identifier:  002049C5-C0A0-5261-BCA4-057E72521CA6
+Shared Cache:     FDD97301-9818-3865-A1D2-FEC1D3914796 slid base address 0x7ff816c03000, slide 0x16c03000 (System Primary)
+Architecture:     x86_64
+Parent:           launchd [1]
+UID:              501
+Footprint:        12.18 MB
+Pageins:          96 pages
+Time Since Fork:  60s
+Num samples:      243 (1-243)
+CPU Time:         0.013s
+Note:             Unresponsive for 11 seconds before sampling
+Num threads:      13
+Note:             2 idle work queue threads omitted
+
+  Thread 0x6802    DispatchQueue "com.apple.main-thread"(1)    243 samples (1-243)    priority 47 (base 47)    cpu time 0.012s
+  243  start + 3056 (dyld + 25904) [0x7ff818731530]
+    243  ElectronMain + 543 (Electron Framework + 28868191) [0x11365fe5f]
+      243  uv_req_get_type + 16250 (Electron Framework + 30112106) [0x11378f96a]
+        243  uv_os_environ + 11247 (Electron Framework + 29278143) [0x1136c3fbf]
+          243  v8::CpuProfile::GetSamplesCount() const + 1303689 (Electron Framework + 59138777) [0x11533e2d9]
+            243  v8::CpuProfile::GetSamplesCount() const + 1301615 (Electron Framework + 59136703) [0x11533dabf]
+              243  _v8_internal_Node_Print(void*) + 5200728 (Electron Framework + 90605496) [0x1171407b8]
+                230  _v8_internal_Node_Print(void*) + 5219310 (Electron Framework + 90624078) [0x11714504e]
+                  230  _v8_internal_Node_Print(void*) + 5203623 (Electron Framework + 90608391) [0x117141307]
+                    224  node::PrincipalRealm::async_hooks_binding() const + 66764 (Electron Framework + 53058748) [0x114d71cbc]
+                      224  ares_llist_node_next + 6134575 (Electron Framework + 126081855) [0x119315b3f]
+                        198  ares_llist_node_next + 6142931 (Electron Framework + 126090211) [0x119317be3]
+                          157  ares_llist_node_next + 6144136 (Electron Framework + 126091416) [0x119318098]
+                            122  ares_llist_node_next + 6152280 (Electron Framework + 126099560) [0x11931a068]
+                              63   ares_llist_node_next + 1601379 (Electron Framework + 121548659) [0x118ec2f73]
+                                63   ares_llist_node_next + 1599864 (Electron Framework + 121547144) [0x118ec2988]
+                                  63   v8::CpuProfile::GetSamplesCount() const + 6714141 (Electron Framework + 64549229) [0x11586716d]
+                                    63   node::crypto::GetEphemeralKey(node::Environment*, ncrypto::SSLPointer const&) + 1118 (Electron Framework + 31485694) [0x1138deefe]
+                                      63   _platform_memcmp$VARIANT$Base + 213 (libsystem_platform.dylib + 29013) [0x7ff818b13155]
+                                       *63   ??? (kernel + 530591) [0xffffff800036989f]
+                                         *63   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                           *63   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                             *63   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                               *63   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                                 *63   ??? (kernel + 1161488) [0xffffff8000403910]
+                                                   *63   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                     *63   ??? (kernel + 2407735) [0xffffff8000533d37]
+                              39   v8::CpuProfile::GetSamplesCount() const + 6721456 (Electron Framework + 64556544) [0x115868e00]
+                               *39   ??? (kernel + 530591) [0xffffff800036989f]
+                                 *39   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                   *39   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                     *39   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                       *39   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                         *39   ??? (kernel + 1161488) [0xffffff8000403910]
+                                           *39   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                             *39   ??? (kernel + 2407735) [0xffffff8000533d37]
+                              20   ares_llist_node_next + 1601269 (Electron Framework + 121548549) [0x118ec2f05]
+                                20   ares_llist_node_next + 1972959 (Electron Framework + 121920239) [0x118f1daef]
+                                  20   ares_llist_node_next + 1972234 (Electron Framework + 121919514) [0x118f1d81a]
+                                    20   ares_llist_node_next + 1972027 (Electron Framework + 121919307) [0x118f1d74b]
+                                      20   v8::CpuProfileNode::GetScriptResourceNameStr() const + 370416 (Electron Framework + 65309776) [0x115920c50]
+                                       *20   ??? (kernel + 530591) [0xffffff800036989f]
+                                         *20   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                           *20   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                             *20   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                               *20   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                                 *20   ??? (kernel + 1161488) [0xffffff8000403910]
+                                                   *20   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                                     *20   ??? (kernel + 2407735) [0xffffff8000533d37]
+                            34   ares_llist_node_next + 1601232 (Electron Framework + 121548512) [0x118ec2ee0]
+                             *34   ??? (kernel + 530591) [0xffffff800036989f]
+                               *34   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                 *34   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                   *34   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                     *34   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                       *34   ??? (kernel + 1161488) [0xffffff8000403910]
+                                         *34   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                           *34   ??? (kernel + 2407735) [0xffffff8000533d37]
+                            1    ares_llist_node_next + 6152796 (Electron Framework + 126100076) [0x11931a26c]
+                              1    ??? (AppKit + 10819601) [0x7ff81d034811]
+                                1    ??? (AppKit + 13591702) [0x7ff81d2d9496]
+                                  1    ??? (AppKit + 13588241) [0x7ff81d2d8711]
+                                    1    -[NSBundle localizedStringForKey:value:table:] + 54 (Foundation + 169544) [0x7ff819cd2648]
+                                      1    CFBundleCopyLocalizedString + 27 (CoreFoundation + 410218) [0x7ff818ba926a]
+                                        1    _CFBundleCopyLocalizedStringForLocalizationTableURLAndMarkdownOption + 211 (CoreFoundation + 1746574) [0x7ff818cef68e]
+                                          1    _copyStringTable + 768 (CoreFoundation + 1748467) [0x7ff818cefdf3]
+                                            1    _CFBundleGetStringsSources + 546 (CoreFoundation + 1742208) [0x7ff818cee580]
+                                              1    _CFBundleCreateMappedOrLoadedPlistData + 55 (CoreFoundation + 1157963) [0x7ff818c5fb4b]
+                                                1    _CFBundleCreateMappedBPlistFile + 96 (CoreFoundation + 1741468) [0x7ff818cee29c]
+                                                  1    __NSCreateBPlistMappedDataFromURL + 94 (Foundation + 9192648) [0x7ff81a56d4c8]
+                                                    1    __CFBinaryPlistGetTopLevelInfo + 52 (CoreFoundation + 111960) [0x7ff818b60558]
+                                                     *1    ??? (kernel + 530591) [0xffffff800036989f]
+                                                       *1    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                                         *1    ??? (kernel + 1679641) [0xffffff8000482119]
+                                                           *1    ??? (kernel + 1696918) [0xffffff8000486496]
+                                                             *1    ??? (kernel + 1609800) [0xffffff8000471048]
+                                                               *1    ??? (kernel + 7108743) [0xffffff80009af887]
+                                                                 *1    ??? (apfs + 455842) [0xffffff80030494a2]
+                                                                   *1    ??? (apfs + 522647) [0xffffff8003059997]
+                                                                     *1    ??? (apfs + 523884) [0xffffff8003059e6c]
+                                                                       *1    ??? (kernel + 3358002) [0xffffff800061bd32]
+                                                                         *1    ??? (apfs + 482918) [0xffffff800304fe66]
+                                                                           *1    ??? (apfs + 1303738) [0xffffff80031184ba]
+                                                                             *1    ??? (corecrypto + 146118) [0xffffff800320dac6]
+                                                                               *1    ??? (corecrypto + 151012) [0xffffff800320ede4]
+                                                                                 *1    ??? (corecrypto + 274440) [0xffffff800322d008] (running)
+                          40   ares_llist_node_next + 6144765 (Electron Framework + 126092045) [0x11931830d]
+                            40   v8::internal::compiler::CompilationDependencies::FieldTypeDependencyOffTheRecord(v8::internal::compiler::MapRef, v8::internal::compiler::MapRef, v8::internal::InternalIndex, v8::internal::compiler::ObjectRef) const + 2103792 (Electron Framework + 36737936) [0x113de1390]
+                             *40   ??? (kernel + 530591) [0xffffff800036989f]
+                               *40   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                 *40   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                   *40   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                     *40   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                       *40   ??? (kernel + 1161488) [0xffffff8000403910]
+                                         *40   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                           *40   ??? (kernel + 2407735) [0xffffff8000533d37]
+                          1    ares_llist_node_next + 6143980 (Electron Framework + 126091260) [0x119317ffc]
+                           *1    ??? (kernel + 530591) [0xffffff800036989f]
+                             *1    ??? (kernel + 2433992) [0xffffff800053a3c8] (running)
+                        26   ares_llist_node_next + 6142797 (Electron Framework + 126090077) [0x119317b5d]
+                          26   v8::String::MakeExternal(v8::String::ExternalStringResource*) + 554 (Electron Framework + 2402394) [0x111d2285a]
+                            26   _platform_strlen + 18 (libsystem_platform.dylib + 3730) [0x7ff818b0ce92]
+                             *26   ??? (kernel + 530591) [0xffffff800036989f]
+                               *26   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                                 *26   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                                   *26   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                     *26   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                       *26   ??? (kernel + 1161488) [0xffffff8000403910]
+                                         *26   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                           *26   ??? (kernel + 2407735) [0xffffff8000533d37]
+                    6    ares_llist_node_next + 6134544 (Electron Framework + 126081824) [0x119315b20]
+                     *6    ??? (kernel + 530591) [0xffffff800036989f]
+                       *6    ??? (kernel + 2434290) [0xffffff800053a4f2]
+                         *6    ??? (kernel + 1677883) [0xffffff8000481a3b]
+                           *6    ??? (kernel + 1876116) [0xffffff80004b2094]
+                             *6    ??? (kernel + 1069342) [0xffffff80003ed11e]
+                               *6    ??? (kernel + 1161488) [0xffffff8000403910]
+                                 *6    ??? (kernel + 1169909) [0xffffff80004059f5]
+                                   *6    ??? (kernel + 2407735) [0xffffff8000533d37]
+                13   _v8_internal_Node_Print(void*) + 5219288 (Electron Framework + 90624056) [0x117145038]
+                  13   _v8_internal_Node_Print(void*) + 5203156 (Electron Framework + 90607924) [0x117141134]
+                    13   node::PrincipalRealm::async_hooks_binding() const + 19343 (Electron Framework + 53011327) [0x114d6637f]
+                      13   node::PrincipalRealm::async_hooks_binding() const + 65700 (Electron Framework + 53057684) [0x114d71894]
+                        13   _v8_internal_Node_Print(void*) + 16562992 (Electron Framework + 101967760) [0x117c16790]
+                         *13   ??? (kernel + 530591) [0xffffff800036989f]
+                           *13   ??? (kernel + 2434290) [0xffffff800053a4f2]
+                             *13   ??? (kernel + 1677883) [0xffffff8000481a3b]
+                               *13   ??? (kernel + 1876116) [0xffffff80004b2094]
+                                 *13   ??? (kernel + 1069342) [0xffffff80003ed11e]
+                                   *13   ??? (kernel + 1161488) [0xffffff8000403910]
+                                     *13   ??? (kernel + 1169909) [0xffffff80004059f5]
+                                       *13   ??? (kernel + 2407735) [0xffffff8000533d37]
+
+  Thread 0x6ad0    243 samples (1-243)    priority 31-46 (base 31)    cpu time <0.001s
+  243  thread_start + 15 (libsystem_pthread.dylib + 6231) [0x7ff818ad2857]
+    243  _pthread_start + 115 (libsystem_pthread.dylib + 24069) [0x7ff818ad6e05]
+      243  pread + 10 (libsystem_kernel.dylib + 8210) [0x7ff818a96012]
+       *243  ??? (kernel + 531894) [0xffffff8000369db6]
+         *243  ??? (kernel + 7693051) [0xffffff8000a3e2fb]
+           *243  ??? (kernel + 6633095) [0xffffff800093b687]
+

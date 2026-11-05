@@ -1,0 +1,32 @@
+ProductName:		macOS
+ProductVersion:		26.6.2
+BuildVersion:		25G83
+ULFO
+"disk7" ejected.
+Finder, с образа, попытка 1: процесс 0.1, окно 3.4 с
+"disk7" ejected.
+Finder, с образа, попытка 2: процесс 0.1, окно 3.0 с
+"disk7" ejected.
+Finder, с образа, попытка 3: процесс 0.1, окно 2.4 с
+"disk7" ejected.
+open, с образа: процесс 0.1, окно 2.3 с
+"disk7" ejected.
+Finder, с образа, кэш сброшен: процесс 2.3, окно 13.0 с
+"disk7" ejected.
+
+"disk7" ejected.
+Finder, из «Программ»: процесс 1.4, окно 2.1 с
+Finder, из «Программ», повтор: процесс 0.1, окно 1.2 с
+принтеры: lpstat: No destinations added.
+print-no-printer: simple.pdf — PDFwright
+lpadmin: Printer drivers are deprecated and will stop working in a future version of CUPS.
+print-with-printer: Print, simple.pdf — PDFwright
+| Сценарий | Процесс, с | Окно, с |
+| --- | --- | --- |
+| Finder, с образа, попытка 1 | 0.1 | 3.4 |
+| Finder, с образа, попытка 2 | 0.1 | 3.0 |
+| Finder, с образа, попытка 3 | 0.1 | 2.4 |
+| open, с образа | 0.1 | 2.3 |
+| Finder, с образа, кэш сброшен | 2.3 | 13.0 |
+| Finder, из «Программ» | 1.4 | 2.1 |
+| Finder, из «Программ», повтор | 0.1 | 1.2 |

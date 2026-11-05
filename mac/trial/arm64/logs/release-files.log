@@ -1,0 +1,15 @@
+-rw-r--r--@ 1 runner  staff  121284536 Oct 30 23:14 build/PDFwright-Mac-AppleSilicon.dmg
+-rw-r--r--  1 runner  staff  127378479 Oct 30 23:14 build/PDFwright-Portable-Mac-AppleSilicon.zip
+version: 1.0.0
+files:
+  - url: PDFwright-Portable-Mac-AppleSilicon.zip
+    sha512: LYJE3J2C69fbM1DMSKg+90NyZ/AVQ23i4HQ9sEqpdNsGM3Q32mhKCUIRMrgC04GPgvlE//TSufh2QiE+3FItvA==
+    size: 127378479
+  - url: PDFwright-Mac-AppleSilicon.dmg
+    sha512: jxna2d8I6ZeaPAwDApS+BXQ8TBZRPNKfRZA2wddBvwCopcNv7WkyL2dKS6uw50b83OO0XJbhFfdXnqK6JaWNIw==
+    size: 121284536
+path: PDFwright-Portable-Mac-AppleSilicon.zip
+sha512: LYJE3J2C69fbM1DMSKg+90NyZ/AVQ23i4HQ9sEqpdNsGM3Q32mhKCUIRMrgC04GPgvlE//TSufh2QiE+3FItvA==
+releaseDate: '2026-10-30T23:14:28.609Z'
+33d9969036675cf5b2469d06e05664df79be85b0089f65885c00b7aa314e38c3  PDFwright-Mac-AppleSilicon.dmg
+3da212dac2825fcb0a05716d745eedbaea5cb28dd723e8f36f06120767ffb4ce  PDFwright-Portable-Mac-AppleSilicon.zip

@@ -1,0 +1,2 @@
+33d9969036675cf5b2469d06e05664df79be85b0089f65885c00b7aa314e38c3  PDFwright-Mac-AppleSilicon.dmg
+3da212dac2825fcb0a05716d745eedbaea5cb28dd723e8f36f06120767ffb4ce  PDFwright-Portable-Mac-AppleSilicon.zip

@@ -1,0 +1,180 @@
+
+===== ULFO-exec @10s =====
+ %CPU STAT COMM
+ 36.7 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+ 36.4 R<s  /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/MacOS/PDFwright
+ 16.9 S    /System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATS.framework/Support/fontd
+ 14.9 S<   /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer)
+ 14.7 R<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  2.2 S    /System/Library/CoreServices/WindowManager.app/Contents/MacOS/WindowManager
+
+===== ULFO-open-1 @10s =====
+ %CPU STAT COMM
+ 14.3 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 11.5 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/MacOS/PDFwright
+  5.8 R<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  4.4 S<   node
+  4.2 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  4.2 U    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+
+===== ULFO-open-1 @20s =====
+ %CPU STAT COMM
+ 10.7 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  7.1 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  2.4 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  0.4 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  0.3 S<   node
+  0.3 S    /System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight
+
+===== ULFO-open-1 @40s =====
+ %CPU STAT COMM
+ 49.3 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+ 16.4 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  9.7 Us   /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+  6.5 S<   node
+  6.3 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  5.6 U<   /Users/runner/actions-runner/cached/2.338.2/bin/Runner.Listener
+
+===== ULFO-open-1 @80s =====
+ %CPU STAT COMM
+ 13.0 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper
+  8.2 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  2.3 Ss   /System/Library/PrivateFrameworks/TCC.framework/Support/tccd
+  2.1 Us   /usr/libexec/symptomsd-diag
+  1.9 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer)
+  1.6 U    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/MacOS/PDFwright
+
+===== ULFO-open-2 @10s =====
+ %CPU STAT COMM
+  6.0 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  2.1 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  2.0 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  1.9 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  0.9 U<   node
+  0.4 UN   /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdbulkimport
+
+===== ULFO-open-2 @20s =====
+ %CPU STAT COMM
+  5.8 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  3.8 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  2.0 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  0.7 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  0.5 S<   node
+  0.5 UN   /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdbulkimport
+
+===== ULFO-open-2 @40s =====
+ %CPU STAT COMM
+ 40.9 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  6.9 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  2.4 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  2.2 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  0.7 Ss   /usr/sbin/spindump
+  0.6 S<   node
+
+===== ULFO-open-2 @80s =====
+ %CPU STAT COMM
+ 18.1 R    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper
+  7.1 U    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/MacOS/PDFwright
+  4.1 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  0.9 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  0.8 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer)
+  0.5 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper
+
+===== UDBZ-exec @10s =====
+ %CPU STAT COMM
+ 97.9 R<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  3.5 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  0.9 Us   /usr/libexec/trustd
+  0.4 S<   node
+  0.4 U<s  /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-UDBZ/PDFwright.app/Contents/MacOS/PDFwright
+  0.2 Ss   /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+
+===== UDBZ-exec @20s =====
+ %CPU STAT COMM
+ 98.0 R<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  4.7 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  3.4 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  2.3 Us   /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+  1.9 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  1.7 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+
+===== UDBZ-exec @40s =====
+ %CPU STAT COMM
+100.0 R<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  3.7 Us   /usr/libexec/trustd
+  3.4 U<s  /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-UDBZ/PDFwright.app/Contents/MacOS/PDFwright
+  2.2 Ss   /usr/libexec/modelmanagerd
+  0.9 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  0.3 U    /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+
+===== UDBZ-open-1 @10s =====
+ %CPU STAT COMM
+  5.3 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  2.7 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  1.7 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  0.4 U    /System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app/Contents/MacOS/identityservicesd
+  0.4 U    /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder
+  0.3 S    diskutil
+
+===== UDBZ-open-1 @20s =====
+ %CPU STAT COMM
+ 13.3 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  4.0 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  1.9 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  1.6 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  0.6 U    /System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app/Contents/MacOS/identityservicesd
+  0.5 S    diskutil
+
+===== UDBZ-open-1 @40s =====
+ %CPU STAT COMM
+  7.8 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  5.2 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  3.8 S    /System/Library/Services/AppleSpell.service/Contents/MacOS/AppleSpell
+  1.8 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  1.5 S    /usr/libexec/keyboardservicesd
+  0.9 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+
+===== UDBZ-open-1 @80s =====
+ %CPU STAT COMM
+ 49.3 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  2.5 U    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-UDBZ/PDFwright.app/Contents/MacOS/PDFwright
+  1.6 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  1.1 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  0.8 U    /System/Library/PrivateFrameworks/AXAssetLoader.framework/Support/axassetsd
+  0.2 Ss   /sbin/launchd
+
+===== UDBZ-open-2 @10s =====
+ %CPU STAT COMM
+ 45.4 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+ 15.8 S<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  5.7 Rs   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  2.5 Ss   /usr/sbin/mDNSResponder
+  1.7 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  1.2 Ss   /sbin/launchd
+
+===== UDBZ-open-2 @20s =====
+ %CPU STAT COMM
+ 27.2 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+ 25.7 R<   /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/provjobd4289113225
+  4.6 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  2.1 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  1.7 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  0.8 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+
+===== UDBZ-open-2 @40s =====
+ %CPU STAT COMM
+ 33.9 U<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+  5.8 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  1.6 S    /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+  1.3 S<   node
+  1.1 Ss   /sbin/launchd
+  0.6 U    diskutil
+
+===== UDBZ-open-2 @80s =====
+ %CPU STAT COMM
+ 51.6 R<s  /System/Library/PrivateFrameworks/DiskImages.framework/Resources/diskimages-helper
+ 16.8 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-UDBZ/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app/Contents/MacOS/PDFwright Helper (Renderer)
+ 11.7 S    /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  4.8 U    /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/ContextStoreAgent
+  4.0 Ss   /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  3.5 S    /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-UDBZ/PDFwright.app/Contents/Frameworks/PDFwright Helper.app/Contents/MacOS/PDFwright Helper

@@ -1,0 +1,132 @@
+Образ /Users/runner/work/PDFwright/PDFwright/build/probe/probe.dmg: 130.0 МБ
+ULFO
+
+ProductName:		macOS
+ProductVersion:		15.7.9
+BuildVersion:		24G830
+
+Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz
+4
+15032385536
+
+Preparing imaging engine…
+Reading Protective Master Boot Record (MBR : 0)…
+   (CRC32 $5FADF954: Protective Master Boot Record (MBR : 0))
+Reading GPT Header (Primary GPT Header : 1)…
+   (CRC32 $C8DAD5C1: GPT Header (Primary GPT Header : 1))
+Reading GPT Partition Data (Primary GPT Table : 2)…
+   (CRC32 $D6F99FB8: GPT Partition Data (Primary GPT Table : 2))
+Reading  (Apple_Free : 3)…
+   (CRC32 $00000000:  (Apple_Free : 3))
+Reading disk image (Apple_HFS : 4)…
+   (CRC32 $F9AD3A27: disk image (Apple_HFS : 4))
+Reading  (Apple_Free : 5)…
+   (CRC32 $00000000:  (Apple_Free : 5))
+Reading GPT Partition Data (Backup GPT Table : 6)…
+   (CRC32 $D6F99FB8: GPT Partition Data (Backup GPT Table : 6))
+Reading GPT Header (Backup GPT Header : 7)…
+   (CRC32 $D8D8F92F: GPT Header (Backup GPT Header : 7))
+Adding resources…
+Elapsed Time:  3.005s
+File size: 136285816 bytes, Checksum: CRC32 $0C7D0BA6
+Sectors processed: 582766, 577628 compressed
+Speed: 93.8MB/s
+Savings: 54.3%
+created: /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/ULFO.dmg
+
+ULFO: 130.0 МБ
+Checksumming Protective Master Boot Record (MBR : 0)…
+Protective Master Boot Record (MBR :: verified   CRC32 $5FADF954
+Checksumming GPT Header (Primary GPT Header : 1)…
+ GPT Header (Primary GPT Header : 1): verified   CRC32 $C8DAD5C1
+Checksumming GPT Partition Data (Primary GPT Table : 2)…
+GPT Partition Data (Primary GPT Tabl: verified   CRC32 $D6F99FB8
+Checksumming  (Apple_Free : 3)…
+                    (Apple_Free : 3): verified   CRC32 $00000000
+Checksumming disk image (Apple_HFS : 4)…
+          disk image (Apple_HFS : 4): verified   CRC32 $F9AD3A27
+Checksumming  (Apple_Free : 5)…
+                    (Apple_Free : 5): verified   CRC32 $00000000
+Checksumming GPT Partition Data (Backup GPT Table : 6)…
+GPT Partition Data (Backup GPT Table: verified   CRC32 $D6F99FB8
+Checksumming GPT Header (Backup GPT Header : 7)…
+  GPT Header (Backup GPT Header : 7): verified   CRC32 $D8D8F92F
+verified   CRC32 $0C7D0BA6
+/dev/disk2          	GUID_partition_scheme          	
+/dev/disk2s1        	Apple_HFS                      	/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-ULFO
+
+ULFO-exec (exec): open нет, процесс 0.1, окно 12.6, документ 16.0 с
+ULFO-open-1 (open): open 9.4, процесс 3.7, окно 77.5, документ 88.2 с
+ULFO-open-2 (open): open 4.1, процесс 2.5, окно 78.8, документ 85.2 с
+ULFO: чтение 215 МБ за 0.7 с
+
+"disk2" ejected.
+
+installed-open-1 (open): open 2.7, процесс 1.4, окно 3.4, документ 4.5 с
+installed-open-2 (open): open 1.8, процесс 1.0, окно 4.7, документ 4.7 с
+installed-exec (exec): open нет, процесс 0.0, окно 6.1, документ 6.4 с
+Preparing imaging engine…
+Reading Protective Master Boot Record (MBR : 0)…
+   (CRC32 $5FADF954: Protective Master Boot Record (MBR : 0))
+Reading GPT Header (Primary GPT Header : 1)…
+   (CRC32 $C8DAD5C1: GPT Header (Primary GPT Header : 1))
+Reading GPT Partition Data (Primary GPT Table : 2)…
+   (CRC32 $D6F99FB8: GPT Partition Data (Primary GPT Table : 2))
+Reading  (Apple_Free : 3)…
+   (CRC32 $00000000:  (Apple_Free : 3))
+Reading disk image (Apple_HFS : 4)…
+   (CRC32 $F9AD3A27: disk image (Apple_HFS : 4))
+Reading  (Apple_Free : 5)…
+   (CRC32 $00000000:  (Apple_Free : 5))
+Reading GPT Partition Data (Backup GPT Table : 6)…
+   (CRC32 $D6F99FB8: GPT Partition Data (Backup GPT Table : 6))
+Reading GPT Header (Backup GPT Header : 7)…
+   (CRC32 $D8D8F92F: GPT Header (Backup GPT Header : 7))
+Adding resources…
+Elapsed Time:  9.857s
+File size: 127703975 bytes, Checksum: CRC32 $0C7D0BA6
+Sectors processed: 582766, 577628 compressed
+Speed: 28.6MB/s
+Savings: 57.2%
+created: /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/UDBZ.dmg
+
+UDBZ: 121.8 МБ
+Checksumming Protective Master Boot Record (MBR : 0)…
+Protective Master Boot Record (MBR :: verified   CRC32 $5FADF954
+Checksumming GPT Header (Primary GPT Header : 1)…
+ GPT Header (Primary GPT Header : 1): verified   CRC32 $C8DAD5C1
+Checksumming GPT Partition Data (Primary GPT Table : 2)…
+GPT Partition Data (Primary GPT Tabl: verified   CRC32 $D6F99FB8
+Checksumming  (Apple_Free : 3)…
+                    (Apple_Free : 3): verified   CRC32 $00000000
+Checksumming disk image (Apple_HFS : 4)…
+          disk image (Apple_HFS : 4): verified   CRC32 $F9AD3A27
+Checksumming  (Apple_Free : 5)…
+                    (Apple_Free : 5): verified   CRC32 $00000000
+Checksumming GPT Partition Data (Backup GPT Table : 6)…
+GPT Partition Data (Backup GPT Table: verified   CRC32 $D6F99FB8
+Checksumming GPT Header (Backup GPT Header : 7)…
+  GPT Header (Backup GPT Header : 7): verified   CRC32 $D8D8F92F
+verified   CRC32 $0C7D0BA6
+/dev/disk2          	GUID_partition_scheme          	
+/dev/disk2s1        	Apple_HFS                      	/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/dmg-probe-12v5B7/mnt-UDBZ
+
+UDBZ-exec (exec): open нет, процесс 0.1, окно 42.5, документ 58.3 с
+UDBZ-open-1 (open): open 4.4, процесс 0.9, окно 79.4, документ 87.1 с
+UDBZ-open-2 (open): open 4.3, процесс 1.5, окно 71.1, документ 80.7 с
+UDBZ: чтение 215 МБ за 9.4 с
+"disk2" ejected.
+
+| Сценарий | Запуск | open вернулся, с | Процесс, с | Окно, с | Документ, с |
+| --- | --- | --- | --- | --- | --- |
+| ULFO-exec | exec | нет | 0.1 | 12.6 | 16.0 |
+| ULFO-open-1 | open | 9.4 | 3.7 | 77.5 | 88.2 |
+| ULFO-open-2 | open | 4.1 | 2.5 | 78.8 | 85.2 |
+| ULFO: чтение 215 МБ | dd | | | | 0.7 |
+| installed-open-1 | open | 2.7 | 1.4 | 3.4 | 4.5 |
+| installed-open-2 | open | 1.8 | 1.0 | 4.7 | 4.7 |
+| installed-exec | exec | нет | 0.0 | 6.1 | 6.4 |
+| UDBZ-exec | exec | нет | 0.1 | 42.5 | 58.3 |
+| UDBZ-open-1 | open | 4.4 | 0.9 | 79.4 | 87.1 |
+| UDBZ-open-2 | open | 4.3 | 1.5 | 71.1 | 80.7 |
+| UDBZ: чтение 215 МБ | dd | | | | 9.4 |

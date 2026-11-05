@@ -1,0 +1,28 @@
+lpstat до: no system default destination
+lpstat: No destinations added.
+
+===== no-printer =====
+Downloading Electron binary...
+принтеры: []
+через 3 с: {"windows":["simple.pdf — PDFwright видно=true"],"log":["print() через 1440 мс","callback false «No printers available on the network» через 1445 мс"]} сообщение: ["Couldn't print: Error invoking remote method 'file:print': Error: No printers available on the network"]
+окна системы: Finder, Electron,, simple.pdf — PDFwright
+через 10 с: {"windows":["simple.pdf — PDFwright видно=true"],"log":["print() через 1440 мс","callback false «No printers available on the network» через 1445 мс"]} сообщение: []
+окна системы: Finder, Electron,, simple.pdf — PDFwright
+через 30 с: {"windows":["simple.pdf — PDFwright видно=true"],"log":["print() через 1440 мс","callback false «No printers available on the network» через 1445 мс"]} сообщение: []
+окна системы: Finder, Electron,, simple.pdf — PDFwright
+Esc: 
+после Esc: {"windows":1,"log":["print() через 1440 мс","callback false «No printers available on the network» через 1445 мс"]}
+lpadmin: Printer drivers are deprecated and will stop working in a future version of CUPS.
+lpstat после: printer CI_Printer is idle.  enabled since Wed Nov  4 15:39:06 2026
+no system default destination
+
+===== printer =====
+принтеры: ["CI_Printer"]
+через 3 с: {"windows":["PDFwright видно=false","simple.pdf — PDFwright видно=true"],"log":["print() через 1629 мс"]} сообщение: []
+окна системы: Finder, Electron,, Print, simple.pdf — PDFwright
+через 10 с: {"windows":["PDFwright видно=false","simple.pdf — PDFwright видно=true"],"log":["print() через 1629 мс"]} сообщение: []
+окна системы: Finder, Electron,, Print, simple.pdf — PDFwright
+через 30 с: {"windows":["PDFwright видно=false","simple.pdf — PDFwright видно=true"],"log":["print() через 1629 мс"]} сообщение: []
+окна системы: Finder, Electron,, Print, simple.pdf — PDFwright
+Esc: 
+после Esc: {"windows":1,"log":["print() через 1629 мс","callback false «Print job canceled» через 30869 мс"]}

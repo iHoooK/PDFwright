@@ -1,0 +1,184 @@
+1/6 Проверки пропущены (--skip-checks)
+2/6 Сборка renderer, preload и main
+
+> pdfwright@1.0.0 prebuild
+> node scripts/copy-pdfjs-assets.mjs && node scripts/copy-ocr-assets.mjs
+
+pdf.js assets copied to /Users/runner/work/PDFwright/PDFwright/src/renderer/public/pdfjs
+OCR assets copied to /Users/runner/work/PDFwright/PDFwright/src/renderer/public/ocr
+
+> pdfwright@1.0.0 build
+> electron-vite build
+
+[36mvite v8.3.5 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+✓ 183 modules transformed.
+rendering chunks...
+out/main/index.js  590.08 kB
+
+[32m✓ built in 777ms[39m
+[36mvite v8.3.5 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+out/preload/index.cjs  6.76 kB
+
+[32m✓ built in 48ms[39m
+[36mvite v8.3.5 [32mbuilding client environment for production...[36m[39m
+transforming...
+[33m[plugin rolldown:vite-resolve] Module "node:fs" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "node:fs" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "module" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf-wasm.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin rolldown:vite-resolve] Module "module" has been externalized for browser compatibility, imported by "/Users/runner/work/PDFwright/PDFwright/node_modules/mupdf/dist/mupdf-wasm.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+✓ 541 modules transformed.
+rendering chunks...
+out/renderer/assets/__vite-browser-external-UfK9GVxM.js           0.11 kB
+out/renderer/index.html                                           0.47 kB
+out/renderer/assets/rolldown-runtime-WkwZ5CU-.js                  0.59 kB
+out/renderer/assets/cursor-editorTextHighlight-kG3uUOwL.svg       5.40 kB
+out/renderer/assets/content.worker-DfjWwkY3.js                   58.00 kB
+out/renderer/assets/mupdf-CB9qeQWw.js                            90.66 kB
+out/renderer/assets/pdf.worker.min-CjEcRF4W.mjs               1,264.34 kB
+out/renderer/assets/mupdf-wasm-Bvf0xebB.wasm                 10,409.82 kB
+out/renderer/assets/index-lt4i5u0L.css                          211.61 kB
+out/renderer/assets/pdf-ops-ME7q32NH.js                           0.05 kB
+out/renderer/assets/index-8ti6KVPp.js                         1,056.75 kB
+out/renderer/assets/pdf-ops-6qOsnMDb.js                       1,159.65 kB
+
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 2.72s[39m
+3/6 electron-builder: .dmg и .zip (x64)
+  • electron-builder  version=26.18.0 os=24.6.0
+  • loaded configuration  file=/Users/runner/work/PDFwright/PDFwright/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=45.0.0 arch=x64 buildFromSource=false workspaceRoot=/Users/runner/work/PDFwright/PDFwright projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=x64 electron=45.0.0 appOutDir=build/mac-x64/mac
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac
+  • searching for node modules  pm=npm searchDir=/Users/runner/work/PDFwright/PDFwright
+  • no node modules found in collection, trying next search directory  pm=npm searchDir=/Users/runner/work/PDFwright/PDFwright
+  • searching for node modules  pm=traversal searchDir=/Users/runner/work/PDFwright/PDFwright
+  • using manual traversal of node_modules to build dependency tree
+  • no node modules found in collection, trying next search directory  pm=traversal searchDir=/Users/runner/work/PDFwright/PDFwright
+  • no node modules returned while searching directories  searchDirectories=[""]
+  • executing custom sign  file=build/mac-x64/mac/PDFwright.app platform=darwin type=distribution identityName=- identityHash=none provisioningProfile=none
+  • skipped macOS notarization  reason=`notarize` options were unable to be generated
+  • building        target=macOS zip arch=x64 file=build/mac-x64/PDFwright-Portable-Mac-Intel.zip
+  • building        target=DMG arch=x64 file=build/mac-x64/PDFwright-Mac-Intel.dmg
+  • downloaded      label=7zip-darwin-x86_64.tar.gz progress=100%
+  • downloaded      label=dmgbuild-bundle-x86_64-75c8a6c.tar.gz progress=100%
+  • building block map  blockMapFile=build/mac-x64/PDFwright-Mac-Intel.dmg.blockmap
+  • building block map  blockMapFile=build/mac-x64/PDFwright-Portable-Mac-Intel.zip.blockmap
+4/6 Подпись и Info.plist собранной программы
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--prepared:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+--validated:/Users/runner/work/PDFwright/PDFwright/build/mac-x64/mac/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+build/mac-x64/mac/PDFwright.app: valid on disk
+build/mac-x64/mac/PDFwright.app: satisfies its Designated Requirement
+  build/mac-x64/mac/PDFwright.app: ad-hoc подпись, macOS 13+, .pdf (Viewer, Alternate), x86_64
+5/6 latest-mac.yml и SHA256SUMS-Mac.txt
+mac-release-files: PDFwright-Portable-Mac-Intel.zip, PDFwright-Mac-Intel.dmg
+  build/latest-mac.yml и build/SHA256SUMS-Mac.txt
+PDFwright-Mac-Intel.dmg: OK
+PDFwright-Portable-Mac-Intel.zip: OK
+6/6 Готовые файлы: .zip, установка из .dmg и дымовой запуск
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/zip-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/zip-x64/PDFwright.app: valid on disk
+/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/zip-x64/PDFwright.app: satisfies its Designated Requirement
+  /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/zip-x64/PDFwright.app: ad-hoc подпись, macOS 13+, .pdf (Viewer, Alternate), x86_64
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app: valid on disk
+/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app: satisfies its Designated Requirement
+  /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/dmg-x64/PDFwright.app: ad-hoc подпись, macOS 13+, .pdf (Viewer, Alternate), x86_64
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/app_shim_loader
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Helpers/chrome_crashpad_handler
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/ReactiveObjC.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Renderer).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Squirrel.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/Mantle.framework/Versions/Current/.
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (Plugin).app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper.app
+--prepared:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+--validated:/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app/Contents/Frameworks/PDFwright Helper (GPU).app
+/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app: valid on disk
+/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app: satisfies its Designated Requirement
+  /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T//pdfwright-mac.uwbzcj/Applications-x64/PDFwright.app: ad-hoc подпись, macOS 13+, .pdf (Viewer, Alternate), x86_64
+smoke-mac: {"version":"1.0.0","packaged":true,"arch":"x64","platform":"darwin","userData":"/private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-smoke-MQ73RO"}
+smoke-mac: OK — PDFwright 1.0.0 (x64) открыл tests/fixtures/simple.pdf
+
+Готово. Файлы для публикации:
+  build/PDFwright-Mac-Intel.dmg                    127714260 байт (121.8 МБ)
+  build/PDFwright-Portable-Mac-Intel.zip           134700701 байт (128.5 МБ)
+  build/latest-mac.yml                                   515 байт (0.0 МБ)
+  build/SHA256SUMS-Mac.txt                               189 байт (0.0 МБ)
+Имена файлов не меняйте: их ищут README и latest-mac.yml.

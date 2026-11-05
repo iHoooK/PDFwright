@@ -1,0 +1,15 @@
+-rw-r--r--@ 1 runner  staff  136429075 Nov  4 23:26 build/PDFwright-Mac-Intel.dmg
+-rw-r--r--  1 runner  staff  134704529 Nov  4 23:26 build/PDFwright-Portable-Mac-Intel.zip
+version: 1.0.1
+files:
+  - url: PDFwright-Portable-Mac-Intel.zip
+    sha512: wsx8F3P1bdkRqceKpey0iYP8S6DWOZfdOMT+i+NUp4Dguwsm0IiQ6sHOzM3ePqxugekr8WCnmV21/lbL8bYuoA==
+    size: 134704529
+  - url: PDFwright-Mac-Intel.dmg
+    sha512: lmnqyi6kNvKQDUpBfY9joqQGv5QN6TAadxGysQPEOdLw/250bTghILLxbbR1CK4ItH41F7aaWAnv8cC8n58mNQ==
+    size: 136429075
+path: PDFwright-Portable-Mac-Intel.zip
+sha512: wsx8F3P1bdkRqceKpey0iYP8S6DWOZfdOMT+i+NUp4Dguwsm0IiQ6sHOzM3ePqxugekr8WCnmV21/lbL8bYuoA==
+releaseDate: '2026-11-04T23:26:36.673Z'
+74b8b5761a2efe3849b066ddb40f16fc374205342c3cc1c4c2a8d9a61f0dc549  PDFwright-Mac-Intel.dmg
+219e84b95128cfb29e03221cc2a7801f035a64f6e49143ee50f592a3bd997fd6  PDFwright-Portable-Mac-Intel.zip

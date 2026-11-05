@@ -1,0 +1,18 @@
+  • electron-builder  version=26.18.0 os=25.6.0
+  • loaded configuration  file=/Users/runner/work/PDFwright/PDFwright/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=45.0.0 arch=arm64 buildFromSource=false workspaceRoot=/Users/runner/work/PDFwright/PDFwright projectDir=./ appDir=./
+  • installing native dependencies  arch=arm64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=arm64 electron=45.0.0 appOutDir=build/mac-arm64
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/runner/work/PDFwright/PDFwright/build/mac-arm64
+  • searching for node modules  pm=npm searchDir=/Users/runner/work/PDFwright/PDFwright
+  • no node modules found in collection, trying next search directory  pm=npm searchDir=/Users/runner/work/PDFwright/PDFwright
+  • searching for node modules  pm=traversal searchDir=/Users/runner/work/PDFwright/PDFwright
+  • using manual traversal of node_modules to build dependency tree
+  • no node modules found in collection, trying next search directory  pm=traversal searchDir=/Users/runner/work/PDFwright/PDFwright
+  • no node modules returned while searching directories  searchDirectories=[""]
+  • downloaded      label=icons-bundle.tar.gz progress=100%
+  • skipped macOS application code signing  reason=cannot find valid "Developer ID Application" identity or custom non-Apple code signing certificate, it could cause some undefined behaviour, e.g. macOS localized description not visible, see https://electron.build/code-signing allIdentities=     0 identities found
+                                                Valid identities only
+     0 valid identities found

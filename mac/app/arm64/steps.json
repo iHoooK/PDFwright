@@ -1,0 +1,50 @@
+[
+  {
+    "name": "install",
+    "command": "npm ci",
+    "code": 0,
+    "seconds": 36
+  },
+  {
+    "name": "lint",
+    "command": "npm run lint",
+    "code": 0,
+    "seconds": 32
+  },
+  {
+    "name": "typecheck",
+    "command": "npm run typecheck",
+    "code": 0,
+    "seconds": 11
+  },
+  {
+    "name": "unit",
+    "command": "npm test",
+    "code": 1,
+    "seconds": 14
+  },
+  {
+    "name": "build",
+    "command": "npm run build",
+    "code": 0,
+    "seconds": 3
+  },
+  {
+    "name": "e2e",
+    "command": "npm run test:e2e",
+    "code": 1,
+    "seconds": 376
+  },
+  {
+    "name": "package",
+    "command": "npx electron-builder --mac --dir --arm64 --publish never",
+    "code": 0,
+    "seconds": 9
+  },
+  {
+    "name": "app-info",
+    "command": "sh -c du -sh \"$0\"; plutil -p \"$0/Contents/Info.plist\"; codesign -dv \"$0\" 2>&1 || true build/mac-arm64/PDFwright.app",
+    "code": 0,
+    "seconds": 0
+  }
+]

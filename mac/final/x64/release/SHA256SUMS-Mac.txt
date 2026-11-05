@@ -1,0 +1,2 @@
+a14feb1b0930a5aa52f7ca951b7eeaa2235b8ce699d870304fa0bb683d8063a7  PDFwright-Mac-Intel.dmg
+61ea55ac494d3da46752a8480d673925cf06c044c606d09ea4b6b09f06e35d77  PDFwright-Portable-Mac-Intel.zip

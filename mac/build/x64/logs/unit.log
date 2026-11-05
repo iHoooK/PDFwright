@@ -1,0 +1,75 @@
+
+> pdfwright@1.0.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m/Users/runner/work/PDFwright/PDFwright[39m
+
+[90mstderr[2m | tests/unit/pdf-content.test.ts[2m > [22m[2mlistPageObjects[2m > [22m[2mотклоняет несуществующую страницу и не-PDF
+[22m[39mformat error: cannot find version marker
+warning: trying to repair broken xref
+warning: repairing PDF document
+
+ [32m✓[39m tests/unit/pdf-content.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 1194[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-annotations.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1112[2mms[22m[39m
+   [32m✓[39m аннотации документа [2m(11)[22m
+     [33m[2m✓[22m[39m растянутое текстовое поле переносит текст заново, а не сжимает старый вид (M9)[33m 371[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-content-typeset.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 880[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-forms.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 867[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-protect.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 3168[2mms[22m[39m
+   [32m✓[39m protectPdf и unlockPdf [2m(8)[22m
+     [33m[2m✓[22m[39m файл открывается только с паролем, после снятия защиты — без него[33m 789[2mms[22m[39m
+     [33m[2m✓[22m[39m пароли с запятыми, знаком равенства и кириллицей[33m 541[2mms[22m[39m
+   [32m✓[39m relockPdf: правка расшифрованной копии с прежним шифрованием [2m(3)[22m
+     [33m[2m✓[22m[39m после правки MuPDF оба пароля и ограничения те же[33m 749[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-markup.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 777[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-resize.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-content-text.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 449[2mms[22m[39m
+ [32m✓[39m tests/unit/compare.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/unit/settings-schema.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-geometry.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-ops.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-model.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/unit/main-helpers.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m tests/unit/window-plan.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/unit/markdown.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/unit/ocr.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 3935[2mms[22m[39m
+   [32m✓[39m распознавание tesseract.js (17.1) [2m(2)[22m
+     [33m[2m✓[22m[39m находит русские и английские слова на картинке с известным текстом[33m 2275[2mms[22m[39m
+   [32m✓[39m невидимый текстовый слой (17.2) [2m(6)[22m
+     [33m[2m✓[22m[39m после распознавания скана MuPDF находит слова, а растр страницы не меняется[33m 1369[2mms[22m[39m
+ [32m✓[39m tests/unit/markup-qa.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/unit/saved-state.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/unit/search.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/unit/update-schedule.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m tests/unit/viewer-helpers.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/i18n.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 103[2mms[22m[39m
+[90mstderr[2m | tests/unit/settings-store.test.ts[2m > [22m[2mSettingsStore[2m > [22m[2mпереживает повреждённый JSON
+[22m[39m[settings] не удалось прочитать /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/pdfwright-settings-XFWsMa/settings.json, используются значения по умолчанию: SyntaxError: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+    at JSON.parse (<anonymous>)
+    at SettingsStore.load [90m(/Users/runner/work/PDFwright/PDFwright/[39msrc/main/services/settings-store.ts:35:46[90m)[39m
+    at [90m/Users/runner/work/PDFwright/PDFwright/[39mtests/unit/settings-store.test.ts:28:12
+    at async [90mfile:///Users/runner/work/PDFwright/PDFwright/[39mnode_modules/[4mvitest[24m/dist/chunks/run.BPv-BBRv.js:2801:20
+
+ [32m✓[39m tests/unit/settings-store.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m tests/unit/update-messages.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m tests/unit/paths.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/content-selection.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/app-paths.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/external-links.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/unit/pdf-date.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/unit/ipc-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/unit/convert.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 16031[2mms[22m[39m
+   [32m✓[39m изображения в PDF [2m(6)[22m
+     [33m[2m✓[22m[39m десять фотографий складываются в документ быстро и в заданном порядке[33m 7499[2mms[22m[39m
+   [32m✓[39m сжатие [2m(2)[22m
+     [33m[2m✓[22m[39m уменьшает файл со сканом и не трогает текст[33m 7811[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m32 passed[39m[22m[90m (32)[39m
+[2m      Tests [22m [1m[32m288 passed[39m[22m[90m (288)[39m
+[2m   Start at [22m 22:56:49
+[2m   Duration [22m 18.17s[2m (tests 72%, import 16%, transform 11%, worker 1%)[22m
+
+[2m    Isolate [22m [33m32 workers spawned[39m[2m · ~233ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~2.25s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+
